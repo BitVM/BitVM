@@ -286,12 +286,12 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// The script processes compact message blocks and only unpacks them when needed,
 /// resulting in higher stack efficiency and support for larger messages.
 ///
-/// ## Parameters:
+/// ## Parameters
 ///
 /// - `msg_len`: Length of the message. (excluding the padding, number of bytes)
 /// - `limb_len`: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
 ///
-/// ## Message Format Requirements:
+/// ## Message Format Requirements
 ///
 /// - __The stack contains only message. Anything other has to be moved to alt stack.__ If hashing the empty message of length 0, the stack is empty.
 /// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of `limb_len` bits
@@ -309,7 +309,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// block_0_part_0 : U256
 /// block_0_part_1 : U256 (top of the stack)
 /// ```
-/// ## Panics:
+/// ## Panics
 ///
 /// - If `msg_len` is greater than 1024 bytes, the function panics with an assertion error.
 /// - Given script might not also fit on the max stack limit with messages smaller than 1024 bytes \
@@ -318,7 +318,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// - If the input doesn't unpack to a multiple of 128 nibbles with the given limb length parameter.
 /// - If the stack contains elements other than the message.
 ///
-/// ## Implementation:
+/// ## Implementation
 ///
 /// 1. Defines stack variables for compact message blocks.
 /// 2. Moves the compact message to an alternate stack for processing.
@@ -329,7 +329,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 ///     - Computes the hash for the block using `compress` while maintaining intermediate states.
 /// 5. Drops intermediate states and finalizes the hash result on the stack.
 ///
-/// ## Stack Effects:
+/// ## Stack Effects
 ///
 /// - Temporarily uses the alternate stack for intermediate results and hash computation tables.
 /// - Final result is left on the main stack as a BLAKE3 hash value. (in nibbles)
