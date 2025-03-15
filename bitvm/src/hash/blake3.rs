@@ -420,7 +420,7 @@ mod tests {
     #[test]
     pub fn test_maximum_alstack_element_calculation() {
         for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
-            for message_len in (64..1024).step_by(64) {
+            for message_len in (64..=1024).step_by(64) {
                 // Block count depends on ceil(message_len / 64)
                 let blake3_script = blake3_compute_script(message_len, limb_len);
                 let maximum_extra_elements =
