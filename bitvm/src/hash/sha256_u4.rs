@@ -2,6 +2,9 @@ use crate::treepp::{script, Script};
 use crate::u4::{u4_add::*, u4_logic::*, u4_rot::*, u4_std::*};
 use std::vec;
 
+/// A pre-calculated limit on the size of input
+pub const INPUT_N_BYTES_LIMIT: usize = 143;
+
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -141,9 +144,13 @@ pub fn calculate_s(
     }
 }
 
-fn get_w_pos(i: u32) -> u32 { (i + 1) * 8 }
+fn get_w_pos(i: u32) -> u32 {
+    (i + 1) * 8
+}
 
-fn get_extra_pos(i: u32) -> u32 { (i - 16) * 8 }
+fn get_extra_pos(i: u32) -> u32 {
+    (i - 16) * 8
+}
 
 fn get_pos_var(name: char) -> u32 {
     let i = match name {
@@ -249,7 +256,9 @@ pub fn schedule_iteration(
     }
 }
 
-fn get_full_w_pos(top_table: u32, i: u32) -> u32 { top_table - (i + 1) * 8 }
+fn get_full_w_pos(top_table: u32, i: u32) -> u32 {
+    top_table - (i + 1) * 8
+}
 
 pub fn sha256(num_bytes: u32) -> Script {
     // up to 55 is one block and always supports add table
@@ -686,14 +695,17 @@ mod tests {
 
     #[test]
     fn test_sha256_official_test_vectors() {
-        for (input_hex, expected_hex) in read_sha256_test_vectors().unwrap().iter() {
+        for (input_hex, expected_hex) in read_sha256_test_vectors(INPUT_N_BYTES_LIMIT)
+            .unwrap()
+            .iter()
+        {
             test_sha256_u4_with(&input_hex, &expected_hex);
         }
     }
 
     #[test]
     fn test_sha256_random() {
-        for (input_hex, expected_hex) in random_test_cases() {
+        for (input_hex, expected_hex) in random_test_cases(INPUT_N_BYTES_LIMIT) {
             test_sha256_u4_with(&input_hex, &expected_hex);
         }
     }

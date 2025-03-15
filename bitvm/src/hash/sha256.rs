@@ -11,6 +11,9 @@ use crate::u32::{
     u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
 };
 
+/// A pre-calculated limit on the size of input
+pub const INPUT_N_BYTES_LIMIT: usize = 183;
+
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -28,6 +31,8 @@ const INITSTATE: [u32; 8] = [
 
 /// sha256 take indefinite length input on the top of stack and return 256 bit (64 byte)
 pub fn sha256(num_bytes: usize) -> Script {
+    assert!(num_bytes <= INPUT_N_BYTES_LIMIT);
+
     if num_bytes == 32 {
         return sha256_32bytes();
     }
@@ -133,7 +138,7 @@ pub fn sha256_80bytes() -> Script {
 
 /// Change byte order, because SHA uses big endian.
 pub fn padding_add_roll(num_bytes: usize) -> Script {
-    assert!(num_bytes <= 128);
+    assert!(num_bytes < 512);
     let padding_num = if (num_bytes % 64) < 56 {
         55 - (num_bytes % 64)
     } else {
@@ -1281,14 +1286,17 @@ mod tests {
 
     #[test]
     fn test_sha256_official_test_vectors() {
-        for (input_hex, expected_hex) in read_sha256_test_vectors().unwrap().iter() {
+        for (input_hex, expected_hex) in read_sha256_test_vectors(INPUT_N_BYTES_LIMIT)
+            .unwrap()
+            .iter()
+        {
             test_sha256_with(&input_hex, &expected_hex);
         }
     }
 
     #[test]
     fn test_sha256_random() {
-        for (input_hex, expected_hex) in random_test_cases() {
+        for (input_hex, expected_hex) in random_test_cases(INPUT_N_BYTES_LIMIT) {
             test_sha256_with(&input_hex, &expected_hex);
         }
     }
