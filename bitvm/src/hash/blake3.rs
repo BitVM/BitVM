@@ -290,8 +290,6 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// ## Parameters:
 ///
 /// - `msg_len`: Length of the message. (excluding the padding, number of bytes)
-/// - `define_var`: Set to false if the input on stack is already defined as `StackTracker` varibles.
-/// - `use_full_tables`: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
 /// - `limb_len`: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
 ///
 /// ## Message Format Requirements:
@@ -321,13 +319,13 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// - If the input doesn't unpack to a multiple of 128 nibbles with the given limb length parameter.
 /// - If the stack contains elements other than the message.
 ///
-/// ## Implementation:
+/// ## Implementation
 ///
-/// 1. Defines stack variables for compact message blocks if `define_var` is enabled.
+/// 1. Defines stack variables for compact message blocks.
 /// 2. Moves the compact message to an alternate stack for processing.
 /// 3. Initializes hash computation tables.
 /// 4. Processes each message block:
-///     - Unpacks message block.
+///     - Unpacks compact message forms.
 ///     - Corrects any user-provided padding if it is the last block.
 ///     - Computes the hash for the block using `compress` while maintaining intermediate states.
 /// 5. Drops intermediate states and finalizes the hash result on the stack.
@@ -336,7 +334,6 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 ///
 /// - Temporarily uses the alternate stack for intermediate results and hash computation tables.
 /// - Final result is left on the main stack as a BLAKE3 hash value. (in nibbles)
-///
 pub fn blake3_compute_script_with_limb(message_len: usize, limb_len: u8) -> Script {
     assert!(
         message_len <= 1024,
