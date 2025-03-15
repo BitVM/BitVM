@@ -194,32 +194,18 @@ fn xor_and_rotate_right_by_7(
     stack.join_count(&mut w0, 7)
 }
 
-/// Adds the given constant numbers and u32 variables. to_copy and to_move specify which of these variables are to be consumed and left
+/// Adds the given constant numbers and u32 variables.
+///
+/// Variables in `to_copy` are copied and the original remains on the stack.
+/// Variables in `to_move` are consumed from the stack.
 fn u4_add_direct(
     stack: &mut StackTracker,
-    nibble_count: u32,
     to_copy: Vec<StackVariable>,
     mut to_move: Vec<&mut StackVariable>,
-    mut constants: Vec<u32>,
     tables: &TablesVars,
 ) {
-    // add all the constants together
-    if constants.len() > 1 {
-        let mut sum: u32 = 0;
-        for c in constants.iter() {
-            sum = sum.wrapping_add(*c);
-        }
-        constants = vec![sum];
-    }
-
-    //split the parts of the constant (still one element)
-    let mut constant_parts: Vec<Vec<u32>> = Vec::new();
-    for n in constants {
-        let parts = (0..8).rev().map(|i| (n >> (i * 4)) & 0xF).collect();
-        constant_parts.push(parts);
-    }
-
-    let number_count = to_copy.len() + to_move.len() + constant_parts.len();
+    let nibble_count = 8;
+    let number_count = to_copy.len() + to_move.len();
 
     for i in (0..nibble_count).rev() {
         for x in to_copy.iter() {
@@ -228,10 +214,6 @@ fn u4_add_direct(
 
         for x in to_move.iter_mut() {
             stack.move_var_sub_n(x, i);
-        }
-
-        for parts in constant_parts.iter() {
-            stack.number(parts[i as usize]);
         }
 
         //add the numbers
@@ -281,16 +263,9 @@ fn g(
     let mut va = var_map.get_mut(&a).unwrap();
 
     if last_round {
-        u4_add_direct(
-            stack,
-            8,
-            vec![vb],
-            vec![&mut va, &mut m_two_i],
-            vec![],
-            tables,
-        );
+        u4_add_direct(stack, vec![vb], vec![&mut va, &mut m_two_i], tables);
     } else {
-        u4_add_direct(stack, 8, vec![vb, m_two_i], vec![&mut va], vec![], tables);
+        u4_add_direct(stack, vec![vb, m_two_i], vec![&mut va], tables);
     }
 
     //stores the results in a
@@ -304,7 +279,7 @@ fn g(
 
     let vd = var_map[&d];
     let mut vc = var_map.get_mut(&c).unwrap();
-    u4_add_direct(stack, 8, vec![vd], vec![&mut vc], vec![], tables);
+    u4_add_direct(stack, vec![vd], vec![&mut vc], tables);
     *vc = stack.from_altstack_joined(8, &format!("state_{}", c));
 
     let ret =
@@ -316,21 +291,12 @@ fn g(
     if last_round {
         u4_add_direct(
             stack,
-            8,
             vec![vb],
             vec![&mut va, &mut m_two_i_plus_one],
-            vec![],
             tables,
         );
     } else {
-        u4_add_direct(
-            stack,
-            8,
-            vec![vb, m_two_i_plus_one],
-            vec![&mut va],
-            vec![],
-            tables,
-        );
+        u4_add_direct(stack, vec![vb, m_two_i_plus_one], vec![&mut va], tables);
     }
 
     *va = stack.from_altstack_joined(8, &format!("state_{}", a));
@@ -342,7 +308,7 @@ fn g(
 
     let vd = var_map[&d];
     let mut vc = var_map.get_mut(&c).unwrap();
-    u4_add_direct(stack, 8, vec![vd], vec![&mut vc], vec![], tables);
+    u4_add_direct(stack, vec![vd], vec![&mut vc], tables);
     *vc = stack.from_altstack_joined(8, &format!("state_{}", c));
 
     let ret = xor_and_rotate_right_by_7(stack, var_map, b, c, tables);
