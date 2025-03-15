@@ -318,7 +318,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// - If the input doesn't unpack to a multiple of 128 nibbles with the given limb length parameter.
 /// - If the stack contains elements other than the message.
 ///
-/// ## Implementation
+/// ## Implementation:
 ///
 /// 1. Defines stack variables for compact message blocks.
 /// 2. Moves the compact message to an alternate stack for processing.
@@ -379,8 +379,8 @@ mod tests {
     use bitcoin_script_stack::optimizer;
 
     // All tests are run with `USEFUL_LIMB_LENGTHS` lengths, and ignored tests are run with `ALL_POSSIBLE_LIMB_LENGTHS`
-    // If any changes are done to the code, running the tests with all possible lengths is a good idea
-    // You can use either of following commands for that:
+    // If any changes are done to the BLAKE3 code, running the tests with all possible lengths is a good idea
+    // You can use either of the following commands for that:
     // cargo test all_limbs -- --ignored
     // cargo test hash::blake3 -- --ignored
 
