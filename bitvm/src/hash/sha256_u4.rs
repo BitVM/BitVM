@@ -2,6 +2,9 @@ use crate::treepp::{script, Script};
 use crate::u4::{u4_add::*, u4_logic::*, u4_rot::*, u4_std::*};
 use std::vec;
 
+/// A pre-calculated limit on the size of input
+pub const INPUT_N_BYTES_LIMIT: usize = 143;
+
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -466,11 +469,45 @@ pub fn sha256(num_bytes: u32) -> Script {
     }
 }
 
+#[cfg(any(feature = "fuzzing", test))]
+pub fn test_sha256_u4_with(input_hex: &str, expected_hex: &str) {
+    use crate::execute_script;
+
+    let script = script! {
+        { u4_hex_to_nibbles(input_hex) }
+        { sha256(input_hex.len() as u32 / 2) }
+
+        { u4_hex_to_nibbles(expected_hex) }
+        for _ in 0..64 {
+            OP_TOALTSTACK
+        }
+
+        for i in 1..64 {
+            {i}
+            OP_ROLL
+        }
+
+        for _ in 0..64 {
+            OP_FROMALTSTACK
+            OP_EQUALVERIFY
+        }
+        OP_TRUE
+    };
+
+    let script_result = execute_script(script);
+    assert!(
+        script_result.success,
+        "sha256_u4 test failed for input: {} with length {}",
+        input_hex,
+        input_hex.as_bytes().len()
+    );
+}
+
 #[cfg(test)]
 mod tests {
-
-    use crate::hash::sha256_u4::*;
-    use crate::{execute_script, treepp::script};
+    use super::*;
+    use crate::execute_script;
+    use crate::hash::sha256_test_utils::{random_test_cases, read_sha256_test_vectors};
     use sha2::{Digest, Sha256};
 
     #[test]
@@ -654,5 +691,22 @@ mod tests {
         };
         let res = execute_script(script);
         assert!(res.success);
+    }
+
+    #[test]
+    fn test_sha256_official_test_vectors() {
+        for (input_hex, expected_hex) in read_sha256_test_vectors(INPUT_N_BYTES_LIMIT)
+            .unwrap()
+            .iter()
+        {
+            test_sha256_u4_with(&input_hex, &expected_hex);
+        }
+    }
+
+    #[test]
+    fn test_sha256_random() {
+        for (input_hex, expected_hex) in random_test_cases(INPUT_N_BYTES_LIMIT) {
+            test_sha256_u4_with(&input_hex, &expected_hex);
+        }
     }
 }

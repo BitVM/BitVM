@@ -1969,6 +1969,7 @@ dependencies = [
  "bitcoin-script-stack",
  "bitvm",
  "blake3",
+ "hex",
  "libfuzzer-sys",
 ]
 
