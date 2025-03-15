@@ -288,14 +288,14 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// resulting in higher stack efficiency and support for larger messages.
 ///
 /// ## Parameters:
-/// 
+///
 /// - `msg_len`: Length of the message. (excluding the padding, number of bytes)
 /// - `define_var`: Set to false if the input on stack is already defined as `StackTracker` varibles.
 /// - `use_full_tables`: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
 /// - `limb_len`: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
 ///
 /// ## Message Format Requirements:
-/// 
+///
 /// - __The stack contains only message. Anything other has to be moved to alt stack.__ If hashing the empty message of length 0, the stack is empty.
 /// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of `limb_len` bits
 /// - The input message must unpack to a multiple of 128 nibbles, so pushing padding bytes is necessary
@@ -336,7 +336,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 ///
 /// - Temporarily uses the alternate stack for intermediate results and hash computation tables.
 /// - Final result is left on the main stack as a BLAKE3 hash value. (in nibbles)
-/// 
+///
 pub fn blake3_compute_script_with_limb(message_len: usize, limb_len: u8) -> Script {
     assert!(
         message_len <= 1024,
@@ -461,8 +461,9 @@ mod tests {
             let mut bytes = blake3_push_message_script(&message, limb_len)
                 .compile()
                 .to_bytes();
-            let optimized =
-                optimizer::optimize(blake3_compute_script_with_limb(message.len(), limb_len).compile());
+            let optimized = optimizer::optimize(
+                blake3_compute_script_with_limb(message.len(), limb_len).compile(),
+            );
             bytes.extend(optimized.to_bytes());
             bytes.extend(
                 blake3_verify_output_script(expected_hash)
@@ -484,7 +485,8 @@ mod tests {
             "There must be as many messages as there are expected hashes"
         );
         for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
-            let optimized = optimizer::optimize(blake3_compute_script_with_limb(LEN, limb_len).compile());
+            let optimized =
+                optimizer::optimize(blake3_compute_script_with_limb(LEN, limb_len).compile());
             for (i, message) in messages.iter().enumerate() {
                 let expected_hash = expected_hashes[i];
                 let mut bytes = blake3_push_message_script(message, limb_len)
