@@ -8,14 +8,14 @@ use bitcoin::ScriptBuf;
 use bitcoin_script_stack::optimizer;
 use bitvm::execute_script_buf;
 use bitvm::hash::blake3::{
-    blake3_compute_script_limb_29, blake3_push_message_script, blake3_verify_output_script,
+    blake3_compute_script, blake3_push_message_script, blake3_verify_output_script,
 };
 use libfuzzer_sys::fuzz_target;
 
 static BLAKE3_COMPUTE_SCRIPTS: LazyLock<[ScriptBuf; 4]> = LazyLock::new(|| {
     [64, 128, 192, 448]
         .into_iter()
-        .map(|msg_len| blake3_compute_script_limb_29(msg_len).compile())
+        .map(|msg_len| blake3_compute_script(msg_len).compile())
         .map(|script| optimizer::optimize(script))
         .collect::<Vec<ScriptBuf>>()
         .try_into()

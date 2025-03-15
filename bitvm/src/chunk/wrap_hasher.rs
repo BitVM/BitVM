@@ -1,6 +1,6 @@
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
-    hash::blake3::blake3_compute_script_limb_29,
+    hash::blake3::blake3_compute_script,
     signatures::wots_api,
     treepp::*,
 };
@@ -25,7 +25,7 @@ fn wrap_scr(scr: Script) -> Script {
 
 // create Script instance from stack-tracker and pad output with zeros to appropriate hash size
 pub(crate) fn hash_n_bytes<const N: usize>() -> Script {
-    wrap_scr(blake3_compute_script_limb_29(N))
+    wrap_scr(blake3_compute_script(N))
 }
 
 // helpers to directly hash data structures that we work with

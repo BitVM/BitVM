@@ -18,7 +18,7 @@ use crate::hash::blake3_utils::{compress, get_flags_for_block, TablesVars};
 ///
 /// ## See
 ///
-/// [`blake3_compute_script`].
+/// [`blake3_compute_script_with_limb`].
 fn blake3(
     stack: &mut StackTracker,
     mut msg_len: u32,
@@ -288,12 +288,14 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// resulting in higher stack efficiency and support for larger messages.
 ///
 /// ## Parameters:
+/// 
 /// - `msg_len`: Length of the message. (excluding the padding, number of bytes)
 /// - `define_var`: Set to false if the input on stack is already defined as `StackTracker` varibles.
 /// - `use_full_tables`: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
 /// - `limb_len`: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
 ///
-/// ## Message Format Requirements
+/// ## Message Format Requirements:
+/// 
 /// - __The stack contains only message. Anything other has to be moved to alt stack.__ If hashing the empty message of length 0, the stack is empty.
 /// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of `limb_len` bits
 /// - The input message must unpack to a multiple of 128 nibbles, so pushing padding bytes is necessary
@@ -310,8 +312,17 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// block_0_part_0 : U256
 /// block_0_part_1 : U256 (top of the stack)
 /// ```
+/// ## Panics:
 ///
-/// ## Behavior:
+/// - If `msg_len` is greater than 1024 bytes, the function panics with an assertion error.
+/// - Given script might not also fit on the max stack limit with messages smaller than 1024 bytes \
+///   if the `limb_len` is small or input stacks has other elements (in the altstack)
+/// - If `limb_len` is not in the range [4, 32)
+/// - If the input doesn't unpack to a multiple of 128 nibbles with the given limb length parameter.
+/// - If the stack contains elements other than the message.
+///
+/// ## Implementation:
+///
 /// 1. Defines stack variables for compact message blocks if `define_var` is enabled.
 /// 2. Moves the compact message to an alternate stack for processing.
 /// 3. Initializes hash computation tables.
@@ -322,17 +333,11 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// 5. Drops intermediate states and finalizes the hash result on the stack.
 ///
 /// ## Stack Effects:
+///
 /// - Temporarily uses the alternate stack for intermediate results and hash computation tables.
 /// - Final result is left on the main stack as a BLAKE3 hash value. (in nibbles)
-///
-/// ## Panics:
-/// - If `msg_len` is greater than 1024 bytes, the function panics with an assertion error.
-/// - Given script might not also fit on the max stack limit with messages smaller than 1024 bytes \
-///   if the `limb_len` is small or input stacks has other elements (in the altstack)
-/// - If `limb_len` is not in the range [4, 32)
-/// - If the input doesn't unpack to a multiple of 128 nibbles with the given limb length parameter.
-/// - If the stack contains elements other than the message.
-pub fn blake3_compute_script(message_len: usize, limb_len: u8) -> Script {
+/// 
+pub fn blake3_compute_script_with_limb(message_len: usize, limb_len: u8) -> Script {
     assert!(
         message_len <= 1024,
         "This BLAKE3 implementation doesn't support messages longer than 1024 bytes"
@@ -344,9 +349,9 @@ pub fn blake3_compute_script(message_len: usize, limb_len: u8) -> Script {
     stack.get_script()
 }
 
-/// Uses [`blake3_compute_script`].with limb length 29, see the documentation of it for more details
-pub fn blake3_compute_script_limb_29(message_len: usize) -> Script {
-    blake3_compute_script(message_len, 29)
+/// Uses [`blake3_compute_script_with_limb`].with limb length 29, see the documentation of it for more details
+pub fn blake3_compute_script(message_len: usize) -> Script {
+    blake3_compute_script_with_limb(message_len, 29)
 }
 
 /// Returns a script that verifies the BLAKE3 output on the stack.
@@ -386,7 +391,7 @@ mod tests {
         28, 29, 30, 31,
     ];
 
-    const USEFUL_LIMB_LENGTHS: [u8; 3] = [4, 29, 31];
+    const USEFUL_LIMB_LENGTHS: [u8; 2] = [4, 29];
 
     const TESTED_LIMB_LENGTHS: &[u8] = match RUN_EXTENSIVE_TESTS {
         true => &ALL_POSSIBLE_LIMB_LENGTHS,
@@ -422,7 +427,7 @@ mod tests {
         for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
             for message_len in (64..=1024).step_by(64) {
                 // Block count depends on ceil(message_len / 64)
-                let blake3_script = blake3_compute_script(message_len, limb_len);
+                let blake3_script = blake3_compute_script_with_limb(message_len, limb_len);
                 let maximum_extra_elements =
                     maximum_number_of_altstack_elements_using_blake3(message_len, limb_len);
                 if maximum_extra_elements < 0 {
@@ -457,7 +462,7 @@ mod tests {
                 .compile()
                 .to_bytes();
             let optimized =
-                optimizer::optimize(blake3_compute_script(message.len(), limb_len).compile());
+                optimizer::optimize(blake3_compute_script_with_limb(message.len(), limb_len).compile());
             bytes.extend(optimized.to_bytes());
             bytes.extend(
                 blake3_verify_output_script(expected_hash)
@@ -479,7 +484,7 @@ mod tests {
             "There must be as many messages as there are expected hashes"
         );
         for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
-            let optimized = optimizer::optimize(blake3_compute_script(LEN, limb_len).compile());
+            let optimized = optimizer::optimize(blake3_compute_script_with_limb(LEN, limb_len).compile());
             for (i, message) in messages.iter().enumerate() {
                 let expected_hash = expected_hashes[i];
                 let mut bytes = blake3_push_message_script(message, limb_len)
