@@ -256,9 +256,15 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
     }
 }
 
+/// Number of elements in total of all tables
+const SUM_OF_FULL_TABLES: usize = 384;
+
+/// Number of elements of an unpacked block
+const UNPACKED_BLOCK: usize = 128;
+
 /// Maximum number of elements in stack during the execution of BLAKE3 algorithm
-const MAX_BLAKE3_ELEMENT_COUNT: usize = /* Full tables */
-    384 + /* Unpacked block */ 128 + /* BLAKE3 variables */ 132;
+const MAX_BLAKE3_ELEMENT_COUNT: usize =
+    SUM_OF_FULL_TABLES + UNPACKED_BLOCK + /* Extra BLAKE3 variables */ 132;
 
 /// Calculates the maximum number of altstack elements one can have using the [`blake3_compute_script`] function with the following formula:
 /// ```text
