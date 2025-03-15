@@ -19,32 +19,37 @@ use crate::hash::blake3_utils::{compress, get_flags_for_block, TablesVars};
 /// ## See
 ///
 /// [`blake3_compute_script`].
-fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_full_tables: bool, limb_len: u8) {
-    
+fn blake3(
+    stack: &mut StackTracker,
+    mut msg_len: u32,
+    define_var: bool,
+    use_full_tables: bool,
+    limb_len: u8,
+) {
     // this assumes that the stack is empty
     if msg_len == 0 {
         // af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
         //hardcoded hash of empty msg
         let empty_msg_hash = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262";
-        let empty_msg_hash_bytearray =  <[u8; 32]>::from_hex(empty_msg_hash).unwrap();
+        let empty_msg_hash_bytearray = <[u8; 32]>::from_hex(empty_msg_hash).unwrap();
 
-        stack.custom(script!(
-            // push the hash value
-            for byte in empty_msg_hash_bytearray{
-                {byte}
-            }
-            //convert bytes to nibbles
-            {U256::transform_limbsize(8,4)}
-        ), 
-        0,
-        false,
-        0,
-        "push empty string hash in nibble form"
+        stack.custom(
+            script!(
+                // push the hash value
+                for byte in empty_msg_hash_bytearray{
+                    {byte}
+                }
+                //convert bytes to nibbles
+                {U256::transform_limbsize(8,4)}
+            ),
+            0,
+            false,
+            0,
+            "push empty string hash in nibble form",
         );
         stack.define(8 as u32 * 8, "blake3-hash");
         return;
     }
-
 
     // We require message take atmost a chunk. i.e, 1024 bytes.
     assert!(
@@ -57,7 +62,7 @@ fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_full
     );
 
     //number of msg blocks
-    let num_blocks = (msg_len + 63) / 64; 
+    let num_blocks = (msg_len + 63) / 64;
 
     // If the compact form of message is on stack but not associated with variable, convert it to StackVariable
     if define_var {
@@ -121,7 +126,7 @@ fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_full
             stack.custom(
                 script!(
                     //Drop whatever padding has been added for packing to limbs and pad with zeros
-                    for _ in 0..pad_bytes { 
+                    for _ in 0..pad_bytes {
                         OP_2DROP
                     }
 
@@ -251,14 +256,13 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
     }
 }
 
-
 /// Returns a script that computes the BLAKE3 hash of the message on the stack.
 ///
 /// The script processes compact message blocks and only unpacks them when needed,
 /// resulting in higher stack efficiency and support for larger messages.
-/// 
+///
 /// ## Parameters:
-/// - msg_len: Length of the message. (excluding the padding, number of bytes) 
+/// - msg_len: Length of the message. (excluding the padding, number of bytes)
 /// - define_var: Set to false if the input on stack is already defined as StackTracker varibles.
 /// - use_full_tables: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
 /// - limb_len: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
@@ -276,7 +280,7 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
 /// block_0_part_0 : U256
 /// block_0_part_1 : U256 (top of the stack)
 /// ```
-/// 
+///
 /// ## Behavior:
 /// 1. Defines stack variables for compact message blocks if `define_var` is enabled.
 /// 2. Moves the compact message to an alternate stack for processing.
@@ -346,13 +350,11 @@ mod tests {
     const RUN_EXTENSIVE_TESTS: bool = false;
 
     const ALL_POSSIBLE_LIMB_LENGTHS: [u8; 28] = [
-        4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-        20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+        4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+        28, 29, 30, 31,
     ];
 
-    const USEFUL_LIMB_LENGTHS: [u8; 3] = [
-        4, 29, 31
-    ]; 
+    const USEFUL_LIMB_LENGTHS: [u8; 3] = [4, 29, 31];
 
     const TESTED_LIMB_LENGTHS: &[u8] = match RUN_EXTENSIVE_TESTS {
         true => &ALL_POSSIBLE_LIMB_LENGTHS,
@@ -362,8 +364,11 @@ mod tests {
     pub fn verify_blake_output(message: &[u8], expected_hash: [u8; 32]) {
         use bitcoin_script_stack::optimizer;
         for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
-            let mut bytes = blake3_push_message_script(&message, limb_len).compile().to_bytes();
-            let optimized = optimizer::optimize(blake3_compute_script(message.len(), limb_len).compile());
+            let mut bytes = blake3_push_message_script(&message, limb_len)
+                .compile()
+                .to_bytes();
+            let optimized =
+                optimizer::optimize(blake3_compute_script(message.len(), limb_len).compile());
             bytes.extend(optimized.to_bytes());
             bytes.extend(
                 blake3_verify_output_script(expected_hash)
@@ -388,7 +393,9 @@ mod tests {
             let optimized = optimizer::optimize(blake3_compute_script(LEN, limb_len).compile());
             for (i, message) in messages.iter().enumerate() {
                 let expected_hash = expected_hashes[i];
-                let mut bytes = blake3_push_message_script(message, limb_len).compile().to_bytes();
+                let mut bytes = blake3_push_message_script(message, limb_len)
+                    .compile()
+                    .to_bytes();
                 bytes.extend_from_slice(optimized.as_bytes());
                 bytes.extend(
                     blake3_verify_output_script(expected_hash)

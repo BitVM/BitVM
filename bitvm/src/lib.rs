@@ -134,14 +134,17 @@ pub fn execute_script_buf_without_stack_limit(script: bitcoin::ScriptBuf) -> Exe
 
 // Execute a script on stack without `MAX_STACK_SIZE` limit is only for testing purposes
 // Don't use in production
-pub fn execute_script_buf_optional_stack_limit(script: bitcoin::ScriptBuf, stack_limit: bool) -> ExecuteInfo {
+pub fn execute_script_buf_optional_stack_limit(
+    script: bitcoin::ScriptBuf,
+    stack_limit: bool,
+) -> ExecuteInfo {
     let opts = Options {
         enforce_stack_limit: stack_limit,
         ..Default::default()
     };
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
-        opts, 
+        opts,
         TxTemplate {
             tx: Transaction {
                 version: bitcoin::transaction::Version::TWO,
@@ -173,7 +176,6 @@ pub fn execute_script_buf_optional_stack_limit(script: bitcoin::ScriptBuf, stack
         stats: exec.stats().clone(),
     }
 }
-
 
 /// Dry-runs a specific taproot input
 pub fn dry_run_taproot_input(
