@@ -134,7 +134,7 @@ pub fn execute_script_buf_without_stack_limit(script: bitcoin::ScriptBuf) -> Exe
 
 /// Executing a script on stack without `MAX_STACK_SIZE` limit is only for testing purposes \
 /// Don't use in production without the stack limit (i.e. `stack_limit` set to false)
-pub fn execute_script_buf_optional_stack_limit(
+fn execute_script_buf_optional_stack_limit(
     script: bitcoin::ScriptBuf,
     stack_limit: bool,
 ) -> ExecuteInfo {

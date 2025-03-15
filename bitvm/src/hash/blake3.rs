@@ -47,7 +47,7 @@ fn blake3(
             0,
             "push empty string hash in nibble form",
         );
-        stack.define(8 as u32 * 8, "blake3-hash");
+        stack.define(8_u32 * 8, "blake3-hash");
         return;
     }
 
@@ -62,11 +62,11 @@ fn blake3(
     );
 
     //number of msg blocks
-    let num_blocks = (msg_len + 63) / 64;
+    let num_blocks = msg_len.div_ceil(64);
 
     // If the compact form of message is on stack but not associated with variable, convert it to StackVariable
     if define_var {
-        let limb_count = (256 + limb_len as u32 - 1) / limb_len as u32;
+        let limb_count = 256u32.div_ceil(limb_len as u32);
         for i in (0..num_blocks).rev() {
             stack.define(limb_count, &format!("msg{}p0", i));
             stack.define(limb_count, &format!("msg{}p1", i));
@@ -203,7 +203,7 @@ fn blake3(
     tables.drop(stack);
 
     // get the result hash
-    stack.from_altstack_joined(8 as u32 * 8, "blake3-hash");
+    stack.from_altstack_joined(8_u32 * 8, "blake3-hash");
 }
 
 /// Transforms the given message into a format that BLAKE3 understands.
@@ -256,6 +256,26 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
     }
 }
 
+/// Maximum number of elements in stack during the execution of BLAKE3 algorithm
+const MAX_BLAKE3_ELEMENT_COUNT: usize = /* Full tables */
+    384 + /* Unpacked block */ 128 + /* BLAKE3 variables */ 132;
+
+/// Calculates the maximum number of altstack elements one can have using the [`blake3_compute_script`] function with the following formula:
+/// ```text
+///  n (number of blocks) = ⌈msg_len / 64⌉
+///  limb_count (number of limbs in a block) = ⌈256 / limb_len⌉ * 2
+///  m (message's consumption of stack during BLAKE3) = (n - 1) * limb_count
+///  Since BLAKE3 requires an empty stack and we've calculated the usage for the message and the algorithm:
+///  MAX_NUMBEROF_ALTSTACK_ELEMENTS = 1000 (max stack limit) - m - 644 (Maximum number of elements used during BLAKE3)
+/// ```
+pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb_len: u8) -> i32 {
+    let n = message_len.div_ceil(64);
+    let limb_count = 256usize.div_ceil(limb_len as usize) * 2;
+    let m = (n - 1) * limb_count;
+    let max_altstack_elements = 1000i32 - MAX_BLAKE3_ELEMENT_COUNT as i32 - m as i32;
+    max_altstack_elements
+}
+
 /// Returns a script that computes the BLAKE3 hash of the message on the stack.
 ///
 /// The script processes compact message blocks and only unpacks them when needed,
@@ -271,7 +291,11 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
 /// - __The stack contains only message. Anything other has to be moved to alt stack.__ If hashing the empty message of length 0, the stack is empty.
 /// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of `limb_len` bits
 /// - The input message must unpack to a multiple of 128 nibbles, so pushing padding bytes is necessary
-/// - A message of `n` blocks looks as follows on the stack:
+/// - __BLAKE3 uses exactly [`MAX_BLAKE3_ELEMENT_COUNT`] = 644 elements at maximum, including the tables__ \
+///  With the max stack limit 1000, __you are allowed to have at most 356 elements including the message (excluding the first block of it) in stack (in total, of altstack and stack)__ \
+///  Note that smaller `limb_len`'s means more elements, hence more stack usage \
+///  For a more certain number, you can look into and use [`maximum_number_of_altstack_elements_using_blake3`]
+/// - A message of `n` blocks is expected in the following format:
 ///
 /// ```text
 /// block_n_part_0 : U256
@@ -314,7 +338,7 @@ pub fn blake3_compute_script(message_len: usize, limb_len: u8) -> Script {
     stack.get_script()
 }
 
-/// See [`blake3_compute_script`].
+/// Uses [`blake3_compute_script`].with limb length 29, see the documentation of it for more details
 pub fn blake3_compute_script_limb_29(message_len: usize) -> Script {
     blake3_compute_script(message_len, 29)
 }
@@ -343,10 +367,12 @@ pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execute_script_buf_without_stack_limit;
+    use crate::{execute_script, execute_script_buf_without_stack_limit};
     use bitcoin::ScriptBuf;
     use bitcoin_script_stack::optimizer;
 
+    /// Since testing all possible limb lengths takes relatively long time, only limb lengths that are useful are tested in default
+    /// If any changes are done to the code, running the extensive tests with all possible lengths is a good idea
     const RUN_EXTENSIVE_TESTS: bool = false;
 
     const ALL_POSSIBLE_LIMB_LENGTHS: [u8; 28] = [
@@ -360,6 +386,63 @@ mod tests {
         true => &ALL_POSSIBLE_LIMB_LENGTHS,
         false => &USEFUL_LIMB_LENGTHS,
     };
+
+    fn test_blake3_stack_space(
+        blake3_script: Script,
+        message_len: usize,
+        limb_len: u8,
+        extra_elements: i32,
+    ) -> bool {
+        let message = vec![0u8; message_len];
+        execute_script(script! {
+            for _ in 0..extra_elements {
+                { -1 } OP_TOALTSTACK
+            }
+            { blake3_push_message_script(&message, limb_len) }
+            { blake3_script.clone() }
+            for _ in 0..extra_elements {
+                OP_FROMALTSTACK OP_DROP
+            }
+            for _ in 0..64 {
+                OP_DROP
+            }
+            OP_TRUE
+        })
+        .success
+    }
+
+    #[test]
+    pub fn test_maximum_alstack_element_calculation() {
+        for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
+            for message_len in (64..1024).step_by(64) {
+                // Block count depends on ceil(message_len / 64)
+                let blake3_script = blake3_compute_script(message_len, limb_len);
+                let maximum_extra_elements =
+                    maximum_number_of_altstack_elements_using_blake3(message_len, limb_len);
+                if maximum_extra_elements < 0 {
+                    assert!(!test_blake3_stack_space(
+                        blake3_script.clone(),
+                        message_len,
+                        limb_len,
+                        0
+                    ));
+                } else {
+                    assert!(test_blake3_stack_space(
+                        blake3_script.clone(),
+                        message_len,
+                        limb_len,
+                        maximum_extra_elements
+                    ));
+                    assert!(!test_blake3_stack_space(
+                        blake3_script.clone(),
+                        message_len,
+                        limb_len,
+                        maximum_extra_elements + 1
+                    ));
+                }
+            }
+        }
+    }
 
     pub fn verify_blake_output(message: &[u8], expected_hash: [u8; 32]) {
         use bitcoin_script_stack::optimizer;
