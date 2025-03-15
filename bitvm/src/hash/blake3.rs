@@ -262,14 +262,14 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
 /// resulting in higher stack efficiency and support for larger messages.
 ///
 /// ## Parameters:
-/// - msg_len: Length of the message. (excluding the padding, number of bytes)
-/// - define_var: Set to false if the input on stack is already defined as StackTracker varibles.
-/// - use_full_tables: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
-/// - limb_len: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
+/// - `msg_len`: Length of the message. (excluding the padding, number of bytes)
+/// - `define_var`: Set to false if the input on stack is already defined as `StackTracker` varibles.
+/// - `use_full_tables`: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
+/// - `limb_len`: Limb length (number of bits per element) that the input in the stack is packed, for example it is 29 for current field elements
 ///
 /// ## Message Format Requirements
-/// - *The stack contains only message. Anything other has to be moved to alt stack.* If hashing the empty message of length 0, the stack is empty.
-/// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of limb_len bits
+/// - __The stack contains only message. Anything other has to be moved to alt stack.__ If hashing the empty message of length 0, the stack is empty.
+/// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of `limb_len` bits
 /// - The input message must unpack to a multiple of 128 nibbles, so pushing padding bytes is necessary
 /// - A message of `n` blocks looks as follows on the stack:
 ///
@@ -286,7 +286,7 @@ pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script 
 /// 2. Moves the compact message to an alternate stack for processing.
 /// 3. Initializes hash computation tables.
 /// 4. Processes each message block:
-///     - Unpacks message forms.
+///     - Unpacks message block.
 ///     - Corrects any user-provided padding if it is the last block.
 ///     - Computes the hash for the block using `compress` while maintaining intermediate states.
 /// 5. Drops intermediate states and finalizes the hash result on the stack.
