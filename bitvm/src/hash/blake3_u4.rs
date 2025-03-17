@@ -35,24 +35,16 @@ fn reformat_for_blake3(msg_len: u32) -> Script {
             }
         }
         // Reverse the 64 chunks because compact wants it
-        for i in 0..(total_len / 64 - 1) {
+        for i in (0..(total_len / 64 - 1)).rev() {
             for _ in 0..128 {
                 { roll_constant((total_len - i * 64) as usize * 2 - 1) }
-            }
-            for _ in 0..128 {
-                OP_TOALTSTACK
-            }
-        }
-        for _ in 0..(total_len / 64 - 1) {
-            for _ in 0..128 {
-                OP_FROMALTSTACK
             }
         }
     }
 }
 
 /// Calculates the BLAKE3 hash of the last stack elements, in the form of nibbles
-pub fn blake3_script(msg_len: u32) -> Script {
+pub fn blake3_u4_script(msg_len: u32) -> Script {
     assert!(
         msg_len % 4 == 0,
         "Byte count needs to be a multiple of four"
@@ -112,7 +104,7 @@ mod tests {
                 for x in bytes_to_nibbles(v.clone()) {
                     { x }
                 }
-                { blake3_script(size as u32) }
+                { blake3_u4_script(size as u32) }
                 for i in (0..64).rev() {
                     { result[i] }
                     OP_EQUALVERIFY
@@ -136,8 +128,8 @@ mod tests {
                 for x in bytes_to_nibbles(v) {
                     { x }
                 }
-                { blake3_script(size) }
-                { blake3_script(32) }
+                { blake3_u4_script(size) }
+                { blake3_u4_script(32) }
                 for i in (0..64).rev() {
                     { result[i] }
                     OP_EQUALVERIFY
@@ -163,11 +155,11 @@ mod tests {
                 for x in bytes_to_nibbles(v) {
                     { x }
                 }
-                { blake3_script(size) }
+                { blake3_u4_script(size) }
                 for x in bytes_to_nibbles(add) {
                     { x }
                 }
-                { blake3_script(32 + add_size) }
+                { blake3_u4_script(32 + add_size) }
                 for i in (0..64).rev() {
                     { result[i] }
                     OP_EQUALVERIFY

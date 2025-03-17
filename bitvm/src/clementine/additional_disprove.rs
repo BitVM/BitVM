@@ -1,7 +1,7 @@
 use crate::clementine::utils::{extend_witness, roll_constant};
 use crate::treepp::*;
 use crate::{
-    hash::blake3_u4::{blake3_script, bytes_to_nibbles},
+    hash::blake3_u4::{blake3_u4_script, bytes_to_nibbles},
     signatures::winternitz::{
         generate_public_key, ListpickVerifier, Parameters, PublicKey, VoidConverter, Winternitz,
     },
@@ -225,7 +225,7 @@ pub fn create_additional_replacable_disprove_script(
         }
         { roll_constant(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) } //send preimage result to the back
         OP_TOALTSTACK
-        { blake3_script((PAYOUT_TX_BLOCKHASH_LEN + LATEST_BLOCKHASH_LEN + CHALLENGE_SENDING_WATCHTOWERS_LEN) as u32) }
+        { blake3_u4_script((PAYOUT_TX_BLOCKHASH_LEN + LATEST_BLOCKHASH_LEN + CHALLENGE_SENDING_WATCHTOWERS_LEN) as u32) }
         for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
             OP_TOALTSTACK
         }
@@ -235,7 +235,7 @@ pub fn create_additional_replacable_disprove_script(
         for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
             OP_FROMALTSTACK
         }
-        { blake3_script(DEPOSIT_CONSTANT_LEN as u32 + BLAKE3_OUTPUT_LEN) }
+        { blake3_u4_script(DEPOSIT_CONSTANT_LEN as u32 + BLAKE3_OUTPUT_LEN) }
         for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
             OP_TOALTSTACK
         }
@@ -245,7 +245,7 @@ pub fn create_additional_replacable_disprove_script(
         for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
             OP_FROMALTSTACK
         }
-        { blake3_script(COMBINED_METHOD_ID_LEN as u32 + BLAKE3_OUTPUT_LEN) }
+        { blake3_u4_script(COMBINED_METHOD_ID_LEN as u32 + BLAKE3_OUTPUT_LEN) }
         OP_FROMALTSTACK // preimage check result
         for _ in 0..(G16_PUBLIC_INPUT_LEN * 2) {
             OP_FROMALTSTACK
@@ -769,7 +769,7 @@ mod tests {
             for x in bytes_to_nibbles(signer_data.challenge_sending_watchtowers.to_vec()) {
                 { x }
             }
-            { blake3_script((PAYOUT_TX_BLOCKHASH_LEN + LATEST_BLOCKHASH_LEN + CHALLENGE_SENDING_WATCHTOWERS_LEN) as u32) }
+            { blake3_u4_script((PAYOUT_TX_BLOCKHASH_LEN + LATEST_BLOCKHASH_LEN + CHALLENGE_SENDING_WATCHTOWERS_LEN) as u32) }
             for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
                 OP_TOALTSTACK
             }
@@ -779,7 +779,7 @@ mod tests {
             for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
                 OP_FROMALTSTACK
             }
-            { blake3_script(DEPOSIT_CONSTANT_LEN as u32 + BLAKE3_OUTPUT_LEN) }
+            { blake3_u4_script(DEPOSIT_CONSTANT_LEN as u32 + BLAKE3_OUTPUT_LEN) }
             for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
                 OP_TOALTSTACK
             }
@@ -789,7 +789,7 @@ mod tests {
             for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
                 OP_FROMALTSTACK
             }
-            { blake3_script(COMBINED_METHOD_ID_LEN as u32 + BLAKE3_OUTPUT_LEN) }
+            { blake3_u4_script(COMBINED_METHOD_ID_LEN as u32 + BLAKE3_OUTPUT_LEN) }
             for x in bytes_to_nibbles(signer_data.g16_public_input.to_vec()) {
                 { x }
             }
@@ -834,7 +834,7 @@ mod tests {
                 { WINTERNITZ_VERIFIER.sign(&ps, &secret_key, &v) }
                 { WINTERNITZ_VERIFIER.checksig_verify(&ps, &generate_public_key(&ps, &secret_key))}
                 { reorder_winternitz_output_for_blake3(size as usize * 2) }
-                { blake3_script(size) }
+                { blake3_u4_script(size) }
                 for i in (0..64).rev() {
                     { result[i] }
                     OP_EQUALVERIFY
