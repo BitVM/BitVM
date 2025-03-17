@@ -297,9 +297,9 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 /// - The input message is in the form U256 where each message block is comprised of two U256, each represented with elements consisting of `limb_len` bits
 /// - The input message must unpack to a multiple of 128 nibbles, so pushing padding bytes is necessary
 /// - __BLAKE3 uses exactly [`MAX_BLAKE3_ELEMENT_COUNT`] = 644 elements at maximum, including the tables__ \
-///  With the max stack limit 1000, __you are allowed to have at most 356 elements including the message (excluding the first block of it) in stack (in total, of altstack and stack)__ \
-///  Note that smaller `limb_len`'s means more elements, hence more stack usage \
-///  For a more certain number, you can look into and use [`maximum_number_of_altstack_elements_using_blake3`]
+///   With the max stack limit 1000, __you are allowed to have at most 356 elements including the message (excluding the first block of it) in stack (in total, of altstack and stack)__ \
+///   Note that smaller `limb_len`'s means more elements, hence more stack usage \
+///   For a more certain number, you can look into and use [`maximum_number_of_altstack_elements_using_blake3`]
 /// - A message of `n` blocks is expected in the following format:
 ///
 /// ```text
