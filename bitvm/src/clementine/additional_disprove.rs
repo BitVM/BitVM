@@ -297,7 +297,7 @@ pub fn create_additional_replacable_disprove_script_with_dummy(
 ///
 /// ## Arguments
 ///
-/// * `r_script` - The compiled additional script verifies the conditions for spending.  
+/// * `replacable_script` - The compiled additional script verifies the conditions for spending.  
 /// * `g16_public_input_signature` - The witness signature for the Groth16 Public Input.  
 /// * `payout_tx_blockhash_signature` - The witness signature for the Payout Transaction Blockhash.  
 /// * `latest_blockhash_signature` - The witness signature for the Latest Blockhash.  
@@ -341,7 +341,7 @@ pub fn validate_assertions_for_additional_script(
 ///
 /// ## Arguments
 ///
-/// * `script` - Compiled additional disprove script
+/// * `replacable_script` - Compiled additional disprove script
 /// * `replacement_index` - The index within the script where the replacement should occur. Should be modified after the creation if the additional script is pushed after another script
 /// * `payout_tx_blockhash_pk` - The replacement Public Key for Payout Transaction Blockhash
 ///
@@ -353,7 +353,7 @@ pub fn validate_assertions_for_additional_script(
 /// - MIGHT NOT BE SAFE, DUE TO THE REPLACEMENT INDEX CHANGING WITH WITNESS OPTIMIZATIONS, but seems fine for now
 /// - To use `wots_api.rs` public keys, it is enough to cast them to vectors
 pub fn replace_payout_tx_blockhash(
-    mut script: Vec<u8>,
+    mut replacable_script: Vec<u8>,
     replacement_index: usize,
     payout_tx_blockhash_pk: PublicKey,
 ) -> Vec<u8> {
@@ -368,9 +368,9 @@ pub fn replace_payout_tx_blockhash(
         .compile()
         .to_bytes();
     for i in 0..replacement.len() {
-        script[replacement_index + i] = replacement[i];
+        replacable_script[replacement_index + i] = replacement[i];
     }
-    script
+    replacable_script
 }
 
 #[cfg(test)]
