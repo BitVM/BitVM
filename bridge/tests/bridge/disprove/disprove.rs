@@ -17,6 +17,9 @@ use crate::bridge::{
     setup::{setup_test_full, INITIAL_AMOUNT},
 };
 
+// ignored for requiring assert txns, duplicate with disprove in integration
+// TODO: unless we can create dummy witness data
+#[ignore]
 #[tokio::test]
 async fn test_disprove_tx_success() {
     let config = setup_test_full().await;
@@ -81,6 +84,9 @@ async fn test_disprove_tx_success() {
     assert!(result.is_ok());
 }
 
+// ignored for requiring assert txns, duplicate with disprove in integration
+// TODO: unless we can create dummy witness data
+#[ignore]
 #[tokio::test]
 async fn test_disprove_tx_with_verifier_added_to_output_success() {
     let config = setup_test_full().await;

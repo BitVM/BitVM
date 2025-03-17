@@ -1,34 +1,32 @@
 use std::{
     collections::BTreeMap,
-    fmt::{Formatter, Result as FmtResult},
     path::{Path, PathBuf},
 };
 
 use crate::{
-    client::{files::BRIDGE_DATA_DIRECTORY_NAME, memory_cache::TAPROOT_SPEND_INFO_CACHE},
+    client::{
+        files::BRIDGE_DATA_DIRECTORY_NAME,
+        memory_cache::{TAPROOT_LOCK_SCRIPTS_CACHE, TAPROOT_SPEND_INFO_CACHE},
+    },
     commitments::CommitmentMessageId,
     common::ZkProofVerifyingKey,
     connectors::base::*,
-    error::{ChunkerError, ConnectorError, Error},
+    error::{ChunkerError, Error},
     transactions::base::Input,
     utils::{
-        cleanup_cache_files, read_disk_cache, remove_script_and_control_block_from_witness,
-        write_disk_cache,
+        cleanup_cache_files, compress, decompress, read_disk_cache,
+        remove_script_and_control_block_from_witness, write_disk_cache,
     },
 };
 use bitcoin::{
     hashes::{hash160, Hash},
     key::TweakedPublicKey,
-    taproot::{TaprootBuilder, TaprootSpendInfo},
+    taproot::{ControlBlock, LeafVersion, TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TapNodeHash, Transaction, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
 use secp256k1::SECP256K1;
-use serde::{
-    de,
-    ser::{Error as SerError, SerializeStruct},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{Deserialize, Serialize};
 
 use bitvm::{
     chunk::api::{
@@ -47,6 +45,7 @@ use bitvm::{
     // },
     signatures::signing_winternitz::WinternitzPublicKey,
 };
+use zstd::DEFAULT_COMPRESSION_LEVEL;
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> ScriptBuf;
@@ -69,109 +68,11 @@ fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
         .join(lock_scripts_file_name)
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub lock_scripts_bytes: Vec<Vec<u8>>, // using primitive type for binary serialization, convert to ScriptBuf when using it
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-}
-
-impl Serialize for ConnectorC {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut c = s.serialize_struct("ConnectorC", 4)?;
-        c.serialize_field("network", &self.network)?;
-        c.serialize_field(
-            "operator_taproot_public_key",
-            &self.operator_taproot_public_key,
-        )?;
-        c.serialize_field("commitment_public_keys", &self.commitment_public_keys)?;
-
-        let cache_id = Self::cache_id(&self.commitment_public_keys).map_err(SerError::custom)?;
-        c.serialize_field("lock_scripts", &cache_id)?;
-
-        let lock_scripts_cache_path = get_lock_scripts_cache_path(&cache_id);
-        if !lock_scripts_cache_path.exists() {
-            write_disk_cache(&lock_scripts_cache_path, &self.lock_scripts_bytes)
-                .map_err(SerError::custom)?;
-        }
-
-        cleanup_cache_files(
-            LOCK_SCRIPTS_FILE_PREFIX,
-            get_lock_scripts_cache_path(&cache_id).parent().unwrap(),
-            MAX_CACHE_FILES,
-        );
-
-        c.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for ConnectorC {
-    fn deserialize<D>(d: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct JsonConnectorCVisitor;
-        impl<'de> de::Visitor<'de> for JsonConnectorCVisitor {
-            type Value = ConnectorC;
-
-            fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
-                formatter.write_str("a string containing ConnectorC data")
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::MapAccess<'de>,
-            {
-                let mut operator_taproot_public_key = None;
-                let mut commitment_public_keys = None;
-                let mut network = None;
-                let mut lock_scripts_cache_id = None;
-
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        "network" => network = Some(map.next_value()?),
-                        "operator_taproot_public_key" => {
-                            operator_taproot_public_key = Some(map.next_value()?)
-                        }
-                        "commitment_public_keys" => {
-                            commitment_public_keys = Some(map.next_value()?)
-                        }
-                        "lock_scripts" => lock_scripts_cache_id = Some(map.next_value()?),
-                        _ => (),
-                    }
-                }
-
-                match (network, operator_taproot_public_key, commitment_public_keys) {
-                    (
-                        Some(network),
-                        Some(operator_taproot_public_key),
-                        Some(commitment_public_keys),
-                    ) => Ok(ConnectorC::new(
-                        network,
-                        &operator_taproot_public_key,
-                        &commitment_public_keys,
-                        lock_scripts_cache_id,
-                    )),
-                    _ => Err(de::Error::custom("Invalid ConnectorC data")),
-                }
-            }
-        }
-
-        d.deserialize_struct(
-            "ConnectorC",
-            &[
-                "network",
-                "operator_taproot_public_key",
-                "commitment_public_keys",
-                "lock_scripts",
-            ],
-            JsonConnectorCVisitor,
-        )
-    }
 }
 
 impl ConnectorC {
@@ -179,25 +80,14 @@ impl ConnectorC {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        lock_scripts_cache_id: Option<String>,
     ) -> Self {
-        let lock_scripts_cache = lock_scripts_cache_id.and_then(|cache_id| {
-            let file_path = get_lock_scripts_cache_path(&cache_id);
-            read_disk_cache(&file_path)
-                .inspect_err(|e| {
-                    eprintln!(
-                        "Failed to read lock scripts cache from expected location: {}",
-                        e
-                    );
-                })
-                .ok()
-        });
-
+        assert!(
+            !commitment_public_keys.is_empty(),
+            "commitment_public_keys is empty"
+        );
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts_bytes: lock_scripts_cache
-                .unwrap_or_else(|| generate_assert_leaves(commitment_public_keys)),
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
@@ -208,6 +98,7 @@ impl ConnectorC {
         commit_2_witness: Vec<RawWitness>,
         vk: &ZkProofVerifyingKey,
     ) -> Result<(usize, RawWitness), Error> {
+        println!("Generating disprove witness ...");
         let mut sorted_pks: Vec<(u32, WinternitzPublicKey)> = vec![];
         self.commitment_public_keys
             .clone()
@@ -230,8 +121,7 @@ impl ConnectorC {
         let sigs = utils_signatures_from_raw_witnesses(&commit_witness);
         let pubs = utils_typed_pubkey_from_raw(sorted_pks);
         let locs: Vec<bitcoin_script::builder::StructuredScript> = self
-            .lock_scripts_bytes
-            .clone()
+            .lock_scripts_bytes()
             .into_iter()
             .map(|f| {
                 bitcoin_script::builder::StructuredScript::new("")
@@ -249,102 +139,109 @@ impl ConnectorC {
     }
 
     pub fn taproot_merkle_root(&self) -> Option<TapNodeHash> {
-        self.taproot_spend_info_cache()
-            .map(|cache| cache.merkle_root)
-            .unwrap_or_else(|| self.generate_taproot_spend_info().merkle_root())
+        self.taproot_spend_info_cached().merkle_root
     }
 
     pub fn taproot_output_key(&self) -> TweakedPublicKey {
-        self.taproot_spend_info_cache()
-            .map(|cache| cache.output_key)
-            .unwrap_or_else(|| self.generate_taproot_spend_info().output_key())
+        self.taproot_spend_info_cached().output_key
     }
 
-    // read from cache or generate from [`TaprootConnector`]
-    fn taproot_spend_info_cache(&self) -> Option<TaprootSpendInfoCache> {
-        let spend_info_cache = match Self::cache_id(&self.commitment_public_keys).map(|cache_id| {
-            TAPROOT_SPEND_INFO_CACHE
-                .read()
-                .unwrap()
-                .get(&cache_id)
-                .cloned()
-        }) {
-            Ok(Some(spend_info_cache)) => Some(spend_info_cache),
-            Ok(None) => {
-                let spend_info = self.generate_taproot_spend_info();
-                let output_key = spend_info.output_key();
-                let spend_info_cache = TaprootSpendInfoCache {
-                    merkle_root: spend_info.merkle_root(),
-                    output_key,
-                };
-                Some(spend_info_cache)
-            }
-            _ => None,
-        };
-
-        spend_info_cache
+    pub fn taproot_scripts_len(&self) -> usize {
+        self.taproot_spend_info_cached().scripts_length
     }
 
-    pub fn cache_id(
-        commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-    ) -> Result<String, ConnectorError> {
-        let first_winternitz_public_key = commitment_public_keys.iter().next();
+    pub fn taproot_script_and_control_block(&self, leaf_index: usize) -> (ScriptBuf, ControlBlock) {
+        let cache_id = lock_script_cache_id(&self.commitment_public_keys, leaf_index);
+        let cache = TAPROOT_LOCK_SCRIPTS_CACHE
+            .write()
+            .unwrap()
+            .get_or_put(cache_id, || {
+                let (script, control_block) = generate_script_and_control_block(
+                    self.operator_taproot_public_key,
+                    &self.lock_scripts_bytes(),
+                    leaf_index,
+                );
+                let encoded_data = bitcode::encode(script.as_bytes());
+                let compressed_data = compress(&encoded_data, DEFAULT_COMPRESSION_LEVEL)
+                    .expect("Unable to compress script for caching");
+                LockScriptCacheEntry {
+                    control_block,
+                    encoded_script: compressed_data,
+                }
+            })
+            .clone();
+        decompress(&cache.encoded_script)
+            .ok()
+            .map(|data| (data, cache.control_block))
+            .and_then(|(encoded, control_block)| {
+                bitcode::decode::<Vec<u8>>(&encoded)
+                    .ok()
+                    .map(|decoded| (ScriptBuf::from(decoded), control_block))
+            })
+            .expect("Cached script data corrupted")
+    }
 
-        match first_winternitz_public_key {
-            None => Err(ConnectorError::ConnectorCCommitsPublicKeyEmpty),
-            Some((_, winternitz_public_key)) => {
-                let hash = hash160::Hash::hash(winternitz_public_key.public_key.as_flattened());
-                Ok(hex::encode(hash))
-            }
+    fn taproot_spend_info_cached(&self) -> TaprootSpendInfoCacheEntry {
+        let cache_id = spend_info_cache_id(&self.commitment_public_keys);
+        TAPROOT_SPEND_INFO_CACHE
+            .write()
+            .unwrap()
+            .get_or_put(cache_id, || {
+                let lock_scripts_bytes = &self.lock_scripts_bytes();
+                let spend_info = generate_taproot_spend_info(
+                    self.operator_taproot_public_key,
+                    lock_scripts_bytes,
+                );
+                TaprootSpendInfoCacheEntry::new(&spend_info, lock_scripts_bytes.len())
+            })
+            .clone()
+    }
+
+    fn lock_scripts_bytes(&self) -> Vec<Vec<u8>> {
+        let cache_id = spend_info_cache_id(&self.commitment_public_keys);
+        let file_path = get_lock_scripts_cache_path(&cache_id);
+        let lock_scripts_bytes = read_disk_cache(&file_path)
+            .inspect_err(|e| {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    eprintln!(
+                        "Failed to read lock scripts cache from expected location: {}",
+                        e
+                    );
+                }
+            })
+            .unwrap_or_else(|_| generate_assert_leaves(&self.commitment_public_keys));
+        if !file_path.exists() {
+            write_disk_cache(&file_path, &lock_scripts_bytes)
+                .inspect_err(|e| eprintln!("Failed to write lock scripts cache to disk: {}", e))
+                .ok();
         }
+        cleanup_cache_files(
+            LOCK_SCRIPTS_FILE_PREFIX,
+            file_path.parent().unwrap(),
+            MAX_CACHE_FILES,
+        );
+
+        lock_scripts_bytes
     }
 }
 
 impl TaprootConnector for ConnectorC {
-    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
-        let index = leaf_index.to_usize().unwrap();
-        if index >= self.lock_scripts_bytes.len() {
-            panic!("Invalid leaf index.")
-        }
-        ScriptBuf::from_bytes(self.lock_scripts_bytes[index].clone())
+    fn generate_taproot_leaf_script(&self, _: u32) -> ScriptBuf {
+        // use taproot_script_and_control_block to get cached script and control block
+        unreachable!("Cache is not used for leaf scripts");
     }
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         let index = leaf_index.to_usize().unwrap();
-        if index >= self.lock_scripts_bytes.len() {
+        if index >= self.taproot_scripts_len() {
             panic!("Invalid leaf index.")
         }
         generate_default_tx_in(input)
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
-        println!("Generating new taproot spend info for connector C...");
-        let script_weights = self
-            .lock_scripts_bytes
-            .iter()
-            .map(|b| (1, ScriptBuf::from_bytes(b.clone())));
-
-        let spend_info = TaprootBuilder::with_huffman_tree(script_weights)
-            .expect("Unable to add assert leaves")
-            .finalize(SECP256K1, self.operator_taproot_public_key)
-            .expect("Unable to finalize assert transaction connector c taproot");
-
-        // write to cache
-        if let Ok(cache_id) = Self::cache_id(&self.commitment_public_keys) {
-            let output_key = spend_info.output_key();
-            let spend_info_cache = TaprootSpendInfoCache {
-                merkle_root: spend_info.merkle_root(),
-                output_key,
-            };
-            if !TAPROOT_SPEND_INFO_CACHE.read().unwrap().contains(&cache_id) {
-                TAPROOT_SPEND_INFO_CACHE
-                    .write()
-                    .unwrap()
-                    .push(cache_id, spend_info_cache);
-            }
-        }
-
-        spend_info
+        // use taproot_merkle_root/taproot_output_key/taproot_scripts_len to get cached spend info fields
+        unreachable!("Cache is not used for taproot spend info");
     }
 
     fn generate_taproot_address(&self) -> Address {
@@ -352,7 +249,66 @@ impl TaprootConnector for ConnectorC {
     }
 }
 
-pub fn generate_assert_leaves(
+fn first_winternitz_public_key_bytes(
+    commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+) -> Vec<u8> {
+    let (_, first_winternitz_public_key) = commitment_public_keys
+        .iter()
+        .next()
+        .expect("commitment_public_keys should not be empty");
+    first_winternitz_public_key
+        .public_key
+        .as_flattened()
+        .to_vec()
+}
+
+fn spend_info_cache_id(
+    commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+) -> String {
+    let bytes = first_winternitz_public_key_bytes(commitment_public_keys);
+    let hash = hash160::Hash::hash(&bytes);
+    hex::encode(hash)
+}
+
+fn lock_script_cache_id(
+    commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+    leaf_index: usize,
+) -> String {
+    let mut bytes = first_winternitz_public_key_bytes(commitment_public_keys);
+    bytes.append(leaf_index.to_be_bytes().to_vec().as_mut());
+    let hash = hash160::Hash::hash(&bytes);
+    hex::encode(hash)
+}
+
+fn generate_script_and_control_block(
+    operator_taproot_public_key: XOnlyPublicKey,
+    lock_scripts_bytes: &Vec<Vec<u8>>,
+    leaf_index: usize,
+) -> (ScriptBuf, ControlBlock) {
+    let spend_info = generate_taproot_spend_info(operator_taproot_public_key, lock_scripts_bytes);
+    let script = ScriptBuf::from(lock_scripts_bytes[leaf_index].clone());
+    let prevout_leaf = (script, LeafVersion::TapScript);
+    let control_block = spend_info
+        .control_block(&prevout_leaf)
+        .expect("Unable to create Control block");
+    (prevout_leaf.0, control_block)
+}
+
+fn generate_taproot_spend_info(
+    operator_taproot_public_key: XOnlyPublicKey,
+    lock_scripts_bytes: &Vec<Vec<u8>>,
+) -> TaprootSpendInfo {
+    println!("Generating new taproot spend info for connector C...");
+    let script_weights = lock_scripts_bytes
+        .iter()
+        .map(|b| (1, ScriptBuf::from_bytes(b.clone())));
+    TaprootBuilder::with_huffman_tree(script_weights)
+        .expect("Unable to add assert leaves")
+        .finalize(SECP256K1, operator_taproot_public_key)
+        .expect("Unable to finalize assert transaction connector c taproot")
+}
+
+fn generate_assert_leaves(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<Vec<u8>> {
     println!("Generating new lock scripts...");

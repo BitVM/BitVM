@@ -17,7 +17,7 @@ use bridge::{
         generate_pay_to_pubkey_script_address,
     },
     transactions::{
-        base::{Input, InputWithScript, MIN_RELAY_FEE_DISPROVE},
+        base::{Input, InputWithScript},
         pre_signed::PreSignedTransaction,
     },
 };
@@ -415,22 +415,17 @@ async fn broadcast_transactions_from_peg_out_graph(
         )
         .await;
 
-        println!("Broadcasting assert commit 1...");
+        println!("Broadcasting assert commit 1 & 2...");
         client
-            .broadcast_assert_commit_1(&peg_out_graph_id, &assert_proof)
+            .broadcast_assert_commits(&peg_out_graph_id, &assert_proof)
             .await
-            .expect("Failed to broadcast assert commit 1");
+            .expect("Failed to broadcast assert commit 1 & 2");
         wait_for_confirmation_with_message(
             client.source_network,
             Some("peg-out assert commit 1 tx"),
         )
         .await;
-
-        println!("Broadcasting assert commit 2...");
-        client
-            .broadcast_assert_commit_2(&peg_out_graph_id, &assert_proof)
-            .await
-            .expect("Failed to broadcast assert commit 2");
+        // wait longer for node to process large transactions on multiple blocks
         wait_for_confirmation_with_message(
             client.source_network,
             Some("peg-out assert commit 2 tx"),
@@ -463,16 +458,14 @@ async fn create_peg_out_graph() -> (
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount =
-        Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE + MIN_RELAY_FEE_DISPROVE);
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&deposit_funding_address, deposit_input_amount));
 
-    let kick_off_input_amount =
-        Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE + MIN_RELAY_FEE_DISPROVE);
+    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,
@@ -513,27 +506,27 @@ async fn create_peg_out_graph() -> (
         config.commitment_secrets,
     );
 
-    println!("Verifier 0 push peg-out nonces");
+    println!("Verifier 0 push peg-in nonces");
     depositor_operator_verifier_0_client
         .process_peg_in_as_verifier(&peg_in_graph_id) // verifier 0 push nonces
         .await;
     depositor_operator_verifier_0_client.flush().await;
 
-    println!("Verifier 1 push peg-out nonces");
+    println!("Verifier 1 push peg-in nonces");
     verifier_1_client.sync().await;
     verifier_1_client
         .process_peg_in_as_verifier(&peg_in_graph_id)
         .await;
     verifier_1_client.flush().await;
 
-    println!("Verifier 0 pre-sign peg-out");
+    println!("Verifier 0 pre-sign peg-in");
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client
         .process_peg_in_as_verifier(&peg_in_graph_id)
         .await;
     depositor_operator_verifier_0_client.flush().await;
 
-    println!("Verifier 1 pre-sign peg-out");
+    println!("Verifier 1 pre-sign peg-in");
     verifier_1_client.sync().await;
     verifier_1_client
         .process_peg_in_as_verifier(&peg_in_graph_id)
@@ -545,6 +538,25 @@ async fn create_peg_out_graph() -> (
     depositor_operator_verifier_0_client
         .process_peg_in_as_verifier(&peg_in_graph_id)
         .await;
+
+    println!("Verifier 0 push peg-out nonces");
+    depositor_operator_verifier_0_client.push_verifier_nonces(&peg_out_graph_id);
+    depositor_operator_verifier_0_client.flush().await;
+
+    println!("Verifier 1 push peg-out nonces");
+    verifier_1_client.sync().await;
+    verifier_1_client.push_verifier_nonces(&peg_out_graph_id);
+    verifier_1_client.flush().await;
+
+    println!("Verifier 0 pre-sign peg-out");
+    depositor_operator_verifier_0_client.sync().await;
+    depositor_operator_verifier_0_client.push_verifier_signature(&peg_out_graph_id);
+    depositor_operator_verifier_0_client.flush().await;
+
+    println!("Verifier 1 pre-sign peg-out");
+    verifier_1_client.sync().await;
+    verifier_1_client.push_verifier_signature(&peg_out_graph_id);
+    verifier_1_client.flush().await;
 
     (
         depositor_operator_verifier_0_client,

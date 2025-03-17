@@ -4,7 +4,7 @@ use serial_test::serial;
 use super::utils::{broadcast_txs_for_disprove_scenario, create_peg_out_graph};
 
 #[tokio::test]
-#[serial(client)]
+#[serial]
 async fn test_e2e_disprove_success() {
     let (
         mut verifier_0_operator_depositor,

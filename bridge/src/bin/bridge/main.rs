@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet, regtest)").required(false).default_value("testnet").env("ENVIRONMENT"))
         .arg(arg!(-p --"user-profile" <USER_PROFILE> "Name of the protocol participant (e.g. 'operator_one', 'verifier_0'). Used as a namespace separator in the local file path for storing private and public client data").required(false).default_value("default_user").env("USER_PROFILE"))
         .subcommand(KeysCommand::get_command())
+        .subcommand(ClientCommand::get_funding_amounts_command())
         .subcommand(ClientCommand::get_operator_address_command())
         .subcommand(ClientCommand::get_operator_utxos_command())
         .subcommand(ClientCommand::get_depositor_address_command())
@@ -55,8 +56,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Some(sub_matches) = matches.subcommand_matches("keys") {
         let keys_command = KeysCommand::new(global_args.key_dir);
         keys_command.handle_command(sub_matches)?;
+    } else if matches.subcommand_matches("get-funding-amounts").is_some() {
+        let client_command = ClientCommand::new(global_args).await;
+        let _ = client_command.handle_get_funding_amounts().await;
     } else if matches.subcommand_matches("get-operator-address").is_some() {
-        let mut client_command = ClientCommand::new(global_args).await;
+        let client_command = ClientCommand::new(global_args).await;
         let _ = client_command.handle_get_operator_address().await;
     } else if matches.subcommand_matches("get-operator-utxos").is_some() {
         let mut client_command = ClientCommand::new(global_args).await;
@@ -65,7 +69,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand_matches("get-depositor-address")
         .is_some()
     {
-        let mut client_command = ClientCommand::new(global_args).await;
+        let client_command = ClientCommand::new(global_args).await;
         let _ = client_command.handle_get_depositor_address().await;
     } else if matches.subcommand_matches("get-depositor-utxos").is_some() {
         let mut client_command = ClientCommand::new(global_args).await;
