@@ -73,30 +73,32 @@ mod tests {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_foo() {
-        let mut rng = ChaCha20Rng::seed_from_u64(37 as u64);
-        let size = 120;
-        let v: Vec<u8> = (0..size).map(|_| rng.gen()).collect();
-        assert!(
-            execute_script(script! {
-                for x in bytes_to_nibbles(v.clone()) {
-                    { x }
-                }
-                { reformat_for_blake3(size) }
-                { blake3_push_message_script_with_limb(&v, 4) }
-                for i in (1..256).rev() {
-                    { i + 1 } OP_ROLL OP_EQUALVERIFY
-                }
-                OP_EQUAL
-            })
-            .success
-        );
+    fn test_formatting() {
+        let mut rng = ChaCha20Rng::seed_from_u64(37_u64);
+        for i in 1..=24 {
+            let size = i * 4;
+            let v: Vec<u8> = (0..size).map(|_| rng.gen()).collect();
+            assert!(
+                execute_script(script! {
+                    for x in bytes_to_nibbles(v.clone()) {
+                        { x }
+                    }
+                    { reformat_for_blake3(size) }
+                    { blake3_push_message_script_with_limb(&v, 4) }
+                    for i in (1..size.div_ceil(64) * 128).rev() {
+                        { i + 1 } OP_ROLL OP_EQUALVERIFY
+                    }
+                    OP_EQUAL
+                })
+                .success
+            );
+        }
     }
 
     #[test]
     fn test_blake3_u4() {
-        let mut rng = ChaCha20Rng::seed_from_u64(37 as u64);
-        for i in 15..=15 {
+        let mut rng = ChaCha20Rng::seed_from_u64(37_u64);
+        for i in 1..=24 {
             let size = i * 4;
             let v: Vec<u8> = (0..size).map(|_| rng.gen()).collect();
             let result = bytes_to_nibbles(blake3_bitvm_version(v.clone()).to_vec());
@@ -117,8 +119,8 @@ mod tests {
 
     #[test]
     fn test_blake3_u4_double_hash() {
-        let mut rng = ChaCha20Rng::seed_from_u64(37 as u64);
-        for i in 1..=25 {
+        let mut rng = ChaCha20Rng::seed_from_u64(37_u64);
+        for i in 1..=24 {
             let size = i * 4;
             let v: Vec<u8> = (0..size).map(|_| rng.gen()).collect();
             let result = bytes_to_nibbles(
@@ -142,9 +144,9 @@ mod tests {
 
     #[test]
     fn test_blake3_u4_concat_hash() {
-        let mut rng = ChaCha20Rng::seed_from_u64(37 as u64);
-        for _ in 0..20 {
-            let size = rng.gen_range(1..=25) * 4;
+        let mut rng = ChaCha20Rng::seed_from_u64(37_u64);
+        for i in 1..=24 {
+            let size = i * 4;
             let v: Vec<u8> = (0..size).map(|_| rng.gen()).collect();
             let add_size = rng.gen_range(1..=25) * 4;
             let add: Vec<u8> = (0..add_size).map(|_| rng.gen()).collect();

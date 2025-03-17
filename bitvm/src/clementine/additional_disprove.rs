@@ -400,7 +400,7 @@ mod tests {
                     WINTERNITZ_BLOCK_LEN,
                 ),
                 &g16_public_input_sk,
-                &g16_public_input.to_vec(),
+                g16_public_input.as_ref(),
             ),
             WINTERNITZ_VERIFIER.sign(
                 &Parameters::new_by_bit_length(
@@ -408,7 +408,7 @@ mod tests {
                     WINTERNITZ_BLOCK_LEN,
                 ),
                 &payout_tx_blockhash_sk,
-                &payout_tx_blockhash.to_vec(),
+                payout_tx_blockhash.as_ref(),
             ),
             WINTERNITZ_VERIFIER.sign(
                 &Parameters::new_by_bit_length(
@@ -416,7 +416,7 @@ mod tests {
                     WINTERNITZ_BLOCK_LEN,
                 ),
                 &latest_blockhash_sk,
-                &latest_blockhash.to_vec(),
+                latest_blockhash.as_ref(),
             ),
             WINTERNITZ_VERIFIER.sign(
                 &Parameters::new_by_bit_length(
@@ -424,7 +424,7 @@ mod tests {
                     WINTERNITZ_BLOCK_LEN,
                 ),
                 &challenge_sending_watchtowers_sk,
-                &challenge_sending_watchtowers.to_vec(),
+                challenge_sending_watchtowers.as_ref(),
             ),
         ]
     }
@@ -591,7 +591,7 @@ mod tests {
         };
         for i in 0..WATHCTOWER_COUNT {
             p.operator_challenge_ack_hashes[i] =
-                *hash160::Hash::hash(&signer_data.operator_challenge_ack_preimages[i].to_vec())
+                *hash160::Hash::hash(signer_data.operator_challenge_ack_preimages[i].as_ref())
                     .as_byte_array()
         }
         p
@@ -638,9 +638,9 @@ mod tests {
     fn non_malicious_test_validate(script: Vec<u8>, signer_data: &SignerData) {
         let mut preimages: [Option<ChallengeHashType>; WATHCTOWER_COUNT] =
             std::array::from_fn(|_| None);
-        for i in 0..WATHCTOWER_COUNT {
+        for (i, preimage) in preimages.iter_mut().enumerate() {
             if (signer_data.challenge_sending_watchtowers[i / 8] >> (i % 8)) % 2 == 1 {
-                preimages[i] = Some(signer_data.operator_challenge_ack_preimages[i]);
+                *preimage = Some(signer_data.operator_challenge_ack_preimages[i]);
             }
         }
         let (
@@ -658,32 +658,28 @@ mod tests {
             signer_data.latest_blockhash_sk.clone(),
             signer_data.challenge_sending_watchtowers_sk.clone(),
         )
-        .try_into()
-        .expect("impossible");
-        assert!(
-            validate_assertions_for_additional_script(
-                script,
-                g16_public_input_signature,
-                payout_tx_blockhash_signature,
-                latest_blockhash_signature,
-                challenge_sending_watchtowers_signature,
-                preimages
-            )
-            .is_some()
-                == false
-        );
+        .into();
+        assert!(!validate_assertions_for_additional_script(
+            script,
+            g16_public_input_signature,
+            payout_tx_blockhash_signature,
+            latest_blockhash_signature,
+            challenge_sending_watchtowers_signature,
+            preimages
+        )
+        .is_some());
     }
 
     fn malicious_revealed_preimage_validate(script: Vec<u8>, signer_data: &SignerData) {
         let mut preimages: [Option<ChallengeHashType>; WATHCTOWER_COUNT] =
             std::array::from_fn(|_| None);
         let mut first = true;
-        for i in 0..WATHCTOWER_COUNT {
+        for (i, preimage) in preimages.iter_mut().enumerate() {
             if (signer_data.challenge_sending_watchtowers[i / 8] >> (i % 8)) % 2 == 1 {
-                preimages[i] = Some(signer_data.operator_challenge_ack_preimages[i]);
+                *preimage = Some(signer_data.operator_challenge_ack_preimages[i]);
             } else if first {
                 first = false;
-                preimages[i] = Some(signer_data.operator_challenge_ack_preimages[i]);
+                *preimage = Some(signer_data.operator_challenge_ack_preimages[i]);
             }
         }
         let (
@@ -701,28 +697,24 @@ mod tests {
             signer_data.latest_blockhash_sk.clone(),
             signer_data.challenge_sending_watchtowers_sk.clone(),
         )
-        .try_into()
-        .expect("impossible");
-        assert!(
-            validate_assertions_for_additional_script(
-                script,
-                g16_public_input_signature,
-                payout_tx_blockhash_signature,
-                latest_blockhash_signature,
-                challenge_sending_watchtowers_signature,
-                preimages
-            )
-            .is_some()
-                == true
-        );
+        .into();
+        assert!(validate_assertions_for_additional_script(
+            script,
+            g16_public_input_signature,
+            payout_tx_blockhash_signature,
+            latest_blockhash_signature,
+            challenge_sending_watchtowers_signature,
+            preimages
+        )
+        .is_some());
     }
 
     fn malicious_gibberish_g16_data_validate(script: Vec<u8>, signer_data: &SignerData) {
         let mut preimages: [Option<ChallengeHashType>; WATHCTOWER_COUNT] =
             std::array::from_fn(|_| None);
-        for i in 0..WATHCTOWER_COUNT {
+        for (i, preimage) in preimages.iter_mut().enumerate() {
             if (signer_data.challenge_sending_watchtowers[i / 8] >> (i % 8)) % 2 == 1 {
-                preimages[i] = Some(signer_data.operator_challenge_ack_preimages[i]);
+                *preimage = Some(signer_data.operator_challenge_ack_preimages[i]);
             }
         }
         let (
@@ -740,20 +732,16 @@ mod tests {
             signer_data.latest_blockhash_sk.clone(),
             signer_data.challenge_sending_watchtowers_sk.clone(),
         )
-        .try_into()
-        .expect("impossible");
-        assert!(
-            validate_assertions_for_additional_script(
-                script,
-                g16_public_input_signature,
-                payout_tx_blockhash_signature,
-                latest_blockhash_signature,
-                challenge_sending_watchtowers_signature,
-                preimages
-            )
-            .is_some()
-                == true
-        );
+        .into();
+        assert!(validate_assertions_for_additional_script(
+            script,
+            g16_public_input_signature,
+            payout_tx_blockhash_signature,
+            latest_blockhash_signature,
+            challenge_sending_watchtowers_signature,
+            preimages
+        )
+        .is_some());
     }
 
     #[test]
@@ -824,7 +812,7 @@ mod tests {
             Ok(bytes) => bytes,
             Err(_) => panic!("Invalid hex string"),
         };
-        let mut rng = ChaCha20Rng::seed_from_u64(37 as u64);
+        let mut rng = ChaCha20Rng::seed_from_u64(37_u64);
         for _ in 0..20 {
             let size = rng.gen_range(1..=25) * 4;
             let v: Vec<u8> = (0..size).map(|_| rng.gen()).collect();
