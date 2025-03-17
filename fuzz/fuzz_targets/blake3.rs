@@ -16,7 +16,7 @@ static BLAKE3_COMPUTE_SCRIPTS: LazyLock<[ScriptBuf; 4]> = LazyLock::new(|| {
     [64, 128, 192, 448]
         .into_iter()
         .map(|msg_len| blake3_compute_script(msg_len).compile())
-        .map(|script| optimizer::optimize(script))
+        .map(optimizer::optimize)
         .collect::<Vec<ScriptBuf>>()
         .try_into()
         .unwrap()
@@ -32,6 +32,7 @@ static BLAKE3_COMPUTE_SCRIPTS: LazyLock<[ScriptBuf; 4]> = LazyLock::new(|| {
 /// we fuzz exactly the message sizes that are used inside BitVM.
 /// It turns out, there are only four different sizes.
 #[derive(Debug, Clone, Arbitrary)]
+#[allow(clippy::large_enum_variant)]
 enum MessageBytes {
     U64([u8; 64]),
     U128([u8; 128]),

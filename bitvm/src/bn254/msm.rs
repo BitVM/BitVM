@@ -79,7 +79,7 @@ pub(crate) fn dfs_with_constant_mul(
     index: u32,
     depth: u32,
     mask: u32,
-    p_mul: &Vec<ark_bn254::G1Affine>,
+    p_mul: &[ark_bn254::G1Affine],
 ) -> Script {
     if depth == 0 {
         return script! {
@@ -115,7 +115,7 @@ fn generate_lookup_tables(
     q: ark_bn254::G1Affine,
     window: usize,
 ) -> (Vec<Vec<ark_bn254::G1Affine>>, Vec<Script>) {
-    let num_tables = (Fr::N_BITS as usize + window - 1) / window;
+    let num_tables = (Fr::N_BITS as usize).div_ceil(window);
 
     let mut all_tables_scr = vec![];
     let mut all_tables = vec![];
@@ -147,7 +147,7 @@ fn get_query_for_table_index(
     window: usize,
     table_index: usize,
 ) -> (u32, Script) {
-    let num_tables: u32 = (Fr::N_BITS + window as u32 - 1) / window as u32;
+    let num_tables: u32 = Fr::N_BITS.div_ceil(window as u32);
     // Split Scalar into bits and group window size
     let chunks = fq_to_bits(scalar.into_bigint(), window); // {a_0, ..,a_N}
                                                            // Get Scalar slice (w-bit segment) at index position i.e. a_i
@@ -209,7 +209,7 @@ fn accumulate_addition_chain_for_a_scalar_mul(
 ) -> Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
     let mut all_tables_result: Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> = vec![];
 
-    let num_tables = (Fr::N_BITS as usize + window - 1) / window;
+    let num_tables = (Fr::N_BITS as usize).div_ceil(window);
     let tables = generate_lookup_tables(base, window);
 
     let mut prev = init_acc;
@@ -306,8 +306,8 @@ mod test {
         for _ in 0..5 {
             let fq = ark_bn254::Fr::rand(&mut prng);
             let window = (u32::rand(&mut prng) % WINDOW_G1_MSM) + 1;
-            let num_tables: u32 = (Fr::N_BITS + window as u32 - 1) / window as u32;
-            let random_index = u32::rand(&mut prng) % num_tables as u32;
+            let num_tables: u32 = Fr::N_BITS.div_ceil(window);
+            let random_index = u32::rand(&mut prng) % num_tables;
             let (value, slice_scr) =
                 get_query_for_table_index(fq, window as usize, random_index as usize);
 
@@ -353,8 +353,7 @@ mod test {
 
         let fq = ark_bn254::Fr::rand(&mut prng);
 
-        let (value, slice_scr) =
-            get_query_for_table_index(fq, window as usize, table_index as usize);
+        let (value, slice_scr) = get_query_for_table_index(fq, window, table_index as usize);
 
         let selected_table = (
             tables.0[table_index as usize].clone(),

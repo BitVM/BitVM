@@ -1,9 +1,5 @@
 use crate::bigint::BigIntImpl;
-use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
-use core::ops::{Mul, Rem, Sub};
-use num_bigint::BigUint;
-use num_traits::Num;
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn div2() -> Script {

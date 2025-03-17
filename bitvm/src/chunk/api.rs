@@ -86,31 +86,25 @@ pub mod type_conversion_utils {
         }
     }
 
-    pub fn utils_signatures_from_raw_witnesses(raw_wits: &Vec<RawWitness>) -> Signatures {
+    #[allow(clippy::needless_range_loop)]
+    pub fn utils_signatures_from_raw_witnesses(raw_wits: &[RawWitness]) -> Signatures {
         assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_HASH);
         let mut asigs = vec![];
         for i in 0..NUM_PUBS {
-            let a: wots256::Signature =
-                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i]))
-                    .try_into()
-                    .unwrap();
+            let a = wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i]));
             asigs.push(a);
         }
         let mut bsigs = vec![];
         for i in 0..NUM_U256 {
-            let a: wots256::Signature =
-                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS]))
-                    .try_into()
-                    .unwrap();
+            let a =
+                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS]));
             bsigs.push(a);
         }
         let mut csigs = vec![];
         for i in 0..NUM_HASH {
-            let a: wots_hash::Signature = wots_hash::raw_witness_to_signature(
-                &Witness::from_slice(&raw_wits[i + NUM_PUBS + NUM_U256]),
-            )
-            .try_into()
-            .unwrap();
+            let a = wots_hash::raw_witness_to_signature(&Witness::from_slice(
+                &raw_wits[i + NUM_PUBS + NUM_U256],
+            ));
             csigs.push(a);
         }
         let asigs = asigs.try_into().unwrap();
@@ -155,8 +149,7 @@ pub mod type_conversion_utils {
         let mut apubs = vec![];
         let mut bpubs = vec![];
         let mut cpubs = vec![];
-        for idx in 0..commits_public_keys.len() {
-            let f = commits_public_keys[idx];
+        for (idx, f) in commits_public_keys.into_iter().enumerate() {
             if idx < NUM_PUBS {
                 let p: wots256::PublicKey = f.public_key.clone().try_into().unwrap();
                 apubs.push(p);
@@ -420,6 +413,7 @@ mod test {
             Ok(())
         }
 
+        #[allow(clippy::type_complexity)]
         pub(crate) fn read_map_from_file(
             filename: &str,
         ) -> Result<HashMap<u32, Vec<Vec<u8>>>, Box<dyn Error>> {
@@ -488,6 +482,7 @@ mod test {
             write_map_to_file(&obj, filename).unwrap();
         }
 
+        #[allow(clippy::needless_range_loop)]
         pub fn read_asserts_from_file(filename: &str) -> Assertions {
             let res = read_map_from_file(filename).unwrap();
             let proof_vec = res.get(&0).unwrap();
@@ -769,6 +764,8 @@ mod test {
         assert!(res.success);
         println!("DONE");
     }
+
+    #[allow(clippy::needless_range_loop)]
     fn sign_assertions(assn: Assertions) -> Signatures {
         let (ps, fs, hs) = (assn.0, assn.1, assn.2);
         let secret = MOCK_SECRET;
@@ -845,8 +842,8 @@ mod test {
         let partial_scripts = api_generate_partial_script(&mock_vk);
 
         let mut script_cache = HashMap::new();
-        for i in 0..partial_scripts.len() {
-            script_cache.insert(i as u32, vec![partial_scripts[i].clone()]);
+        for (i, script) in partial_scripts.into_iter().enumerate() {
+            script_cache.insert(i as u32, vec![script]);
         }
 
         write_scripts_to_separate_files(script_cache, "tapnode");
