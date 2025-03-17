@@ -67,6 +67,17 @@ jobs:
     timeout-minutes: 120
     needs: build
     runs-on: self-hosted
+    env:
+      LARGE_TESTS: >-
+        bn254::pairing::test::test_hinted_quad_miller_loop_with_c_wi
+        chunk::api::test::full_e2e_execution
+        chunk::api_runtime_utils::test::test_runtime_execution_looped
+        chunk::g16_runner_core::test::test_groth16
+        chunk::g16_runner_core::test::test_verify_pairing
+        groth16::test::test_hinted_groth16_verifier
+        groth16::test::test_hinted_groth16_verifier_small_public
+        hash::blake3::tests::test_blake3_randominputs
+        hash::blake3::tests::test_blake3_randominputs_multipleof64bytes
     steps:
     - uses: actions/checkout@v4
 
@@ -86,7 +97,12 @@ jobs:
 
     - name: Run tests
       run: |
-        cargo test -- --skip bridge:: --skip tests::test_final_circuit
+        SKIP_ARGS=""
+        for test in $LARGE_TESTS; do
+          SKIP_ARGS="$SKIP_ARGS --skip $test"
+        done
+        cargo test -- --skip bridge:: --skip tests::test_final_circuit $SKIP_ARGS
+        cargo test -- --test-threads=1 $LARGE_TESTS
   
 #  test_bridge:
 #    if: github.event.pull_request.draft == false

@@ -41,10 +41,12 @@ pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn byte_array_to_wots_hash_sig(secret: &str, msg_bytes: &[u8]) -> wots_hash::Signature {
     wots_hash::get_signature(secret, msg_bytes)
 }
 
+#[allow(dead_code)]
 pub(crate) fn byte_array_to_wots256_sig(secret: &str, msg_bytes: &[u8]) -> wots256::Signature {
     wots256::get_signature(secret, msg_bytes)
 }
@@ -78,6 +80,7 @@ pub(crate) fn wots_hash_sig_to_byte_array(sig: wots_hash::Signature) -> Vec<u8> 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum WOTSPubKey {
     PHash(wots_hash::PublicKey),
     P256(wots256::PublicKey),

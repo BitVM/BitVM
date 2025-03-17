@@ -38,8 +38,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             chunk_vec.resize(LIMB_SIZE as usize, false);
 
             let mut elem = 0u32;
-            for (i, chunk_i) in chunk_vec.iter().enumerate() {
-                if *chunk_i {
+            for (i, chunk_i) in chunk_vec.into_iter().enumerate() {
+                if chunk_i {
                     elem += 1 << i;
                 }
             }
@@ -79,8 +79,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             chunk_vec.resize(32, false);
 
             let mut elem = 0u32;
-            for i in 0..32_usize {
-                if chunk_vec[i] {
+            for (i, chunk_i) in chunk_vec.into_iter().enumerate() {
+                if chunk_i {
                     elem += 1 << i;
                 }
             }
@@ -343,7 +343,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// Generates a vector of TransformStep struct that encodes all the information needed to
     /// convert BigInt form one limbsize represention (source) to another (target).
     /// used as a helper function for `transform_limbsize`
-
     fn get_transform_steps(source_limb_size: u32, target_limb_size: u32) -> Vec<TransformStep> {
         //define an empty vector to store Transform steps
         let mut transform_steps: Vec<TransformStep> = Vec::new();
@@ -428,7 +427,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// - If the source or target limb size is greater than number of bits, fails with assertion error.
     /// - If the elements do not fit on the stack. (few satck elements are also used for intermediate computation).
     /// - The number of bits in the BigInt must be 32 or larger.
-
     pub fn transform_limbsize(source_limb_size: u32, target_limb_size: u32) -> Script {
         // ensure that source and target limb sizes are between 0 and 31 inclusive
         assert!(

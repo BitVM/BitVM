@@ -1965,7 +1965,10 @@ name = "bitvm-fuzz"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
+ "bitcoin",
+ "bitcoin-script-stack",
  "bitvm",
+ "blake3",
  "libfuzzer-sys",
 ]
 

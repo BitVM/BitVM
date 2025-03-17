@@ -195,7 +195,7 @@ pub(crate) fn generate_segments_using_mock_vk_and_mock_proof() -> Vec<Segment> {
     generate_segments_using_mock_proof(mock_vk, true)
 }
 
-pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<treepp::Script> {
+pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<treepp::Script> {
     fn serialize_element_types(elems: &[ElementType]) -> String {
         // 1. Convert each variant to its string representation.
         let joined = elems
@@ -236,8 +236,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
             });
     }
 
-    for i in 0..segments.len() {
-        let seg = &segments[i];
+    for seg in segments {
         let scr_type = seg.scr_type.clone();
         if scr_type == ScriptType::NonDeterministic {
             continue;
@@ -270,7 +269,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
 }
 
 pub(crate) fn bitcom_scripts_from_segments(
-    segments: &Vec<Segment>,
+    segments: &[Segment],
     wots_pubkeys: PublicKeys,
 ) -> Vec<treepp::Script> {
     let mut bitcom_scripts: Vec<treepp::Script> = vec![];

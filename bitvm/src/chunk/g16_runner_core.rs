@@ -292,7 +292,6 @@ pub(crate) fn groth16_generate_segments(
     );
     push_compare_or_return!(t4);
 
-    // (t2, t3) = (le.t2, le.t3);
     let tmp_q2f = frob_q_power(pubs.q2, 1);
     t2 = (t2 + tmp_q2f).into_affine();
     let tmp_q3f = frob_q_power(pubs.q3, 1);
@@ -325,11 +324,6 @@ pub(crate) fn groth16_generate_segments(
     );
     push_compare_or_return!(t4);
 
-    // (t2, t3) = (le.t2, le.t3);
-    let tmp_q2f = frob_q_power(pubs.q2, -1);
-    t2 = (t2 + tmp_q2f).into_affine();
-    let tmp_q3f = frob_q_power(pubs.q3, -1);
-    t3 = (t3 + tmp_q3f).into_affine();
     let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(
         skip_evaluation,
         all_output_hints.len(),
@@ -355,6 +349,7 @@ pub(crate) fn groth16_generate_segments(
     is_valid == ark_ff::BigInt::<4>::one()
 }
 
+#[allow(clippy::type_complexity)]
 fn raw_input_proof_to_segments(
     eval_ins: InputProofRaw,
     all_output_hints: &mut Vec<Segment>,
@@ -559,7 +554,7 @@ mod test {
         let f = pairing
             .multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4])
             .0;
-        let (c, s) = compute_c_wi(f);
+        let (c, _s) = compute_c_wi(f);
         let eval_ins: InputProof = InputProof {
             p2,
             p4,
@@ -673,9 +668,6 @@ mod test {
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
         }
 
-        // f *= s;
-        // f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
-
         for i in 0..num_pairings {
             let mut q = qs[i];
             let t = ts[i];
@@ -741,7 +733,7 @@ mod test {
         ps: Vec<ark_bn254::G1Affine>,
         qs: Vec<ark_bn254::G2Affine>,
         gc: ark_bn254::Fq12,
-        s: ark_bn254::Fq12,
+        _s: ark_bn254::Fq12,
         p1q1: ark_bn254::Fq6,
     ) {
         use crate::chunk::{
@@ -805,6 +797,7 @@ mod test {
         let num_pairings = ps.len();
 
         let mut total_script_size = 0;
+        #[allow(unused_assignments)] // clippy bug?
         let mut temp_scr = script! {};
 
         let (mut t4, _, scr, _) = chunk_init_t4([
@@ -1052,11 +1045,6 @@ mod test {
         total_script_size += temp_scr.len();
 
         println!("total script size {:?}", total_script_size);
-
-        let tmp_q2f = frob_q_power(qs[0], -1);
-        t2 = (t2 + tmp_q2f).into_affine();
-        let tmp_q3f = frob_q_power(qs[1], -1);
-        t3 = (t3 + tmp_q3f).into_affine();
         assert_eq!(g, f.c1);
 
         assert_eq!(g + p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)
