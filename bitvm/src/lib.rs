@@ -20,13 +20,13 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, Tx
 pub mod bigint;
 pub mod bn254;
 pub mod chunk;
+pub mod clementine;
 pub mod groth16;
 pub mod hash;
 pub mod pseudo;
 pub mod signatures;
 pub mod u32;
 pub mod u4;
-pub mod clementine;
 
 /// A wrapper for the stack types to print them better.
 pub struct FmtStack(pub Stack);
