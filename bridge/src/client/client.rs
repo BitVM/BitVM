@@ -244,8 +244,8 @@ impl BitVMClient {
         self.read_from_l2().await;
     }
 
-    pub async fn flush(&mut self) {
-        self.save_to_data_store().await;
+    pub async fn flush(&mut self) -> Result<(), String> {
+        self.save_to_data_store().await
     }
 
     /*
@@ -491,7 +491,7 @@ impl BitVMClient {
         (None, 0, 0)
     }
 
-    async fn save_to_data_store(&mut self) {
+    async fn save_to_data_store(&mut self) -> Result<(), String> {
         // read newly created data before pushing
         let latest_file_names_result = Self::get_latest_file_names(
             &self.data_store,
@@ -525,8 +525,12 @@ impl BitVMClient {
                 );
                 save_local_public_file(&self.local_file_path, &file_name, &contents);
                 self.latest_processed_file_name = Some(file_name);
+                Ok(())
             }
-            Err(err) => println!("Failed to push: {}", err),
+            Err(err) => {
+                println!("Failed to push: {}", err);
+                Err(format!("Failed to save data to remote storage: {}", err))
+            }
         }
     }
 
