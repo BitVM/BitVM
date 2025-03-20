@@ -911,6 +911,25 @@ pub fn maj(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
     }
 }
 
+pub fn sha256_verify_output_script(expected_output: [u8; 32]) -> Script {
+    script! {
+        for (i, byte) in expected_output.iter().enumerate() {
+            {*byte}
+            {i}
+            OP_ROLL
+            OP_EQUALVERIFY
+        }
+    }
+}
+
+pub fn sha256_push_message(message: &[u8]) -> Script {
+    script! {
+        for byte in message.iter().rev() {
+            {*byte}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::hash::sha256::*;
