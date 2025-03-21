@@ -8,7 +8,7 @@ use crate::{
 
 use bitvm::{
     chunk::api::{
-        generate_signatures, generate_signatures_for_any_proof,
+        generate_signatures_for_any_proof,
         type_conversion_utils::{utils_raw_witnesses_from_signatures, RawProof, RawWitness},
     },
     signatures::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},

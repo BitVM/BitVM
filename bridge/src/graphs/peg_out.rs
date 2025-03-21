@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap},
-    fmt::{Display, Formatter, Result as FmtResult},
 };
 
 use crate::{
