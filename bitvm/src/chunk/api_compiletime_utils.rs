@@ -161,7 +161,7 @@ fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Se
         p4: g1,
         q4: g2,
         c,
-        ks: vec![fr.into()],
+        ks: vec![fr.into(); NUM_PUBS],
     };
 
     // public values known at compile time
