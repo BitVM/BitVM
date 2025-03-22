@@ -1,15 +1,13 @@
 #![no_main]
 
 use std::sync::LazyLock;
-use std::{iter::IntoIterator, sync::Arc};
+use std::iter::IntoIterator;
 
 use arbitrary::Arbitrary;
-use bitcoin::secp256k1::Message;
-use bitcoin::{Script, ScriptBuf};
+use bitcoin::ScriptBuf;
 use bitcoin_script_stack::optimizer;
 use bitvm::execute_script_buf;
 use bitvm::hash::sha256::{sha256, sha256_push_message, sha256_verify_output_script};
-use bitvm::treepp::script;
 use sha2::{Digest, Sha256};
 
 use libfuzzer_sys::fuzz_target;
@@ -51,7 +49,6 @@ impl MessageBytes {
 
 // Fuzz for double SHA256
 fuzz_target!(|message: MessageBytes| {
-    // Double SHA256
     let mut hasher = Sha256::new();
     hasher.update(message.as_ref());
     let hash = hasher.finalize();

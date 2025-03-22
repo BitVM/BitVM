@@ -913,18 +913,19 @@ pub fn maj(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
 
 pub fn sha256_verify_output_script(expected_output: [u8; 32]) -> Script {
     script! {
-        for (i, byte) in expected_output.iter().enumerate() {
-            {*byte}
-            {i}
-            OP_ROLL
+        for byte in expected_output.iter().take(31) {
+            {*byte}            
             OP_EQUALVERIFY
         }
+
+        {expected_output[31]}
+        OP_EQUAL
     }
 }
 
 pub fn sha256_push_message(message: &[u8]) -> Script {
     script! {
-        for byte in message.iter().rev() {
+        for byte in message.iter().rev() { // SHA takes input as BE
             {*byte}
         }
     }
@@ -947,7 +948,7 @@ mod tests {
             .step_by(2)
             .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
             .collect::<Vec<u8>>();
-
+        
         script! {
             for byte in bytes.iter().rev() {
                 { *byte }
