@@ -1845,14 +1845,11 @@ checksum = "0b47c4ab7a93edb0c7198c5535ed9b52b63095f4e9b45279c6736cec4b856baf"
 
 [[package]]
 name = "bitcoin-script"
-version = "0.3.0"
-source = "git+https://github.com/BitVM/rust-bitcoin-script#cda22ff17ba3e471f76fa1caa0995f20058ac2a3"
+version = "0.4.0"
+source = "git+https://github.com/BitVM/rust-bitcoin-script#519088c7e5e89769910dabcb1b663fa48a21a645"
 dependencies = [
- "bincode",
  "bitcoin",
- "lazy_static",
  "script-macro",
- "serde",
  "stdext",
 ]
 
@@ -5944,12 +5941,10 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "script-macro"
-version = "0.3.0"
-source = "git+https://github.com/BitVM/rust-bitcoin-script#cda22ff17ba3e471f76fa1caa0995f20058ac2a3"
+version = "0.4.0"
+source = "git+https://github.com/BitVM/rust-bitcoin-script#519088c7e5e89769910dabcb1b663fa48a21a645"
 dependencies = [
  "bitcoin",
- "hex",
- "lazy_static",
  "proc-macro-error",
  "proc-macro2",
  "quote",
