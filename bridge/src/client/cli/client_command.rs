@@ -202,7 +202,10 @@ impl ClientCommand {
         };
         let peg_in_id = self.client.create_peg_in_graph(input, evm_address).await;
 
-        self.client.flush().await;
+        if let Err(e) = self.client.flush().await {
+            eprintln!("Failed to save data to remote storage: {e}");
+            return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+        }
 
         println!("Created peg-in graph with ID: {peg_in_id}");
         println!("Broadcasting deposit...");
@@ -251,7 +254,10 @@ impl ClientCommand {
             CommitmentMessageId::generate_commitment_secrets(),
         );
 
-        self.client.flush().await;
+        if let Err(e) = self.client.flush().await {
+            eprintln!("Failed to save data to remote storage: {e}");
+            return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+        }
 
         println!("Created peg-out with ID: {peg_out_id}");
         Ok(())
@@ -270,7 +276,10 @@ impl ClientCommand {
 
         self.client.sync().await;
         self.client.push_verifier_nonces(graph_id);
-        self.client.flush().await;
+        if let Err(e) = self.client.flush().await {
+            eprintln!("Failed to save data to remote storage: {e}");
+            return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+        }
 
         Ok(())
     }
@@ -291,7 +300,10 @@ impl ClientCommand {
 
         self.client.sync().await;
         self.client.push_verifier_signature(graph_id);
-        self.client.flush().await;
+        if let Err(e) = self.client.flush().await {
+            eprintln!("Failed to save data to remote storage: {e}");
+            return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+        }
 
         Ok(())
     }
@@ -322,7 +334,10 @@ impl ClientCommand {
             let mock_chain_service = get_mock_chain_service(outpoint, operator_public_key);
             self.client.set_chain_service(mock_chain_service);
             self.client.sync_l2().await;
-            self.client.flush().await;
+            if let Err(e) = self.client.flush().await {
+                eprintln!("Failed to save data to remote storage: {e}");
+                return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+            }
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
@@ -350,7 +365,10 @@ impl ClientCommand {
 
             // A bit inefficient, but fine for now: only flush if data changed
             if self.client.data() != &old_data {
-                self.client.flush().await;
+                if let Err(e) = self.client.flush().await {
+                    eprintln!("Failed to save data to remote storage: {e}");
+                    return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+                }
             } else {
                 sleep(Duration::from_millis(250)).await;
             }
@@ -425,7 +443,10 @@ impl ClientCommand {
                     amount: tx.output[outpoint.vout as usize].value,
                 };
                 let result = self.client.broadcast_peg_out(graph_id, input).await;
-                self.client.flush().await;
+                if let Err(e) = self.client.flush().await {
+                    eprintln!("Failed to save data to remote storage: {e}");
+                    return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+                }
                 result
             }
             Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
