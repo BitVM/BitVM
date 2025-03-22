@@ -9,9 +9,7 @@ use musig2::SecNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{
-    collections::{BTreeMap, HashMap},
-};
+use std::collections::{BTreeMap, HashMap};
 
 use crate::{
     commitments::CommitmentMessageId,
