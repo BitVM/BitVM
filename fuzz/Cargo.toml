@@ -21,3 +21,10 @@ path = "fuzz_targets/blake3.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "bigint"
+path = "fuzz_targets/bigint/bigint_transform.rs"
+test = false
+doc = false
+bench = false
