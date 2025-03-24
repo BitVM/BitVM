@@ -7,8 +7,9 @@ use crate::commitments::CommitmentMessageId;
 use crate::common::ZkProofVerifyingKey;
 use crate::constants::DestinationNetwork;
 use crate::contexts::base::generate_keys_from_secret;
+use crate::graphs::base::{PEG_IN_FEE, PEG_OUT_FEE};
 use crate::proof::{get_proof, invalidate_proof};
-use crate::transactions::base::Input;
+use crate::transactions::base::{Input, MIN_RELAY_FEE_PEG_OUT};
 use ark_serialize::CanonicalDeserialize;
 
 use bitcoin::{Address, PublicKey};
@@ -79,6 +80,62 @@ impl ClientCommand {
         }
     }
 
+    async fn get_funding_utxo_input(&self, utxo_arg: Option<&String>) -> io::Result<Input> {
+        let utxo = utxo_arg.expect("Missing UTXO argument, please see help.");
+        let outpoint = OutPoint::from_str(utxo)
+            .expect("Could not parse the provided UTXO, please see help for the correct format.");
+        let tx = self
+            .client
+            .esplora
+            .get_tx(&outpoint.txid)
+            .await
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Esplora failed to retrieve tx: {e}"),
+                )
+            })?;
+        let tx = tx.expect(&format!("Esplora did not find a txid {}", outpoint.txid));
+
+        Ok(Input {
+            outpoint,
+            amount: tx.output[outpoint.vout as usize].value,
+        })
+    }
+
+    pub fn get_funding_amounts_command() -> Command {
+        Command::new("get-funding-amounts")
+            .short_flag('m')
+            .about("Get minimum required amounts for the funding UTXOs (to be used in testing)")
+            .after_help(
+                "This is useful when creating the funding UTXOs for the peg-in and peg-out graphs.",
+            )
+    }
+
+    pub async fn handle_get_funding_amounts(&self) -> io::Result<()> {
+        const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
+
+        println!("Minimum required input amounts");
+        println!("------------------------------");
+        println!(
+            "'Peg-in deposit' tx input:  {} SAT (spendable by [DEPOSITOR])",
+            INITIAL_AMOUNT + PEG_IN_FEE
+        );
+        println!(
+            "'Peg-out confirm' tx input: {} SAT (spendable by [OPERATOR])",
+            INITIAL_AMOUNT + PEG_OUT_FEE
+        );
+        println!(
+            "'Peg-out' tx input:         {} SAT (spendable by [OPERATOR])",
+            INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_OUT
+        );
+
+        println!();
+        self.handle_get_depositor_address().await?;
+        self.handle_get_operator_address().await?;
+        Ok(())
+    }
+
     pub fn get_operator_address_command() -> Command {
         Command::new("get-operator-address")
             .short_flag('o')
@@ -86,9 +143,9 @@ impl ClientCommand {
             .after_help("Get an address spendable by the configured operator private key")
     }
 
-    pub async fn handle_get_operator_address(&mut self) -> io::Result<()> {
+    pub async fn handle_get_operator_address(&self) -> io::Result<()> {
         println!(
-            "Operator address: {}",
+            "[OPERATOR] address: {}",
             self.client.get_operator_address().to_string().green()
         );
         Ok(())
@@ -130,9 +187,9 @@ impl ClientCommand {
             .after_help("Get an address spendable by the configured depositor private key")
     }
 
-    pub async fn handle_get_depositor_address(&mut self) -> io::Result<()> {
+    pub async fn handle_get_depositor_address(&self) -> io::Result<()> {
         println!(
-            "Depositor address: {}",
+            "[DEPOSITOR] address: {}",
             self.client.get_depositor_address().to_string().green()
         );
         Ok(())
@@ -184,22 +241,12 @@ impl ClientCommand {
     ) -> io::Result<()> {
         self.client.sync().await;
 
-        let utxo = sub_matches.get_one::<String>("utxo").unwrap();
         let evm_address = sub_matches
             .get_one::<String>("destination_address")
             .unwrap();
-        let outpoint = OutPoint::from_str(utxo).unwrap();
-
-        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-        let tx = tx.expect(&format!(
-            "Error: {} did not return any tx for txid {}",
-            self.client.esplora.url(),
-            outpoint.txid
-        ));
-        let input = Input {
-            outpoint,
-            amount: tx.output[outpoint.vout as usize].value,
-        };
+        let input = self
+            .get_funding_utxo_input(sub_matches.get_one::<String>("utxo"))
+            .await?;
         let peg_in_id = self.client.create_peg_in_graph(input, evm_address).await;
 
         self.client.flush().await;
@@ -234,16 +281,10 @@ impl ClientCommand {
     ) -> io::Result<()> {
         self.client.sync().await;
 
-        let utxo = sub_matches.get_one::<String>("utxo").unwrap();
         let peg_in_id = sub_matches.get_one::<String>("peg_in_id").unwrap();
-        let outpoint = OutPoint::from_str(utxo).unwrap();
-
-        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-        let tx = tx.unwrap();
-        let input = Input {
-            outpoint,
-            amount: tx.output[outpoint.vout as usize].value,
-        };
+        let input = self
+            .get_funding_utxo_input(sub_matches.get_one::<String>("utxo"))
+            .await?;
 
         let peg_out_id = self.client.create_peg_out_graph(
             peg_in_id,
@@ -312,7 +353,9 @@ impl ClientCommand {
         sub_matches: &ArgMatches,
     ) -> io::Result<()> {
         let utxo = sub_matches.get_one::<String>("utxo").unwrap();
-        let outpoint = OutPoint::from_str(utxo).unwrap();
+        let outpoint = OutPoint::from_str(utxo).expect(
+            "Could not parse the provided UTXO, please see help for the correct format: {e}.",
+        );
 
         if let Some(operator_secret) = &self.config.keys.operator {
             let (_, operator_public_key) =
@@ -385,6 +428,9 @@ impl ClientCommand {
                     .subcommand(Command::new("start_time").about("Broadcast start time"))
                     .subcommand(Command::new("assert_initial").about("Broadcast assert initial"))
                     .subcommand(
+                        Command::new("assert_commits").about("Broadcast assert commitments"),
+                    )
+                    .subcommand(
                         Command::new("assert_commit_1").about("Broadcast assert commit 1"),
                     )
                     .subcommand(
@@ -411,65 +457,63 @@ impl ClientCommand {
         let subcommand = sub_matches.subcommand();
         let graph_id = subcommand.unwrap().1.get_one::<String>("graph_id").unwrap();
 
-        let result = match subcommand.unwrap().1.subcommand() {
-            Some(("deposit", _)) => self.client.broadcast_peg_in_deposit(graph_id).await,
-            Some(("refund", _)) => self.client.broadcast_peg_in_refund(graph_id).await,
-            Some(("confirm", _)) => self.client.broadcast_peg_in_confirm(graph_id).await,
-            Some(("peg_out", _)) => {
-                let utxo = subcommand.unwrap().1.get_one::<String>("utxo").unwrap();
-                let outpoint = OutPoint::from_str(utxo).unwrap();
-                let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-                let tx = tx.unwrap();
-                let input = Input {
-                    outpoint,
-                    amount: tx.output[outpoint.vout as usize].value,
-                };
-                let result = self.client.broadcast_peg_out(graph_id, input).await;
-                self.client.flush().await;
-                result
+        match subcommand.unwrap().1.subcommand() {
+            Some(("assert_commits", _)) => {
+                let result = self
+                    .client
+                    .broadcast_assert_commits(graph_id, &get_proof())
+                    .await;
+                if let Err(e) = result {
+                    println!("Failed to broadcast transaction: {e}");
+                }
             }
-            Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
-            Some(("kick_off_1", _)) => self.client.broadcast_kick_off_1(graph_id).await,
-            Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
-            Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,
-            Some(("assert_initial", _)) => self.client.broadcast_assert_initial(graph_id).await,
-            Some(("assert_commit_1", _)) => {
-                self.client
-                    .broadcast_assert_commit_1(graph_id, &get_proof())
-                    .await
-            }
-            Some(("assert_commit_2", _)) => {
-                self.client
-                    .broadcast_assert_commit_2(graph_id, &get_proof())
-                    .await
-            }
-            Some(("assert_commit_1_invalid", _)) => {
-                self.client
-                    .broadcast_assert_commit_1(graph_id, &invalidate_proof(&get_proof()))
-                    .await
-            }
-            Some(("assert_commit_2_invalid", _)) => {
-                self.client
-                    .broadcast_assert_commit_2(graph_id, &invalidate_proof(&get_proof()))
-                    .await
-            }
-            Some(("assert_final", _)) => self.client.broadcast_assert_final(graph_id).await,
-            Some(("take_1", _)) => self.client.broadcast_take_1(graph_id).await,
-            Some(("take_2", _)) => self.client.broadcast_take_2(graph_id).await,
-            Some(("disprove", _)) => {
-                let address = subcommand.unwrap().1.get_one::<String>("address").unwrap();
-                let reward_address = Address::from_str(address).unwrap();
-                let reward_script = reward_address.assume_checked().script_pubkey(); // TODO: verify checked/unchecked address
+            Some((others, _)) => {
+                let result = match others {
+                    "deposit" => self.client.broadcast_peg_in_deposit(graph_id).await,
+                    "refund" => self.client.broadcast_peg_in_refund(graph_id).await,
+                    "confirm" => self.client.broadcast_peg_in_confirm(graph_id).await,
+                    "peg_out" => {
+                        let input = self
+                            .get_funding_utxo_input(subcommand.unwrap().1.get_one::<String>("utxo"))
+                            .await?;
+                        let result = self.client.broadcast_peg_out(graph_id, input).await;
+                        self.client.flush().await;
+                        result
+                    }
+                    "peg_out_confirm" => self.client.broadcast_peg_out_confirm(graph_id).await,
+                    "kick_off_1" => self.client.broadcast_kick_off_1(graph_id).await,
+                    "kick_off_2" => self.client.broadcast_kick_off_2(graph_id).await,
+                    "start_time" => self.client.broadcast_start_time(graph_id).await,
+                    "assert_initial" => self.client.broadcast_assert_initial(graph_id).await,
+                    "assert_commit_1_invalid" => {
+                        self.client
+                            .broadcast_assert_commit_1(graph_id, &invalidate_proof(&get_proof()))
+                            .await
+                    }
+                    "assert_commit_2_invalid" => {
+                        self.client
+                            .broadcast_assert_commit_2(graph_id, &invalidate_proof(&get_proof()))
+                            .await
+                    }
+                    "assert_final" => self.client.broadcast_assert_final(graph_id).await,
+                    "take_1" => self.client.broadcast_take_1(graph_id).await,
+                    "take_2" => self.client.broadcast_take_2(graph_id).await,
+                    "disprove" => {
+                        let address = subcommand.unwrap().1.get_one::<String>("address").unwrap();
+                        let reward_address = Address::from_str(address).unwrap();
+                        let reward_script = reward_address.assume_checked().script_pubkey(); // TODO: verify checked/unchecked address
 
-                self.client
-                    .broadcast_disprove(graph_id, reward_script)
-                    .await
+                        self.client
+                            .broadcast_disprove(graph_id, reward_script)
+                            .await
+                    }
+                    &_ => unreachable!(),
+                };
+                if let Err(e) = result {
+                    println!("Failed to broadcast transaction: {e}");
+                }
             }
             _ => unreachable!(),
-        };
-
-        if let Err(e) = result {
-            println!("Failed to broadcast transaction: {e}");
         }
 
         Ok(())

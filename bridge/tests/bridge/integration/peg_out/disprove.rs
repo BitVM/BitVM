@@ -23,7 +23,9 @@ use num_traits::ToPrimitive;
 use crate::bridge::{
     assert::helper::create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, verify_funding_inputs, wait_for_timelock_expiry},
+    helper::{
+        check_tx_output_sum, verify_funding_inputs, wait_for_confirmation, wait_for_timelock_expiry,
+    },
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test_full, INITIAL_AMOUNT},
 };
@@ -167,6 +169,7 @@ async fn test_disprove_success() {
         "error: {:?}",
         assert_commit_2_result.err()
     );
+    wait_for_confirmation(config.network).await;
 
     // assert final
     let vout_0 = 0; // connector D
@@ -291,7 +294,7 @@ async fn test_disprove_success() {
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
     disprove.add_input_output(
         &config.connector_c,
-        script_index as u32,
+        script_index,
         disprove_witness,
         verifier_reward_script,
     );

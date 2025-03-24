@@ -2,7 +2,7 @@ use bitcoin::{
     key::{Keypair, TapTweak},
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
-    taproot::{LeafVersion, TaprootSpendInfo},
+    taproot::{ControlBlock, LeafVersion, TaprootSpendInfo},
     Amount, EcdsaSighashType, PublicKey, Script, ScriptBuf, TapLeafHash, TapNodeHash,
     TapSighashType, Transaction, TxOut,
 };
@@ -229,6 +229,23 @@ pub fn push_taproot_leaf_script_and_control_block_to_witness(
     let control_block = taproot_spend_info
         .control_block(&prevout_leaf)
         .expect("Unable to create Control block");
+
+    tx.input[input_index]
+        .witness
+        .push(prevout_leaf.0.to_bytes());
+
+    tx.input[input_index]
+        .witness
+        .push(control_block.serialize());
+}
+
+pub fn push_taproot_leaf_script_and_cached_control_block_to_witness(
+    tx: &mut Transaction,
+    input_index: usize,
+    control_block: &ControlBlock,
+    script: &Script,
+) {
+    let prevout_leaf = (ScriptBuf::from(script), LeafVersion::TapScript);
 
     tx.input[input_index]
         .witness

@@ -47,6 +47,7 @@ derive_more.workspace = true
 zstd = "0.13.2"
 bitcode = "0.6.3"
 human_bytes = { version = "0.4", features = ["fast"] }
+lru = "0.13.0"
 
 [profile.dev]
 opt-level = 3

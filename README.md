@@ -140,6 +140,13 @@ The BitVM CLI application can be invoked with various commands. The general synt
 - -w, --withdrawer <SECRET_KEY>: Secret key for the withdrawer.
 - -k, --vk <KEY>: Zero-knowledge proof verifying key.
 
+#### Get Funding Amounts (useful in testing):
+1. Description: Get minimum required amounts for the funding UTXOs (to be used in testing).
+2. Usage:
+```bash
+./target/release/bridge get-funding-amounts
+```
+
 #### Get Operator Address:
 1. Description: Retrieve the address spendable by the registered operator key.
 2. Usage:

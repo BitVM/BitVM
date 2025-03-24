@@ -101,7 +101,7 @@ fn verify_schnorr_signature(sig: &Signature, msg: &Message, pubkey: &XOnlyPublic
     match sig.verify(msg, pubkey) {
         Ok(()) => true,
         Err(e) => {
-            eprintln!("verify_schnorr() failed with: {e}");
+            eprintln!("Signature::verify() failed with: {e}");
             false
         }
     }
