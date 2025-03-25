@@ -729,7 +729,7 @@ mod tests {
     use super::*;
     use crate::execute_script;
     use crate::u4::u4_std::u4_drop;
-    use bitcoin::hex::DisplayHex;
+    use bitcoin::hex::{DisplayHex, FromHex};
     use bitcoin_script::Script as StructuredScript;
     use bitcoin_script_stack::stack::{script, Script, StackTracker};
     use sha2::{Digest, Sha256};
@@ -778,10 +778,10 @@ mod tests {
     }
     fn test_sha256(hex_in: &str, use_add_table: bool, use_full_xor: bool) {
         let mut hasher = Sha256::new();
-        let data = hex::decode(hex_in).unwrap();
+        let data = Vec::<u8>::from_hex(hex_in).unwrap();
         hasher.update(&data);
         let result = hasher.finalize();
-        let res = hex::encode(result);
+        let res = result.to_lower_hex_string();
         println!("Result: {}", res);
 
         let mut stack = StackTracker::new();
@@ -923,13 +923,13 @@ mod tests {
         // 01000000 0000000000000000000000000000000000000000000000000000000000000000 3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a 29ab5f49 ffff001d 1dac2b7c
         let block_header = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
         let mut hasher = Sha256::new();
-        let data = hex::decode(block_header).unwrap();
+        let data = Vec::<u8>::from_hex(block_header).unwrap();
         hasher.update(&data);
         let mut result = hasher.finalize();
         hasher = Sha256::new();
         hasher.update(result);
         result = hasher.finalize();
-        let res = hex::encode(result);
+        let res = result.to_lower_hex_string();
         let genesis_block_hash = "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000";
         assert_eq!(res.as_str(), genesis_block_hash);
 

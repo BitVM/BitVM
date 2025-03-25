@@ -233,6 +233,7 @@ mod tests {
 
     use bitcoin::{
         absolute,
+        hex::DisplayHex,
         key::{
             constants::{SCHNORR_SIGNATURE_SIZE, SECRET_KEY_SIZE},
             Keypair,
@@ -265,7 +266,7 @@ mod tests {
         for signer in 0..SIGNERS {
             let (keypair, pubkey) = generate_keys_from_secret(
                 bitcoin::Network::Bitcoin,
-                &hex::encode([(signer + 1) as u8; SECRET_KEY_SIZE]),
+                &[(signer + 1) as u8; SECRET_KEY_SIZE].to_lower_hex_string(),
             );
             keypairs.push(keypair);
             pubkeys.push(pubkey);

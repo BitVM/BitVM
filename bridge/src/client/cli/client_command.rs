@@ -12,8 +12,8 @@ use crate::proof::{get_proof, invalidate_proof};
 use crate::transactions::base::{Input, MIN_RELAY_FEE_PEG_OUT};
 use ark_serialize::CanonicalDeserialize;
 
-use bitcoin::{Address, PublicKey};
-use bitcoin::{Network, OutPoint};
+use bitcoin::hex::FromHex;
+use bitcoin::{Address, Network, OutPoint, PublicKey};
 use clap::{arg, ArgMatches, Command};
 use colored::Colorize;
 use std::io::{self, Write};
@@ -55,7 +55,7 @@ impl ClientCommand {
 
         let mut verifying_key = None;
         if let Some(vk) = config.keys.verifying_key.clone() {
-            let bytes = hex::decode(vk).unwrap();
+            let bytes = Vec::<u8>::from_hex(&vk).unwrap();
             verifying_key = Some(ZkProofVerifyingKey::deserialize_compressed(&*bytes).unwrap());
         }
 

@@ -1,3 +1,4 @@
+use bitcoin::hex::DisplayHex;
 use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
@@ -31,14 +32,14 @@ impl WinternitzSecret {
         //let parameters = WINTERNITZ_HASH_PARAMETERS;
         let parameters = Parameters::new_by_bit_length(message_size as u32 * 8, LOG_D);
         WinternitzSecret {
-            secret_key: hex::encode(buffer).into(),
+            secret_key: buffer.to_lower_hex_string().into(),
             parameters,
         }
     }
 
     pub fn from_string(secret: &str, parameters: &Parameters) -> Self {
         WinternitzSecret {
-            secret_key: hex::encode(secret.as_bytes()).into(),
+            secret_key: secret.as_bytes().to_lower_hex_string().into(),
             parameters: parameters.clone(),
         }
     }

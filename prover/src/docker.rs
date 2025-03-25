@@ -1,4 +1,4 @@
-use hex::ToHex;
+use hex_conservative::{DisplayHex, FromHex};
 use num_bigint::BigUint;
 use num_traits::Num;
 use risc0_groth16::{to_json, ProofJson, Seal};
@@ -79,7 +79,7 @@ pub fn stark_to_succinct(
     let mut succinct_control_root_bytes: [u8; 32] =
         succinct_control_root.as_bytes().try_into().unwrap();
     succinct_control_root_bytes.reverse();
-    let succinct_control_root_bytes: String = succinct_control_root_bytes.encode_hex();
+    let succinct_control_root_bytes: String = succinct_control_root_bytes.to_lower_hex_string();
     let a1_str = succinct_control_root_bytes[0..32].to_string();
     let a0_str = succinct_control_root_bytes[32..64].to_string();
     println!("Succinct control root a0: {:?}", a0_str);
@@ -149,8 +149,8 @@ pub fn stark_to_succinct(
     };
 
     // Step 3: Decode the hexadecimal string to a byte vector
-    let output_byte_vec = hex::decode(&output_content_hex).unwrap();
-    // let output_byte_vec = hex::decode(output_hex).unwrap();
+    let output_byte_vec = Vec::<u8>::from_hex(&output_content_hex).unwrap();
+    // let output_byte_vec = Vec::<u8>::from_hex(output_hex).unwrap();
     let output_bytes: [u8; 31] = output_byte_vec.as_slice().try_into().unwrap();
     (proof_json.try_into().unwrap(), output_bytes)
 }

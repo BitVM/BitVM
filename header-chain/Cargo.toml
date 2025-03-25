@@ -12,5 +12,4 @@ bitcoin = "0.32.5"
 serde = { version = "1.0", default-features = false }
 
 [dev-dependencies]
-hex = "0.4.3"
 hex-literal = "0.4.1"
