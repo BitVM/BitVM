@@ -90,7 +90,7 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     let bitcom_scripts: Vec<treepp::Script> =
         bitcom_scripts_from_segments(&mock_segments, inpubkeys)
             .into_iter()
-            .filter(|f| f.len() > 0)
+            .filter(|f| !f.is_empty())
             .collect();
     assert_eq!(ops_scripts.len(), bitcom_scripts.len());
     let res: Vec<treepp::Script> = ops_scripts
