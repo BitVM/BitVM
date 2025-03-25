@@ -10,7 +10,6 @@ bitcoin-script.workspace = true
 bitcoin.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
-hex.workspace = true
 bitcoin-scriptexec.workspace = true
 serde.workspace = true
 num-traits.workspace = true

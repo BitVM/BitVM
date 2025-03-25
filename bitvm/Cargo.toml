@@ -8,7 +8,6 @@ exclude = ["tests"]
 [dependencies]
 bitcoin-script.workspace = true
 bitcoin.workspace = true
-hex.workspace = true
 bitcoin-scriptexec.workspace = true
 serde.workspace = true
 num-traits.workspace = true

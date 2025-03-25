@@ -916,6 +916,7 @@ mod tests {
     use crate::hash::sha256::*;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::{u32_equal, u32_equalverify};
+    use bitcoin::hex::{DisplayHex, FromHex};
     use sha2::{Digest, Sha256};
 
     fn push_bytes_hex(hex: &str) -> Script {
@@ -953,13 +954,13 @@ mod tests {
         );
         let hex_in = "6162636462636465636465666465666765666768666768696768696a68696a6b696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f70716f7071727071727371727374727374757374757674757677";
         let mut hasher = Sha256::new();
-        let data = hex::decode(hex_in).unwrap();
+        let data = Vec::<u8>::from_hex(hex_in).unwrap();
         hasher.update(&data);
         let mut result = hasher.finalize();
         hasher = Sha256::new();
         hasher.update(result);
         result = hasher.finalize();
-        let res = hex::encode(result);
+        let res = result.to_lower_hex_string();
         let script = script! {
             {push_bytes_hex(hex_in)}
             {sha256(hex_in.len()/2)}
@@ -1195,13 +1196,13 @@ mod tests {
         // 01000000 0000000000000000000000000000000000000000000000000000000000000000 3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a 29ab5f49 ffff001d 1dac2b7c
         let block_header = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
         let mut hasher = Sha256::new();
-        let data = hex::decode(block_header).unwrap();
+        let data = Vec::<u8>::from_hex(block_header).unwrap();
         hasher.update(&data);
         let mut result = hasher.finalize();
         hasher = Sha256::new();
         hasher.update(result);
         result = hasher.finalize();
-        let res = hex::encode(result);
+        let res = result.to_lower_hex_string();
         let genesis_block_hash = "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000";
         assert_eq!(res.as_str(), genesis_block_hash);
         let script = script! {

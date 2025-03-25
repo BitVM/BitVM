@@ -20,6 +20,7 @@ use crate::{
 };
 use bitcoin::{
     hashes::{hash160, Hash},
+    hex::DisplayHex,
     key::TweakedPublicKey,
     taproot::{ControlBlock, LeafVersion, TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TapNodeHash, Transaction, TxIn, XOnlyPublicKey,
@@ -267,7 +268,7 @@ fn spend_info_cache_id(
 ) -> String {
     let bytes = first_winternitz_public_key_bytes(commitment_public_keys);
     let hash = hash160::Hash::hash(&bytes);
-    hex::encode(hash)
+    hash.as_byte_array().to_lower_hex_string()
 }
 
 fn lock_script_cache_id(
@@ -277,7 +278,7 @@ fn lock_script_cache_id(
     let mut bytes = first_winternitz_public_key_bytes(commitment_public_keys);
     bytes.append(leaf_index.to_be_bytes().to_vec().as_mut());
     let hash = hash160::Hash::hash(&bytes);
-    hex::encode(hash)
+    hash.as_byte_array().to_lower_hex_string()
 }
 
 fn generate_script_and_control_block(

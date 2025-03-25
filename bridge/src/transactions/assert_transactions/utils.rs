@@ -1,3 +1,4 @@
+use bitcoin::hex::DisplayHex;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
@@ -73,7 +74,7 @@ pub fn sign_assert_tx_with_groth16_proof(
     commitment_secrets.clone().into_iter().for_each(|(k, v)| {
         if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
             let index = u32::from_str_radix(&name, 10).unwrap();
-            sorted_secrets.push((index, hex::encode(v.secret_key)));
+            sorted_secrets.push((index, v.secret_key.to_lower_hex_string()));
         }
     });
 

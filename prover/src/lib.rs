@@ -173,7 +173,7 @@ fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
-
+    use bitcoin::hex::FromHex;
     use docker::stark_to_succinct;
     use final_spv::{
         final_circuit::FinalCircuitInput, merkle_tree::BitcoinMerkleTree, spv::SPV,
@@ -221,8 +221,8 @@ mod tests {
         }
 
         let output = BlockHeaderCircuitOutput::try_from_slice(&receipt.journal.bytes).unwrap();
-        let tx: CircuitTransaction = CircuitTransaction(bitcoin::consensus::deserialize(&hex::decode("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000").unwrap()).unwrap());
-        let block_header: CircuitBlockHeader = CircuitBlockHeader::try_from_slice(hex::decode("0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c").unwrap().as_slice()).unwrap();
+        let tx: CircuitTransaction = CircuitTransaction(bitcoin::consensus::deserialize(&Vec::<u8>::from_hex("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000").unwrap()).unwrap());
+        let block_header: CircuitBlockHeader = CircuitBlockHeader::try_from_slice(Vec::<u8>::from_hex("0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c").unwrap().as_slice()).unwrap();
         let bitcoin_merkle_tree: BitcoinMerkleTree = BitcoinMerkleTree::new(vec![tx.txid()]);
         let bitcoin_inclusion_proof = bitcoin_merkle_tree.generate_proof(0);
         let (_, mmr_inclusion_proof) = mmr_native.generate_proof(0);

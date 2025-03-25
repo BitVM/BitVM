@@ -492,9 +492,11 @@ impl Converter for ToBytesConverter {
 #[cfg(test)]
 mod test {
     use super::*;
+    use bitcoin::hex::FromHex;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use std::sync::{LazyLock, Mutex};
+
     static MALICIOUS_RNG: LazyLock<Mutex<ChaCha20Rng>> =
         LazyLock::new(|| Mutex::new(ChaCha20Rng::seed_from_u64(337)));
 
@@ -600,7 +602,7 @@ mod test {
 
     #[test]
     fn test_winternitz_with_actual_message_success() {
-        let secret_key = match hex::decode(SAMPLE_SECRET_KEY) {
+        let secret_key = match Vec::<u8>::from_hex(SAMPLE_SECRET_KEY) {
             Ok(bytes) => bytes,
             Err(_) => panic!("Invalid hex string"),
         };
@@ -632,7 +634,7 @@ mod test {
 
     #[test]
     fn test_winternitz_success() {
-        let secret_key = match hex::decode(SAMPLE_SECRET_KEY) {
+        let secret_key = match Vec::<u8>::from_hex(SAMPLE_SECRET_KEY) {
             Ok(bytes) => bytes,
             Err(_) => panic!("Invalid hex string"),
         };
@@ -685,7 +687,7 @@ mod test {
 
     #[test]
     fn test_winternitz_fail() {
-        let secret_key = match hex::decode(SAMPLE_SECRET_KEY) {
+        let secret_key = match Vec::<u8>::from_hex(SAMPLE_SECRET_KEY) {
             Ok(bytes) => bytes,
             Err(_) => panic!("Invalid hex string"),
         };

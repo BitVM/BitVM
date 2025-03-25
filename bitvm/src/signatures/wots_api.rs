@@ -23,6 +23,7 @@ macro_rules! impl_wots {
             pub mod $mod_name {
                 use super::*;
                 use bitcoin_script::script;
+                use bitcoin::hex::FromHex;
 
                 /// Message length in bytes.
                 pub const MSG_LEN: u32 = $MSG_LEN;
@@ -92,7 +93,7 @@ macro_rules! impl_wots {
 
                 /// Generate a signature for a message using the provided secret.
                 pub fn get_signature(secret: &str, msg_bytes: &[u8]) -> Signature {
-                    let secret_key = match hex::decode(secret) {
+                    let secret_key = match Vec::<u8>::from_hex(secret) {
                         Ok(bytes) => bytes,
                         Err(_) => panic!("Invalid hex string for secret"),
                     };
@@ -108,7 +109,7 @@ macro_rules! impl_wots {
 
                 /// Generate a WOTS public key using the provided secret.
                 pub fn generate_public_key(secret: &str) -> PublicKey {
-                    let secret_key = match hex::decode(secret) {
+                    let secret_key = match Vec::<u8>::from_hex(secret) {
                         Ok(bytes) => bytes,
                         Err(_) => panic!("Invalid hex string for secret"),
                     };
@@ -155,7 +156,7 @@ macro_rules! impl_wots {
 
                     /// Generate a compact signature for a message.
                     pub fn get_signature(secret: &str, msg_bytes: &[u8]) -> Signature {
-                        let secret_key = match hex::decode(secret) {
+                        let secret_key = match Vec::<u8>::from_hex(secret) {
                             Ok(bytes) => bytes,
                             Err(_) => panic!("Invalid hex string for secret"),
                         };
