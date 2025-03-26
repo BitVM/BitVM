@@ -163,14 +163,6 @@ pub fn calculate_succinct_output_prefix(method_id: &[u8]) -> [u8; 32] {
 
     result
 }
-
-fn reverse_bits_and_copy(input: &[u8], output: &mut [u8]) {
-    for i in 0..8 {
-        let temp = u32::from_be_bytes(input[4 * i..4 * i + 4].try_into().unwrap()).reverse_bits();
-        output[4 * i..4 * i + 4].copy_from_slice(&temp.to_le_bytes());
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use bitcoin::hex::FromHex;
@@ -259,14 +251,10 @@ mod tests {
         let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
         println!("Constants digest: {:#?}", constants_digest);
         println!("Journal: {:#?}", receipt.journal);
-        let mut constants_blake3_input = [0u8; 32];
-        let mut journal_blake3_input = [0u8; 32];
 
-        reverse_bits_and_copy(&constants_digest, &mut constants_blake3_input);
-        reverse_bits_and_copy(&journal, &mut journal_blake3_input);
         let mut hasher = blake3::Hasher::new();
-        hasher.update(&constants_blake3_input);
-        hasher.update(&journal_blake3_input);
+        hasher.update(&constants_digest);
+        hasher.update(&journal);
         let final_output = hasher.finalize();
         let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
         let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
