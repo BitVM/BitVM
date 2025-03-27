@@ -23,7 +23,7 @@ doc = false
 bench = false
 
 [[bin]]
-name = "bigint"
+name = "bigint_transform"
 path = "fuzz_targets/bigint/bigint_transform.rs"
 test = false
 doc = false

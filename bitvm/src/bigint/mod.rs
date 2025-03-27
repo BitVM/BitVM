@@ -6,6 +6,7 @@ pub mod mul;
 pub mod std;
 pub mod sub;
 
+#[derive(Debug)]
 pub struct BigIntImpl<const N_BITS: u32, const LIMB_SIZE: u32> {}
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
