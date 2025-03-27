@@ -8,7 +8,20 @@ use libfuzzer_sys::fuzz_target;
 use bitvm::execute_script_buf;
 use bitvm::bigint::{std::bigint_verify_output_script, BigIntImpl, U254, U256, U64};
 
+macro_rules! match_bigint_type {
+    ($bigint_enum:expr, $method:ident $(, $args:expr)* ) => {
+        match $bigint_enum {
+            BigIntType::U64(_)  => U64::$method($($args),*),
+            BigIntType::U254(_) => U254::$method($($args),*),
+            BigIntType::U256(_) => U256::$method($($args),*),
+            BigIntType::U384(_) => U384::$method($($args),*),
+        }
+    };
+}
+
 pub type U384 = BigIntImpl<384, 29>;
+
+pub const BIGINT_TYPE_LAST_INDEX: u32 = 3;
 
 #[derive(Debug)]
 pub enum BigIntType {
@@ -60,62 +73,21 @@ impl BigIntType {
 
 impl BigIntConfig {
     pub fn create_transform_script(&self) -> Vec<u8> {
-        let mut bytes = match self.bigint_type {
-            BigIntType::U64(_) => U64::push_u32_le(self.value.as_ref()).compile().to_bytes(),
-            BigIntType::U254(_) => U254::push_u32_le(self.value.as_ref()).compile().to_bytes(),
-            BigIntType::U256(_) => U256::push_u32_le(self.value.as_ref()).compile().to_bytes(),
-            BigIntType::U384(_) => U384::push_u32_le(self.value.as_ref()).compile().to_bytes(),
-        };
+        let mut bytes = match_bigint_type!(self.bigint_type, push_u32_le, self.value.as_ref()).compile().to_bytes();
 
-        let first_transform = match self.bigint_type {
-            BigIntType::U64(_) => U64::transform_limbsize(self.limb_size, self.transform_list[0]),
-            BigIntType::U254(_) => U254::transform_limbsize(self.limb_size, self.transform_list[0]),
-            BigIntType::U256(_) => U256::transform_limbsize(self.limb_size, self.transform_list[0]),
-            BigIntType::U384(_) => U384::transform_limbsize(self.limb_size, self.transform_list[0]),
-        };
+        let first_transform = match_bigint_type!(self.bigint_type, transform_limbsize, self.limb_size, self.transform_list[0]);
         bytes.extend_from_slice(first_transform.compile().as_bytes());
 
         // Intermediate transforms
-        for i in 0..self.transform_list.len() - 1 {
-            let transform = match self.bigint_type {
-                BigIntType::U64(_) => {
-                    U64::transform_limbsize(self.transform_list[i], self.transform_list[i + 1])
-                }
-                BigIntType::U254(_) => {
-                    U254::transform_limbsize(self.transform_list[i], self.transform_list[i + 1])
-                }
-                BigIntType::U256(_) => {
-                    U256::transform_limbsize(self.transform_list[i], self.transform_list[i + 1])
-                }
-                BigIntType::U384(_) => {
-                    U384::transform_limbsize(self.transform_list[i], self.transform_list[i + 1])
-                }
-            };
+        for window in self.transform_list.windows(2) {
+            let transform = match_bigint_type!(self.bigint_type, transform_limbsize, window[0], window[1]);
             bytes.extend_from_slice(transform.compile().as_bytes());
         }
 
-        let final_transform = match self.bigint_type {
-            BigIntType::U64(_) => {
-                U64::transform_limbsize(*self.transform_list.last().unwrap(), self.limb_size)
-            }
-            BigIntType::U254(_) => {
-                U254::transform_limbsize(*self.transform_list.last().unwrap(), self.limb_size)
-            }
-            BigIntType::U256(_) => {
-                U256::transform_limbsize(*self.transform_list.last().unwrap(), self.limb_size)
-            }
-            BigIntType::U384(_) => {
-                U384::transform_limbsize(*self.transform_list.last().unwrap(), self.limb_size)
-            }
-        };
+        let final_transform = match_bigint_type!(self.bigint_type, transform_limbsize, *self.transform_list.last().unwrap(), self.limb_size);
         bytes.extend_from_slice(final_transform.compile().as_bytes());
 
-        let push_original = match self.bigint_type {
-            BigIntType::U64(_) => U64::push_u32_le(self.value.as_ref()),
-            BigIntType::U254(_) => U254::push_u32_le(self.value.as_ref()),
-            BigIntType::U256(_) => U256::push_u32_le(self.value.as_ref()),
-            BigIntType::U384(_) => U384::push_u32_le(self.value.as_ref()),
-        };
+        let push_original = match_bigint_type!(self.bigint_type, push_u32_le, self.value.as_ref());
         bytes.extend_from_slice(push_original.compile().as_bytes());
 
         bytes
@@ -124,7 +96,7 @@ impl BigIntConfig {
 
 impl<'a, const TRANSFORM_LIST_SIZE: usize> Arbitrary<'a> for BigIntConfig<TRANSFORM_LIST_SIZE> {
     fn arbitrary(u: &mut Unstructured<'a>) -> Result<Self> {
-        let bigint_type = BigIntType::from_index(u.int_in_range(0..=2)?);
+        let bigint_type = BigIntType::from_index(u.int_in_range(0..=BIGINT_TYPE_LAST_INDEX)?);
         let limb_size = bigint_type.limb_size();
         let n_bits = bigint_type.n_bits();
         let transform_list = std::array::from_fn(|_| u.int_in_range(1..=31).unwrap());
