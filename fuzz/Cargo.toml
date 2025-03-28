@@ -15,6 +15,9 @@ blake3 = "=1.5.1"
 bitcoin = { version = "0.32.5" }
 bitcoin-script-stack = { git = "https://github.com/BitVM/rust-bitcoin-script-stack" }
 
+[lib]
+path = "fuzz_targets/bigint/macros.rs"
+
 [[bin]]
 name = "blake3"
 path = "fuzz_targets/blake3.rs"
