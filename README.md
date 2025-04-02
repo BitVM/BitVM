@@ -49,13 +49,6 @@ Below is a list of the components and their purpose.
   Groth16 uses BN254 to verify proof, the script is currently around 1 GB.
   Some hints are precomputed in this part, which is related to the paper "On Proving Pairings".
 
-- [**Chunker**](bitvm/src/chunker/):
-  Splits Groth16 into chunks.
-  These chunks make sure two principles:
-
-  1. Any chunks shouldn't be success with a right proof.
-  2. There are always some successful chunks with a wrong proof.
-
 - [**Signatures**](bitvm/src/signatures/):
   Bit commitment using
   [Winternitz signature](https://en.wikipedia.org/wiki/Lamport_signature#Short_keys_and_signature).
