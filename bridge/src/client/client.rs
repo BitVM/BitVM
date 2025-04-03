@@ -613,7 +613,7 @@ impl BitVMClient {
     //         //             match self.esplora.broadcast(&tx).await {
     //         //                 Ok(_) => {
     //         //                     println!(
-    //         //                         "Succesfully broadcast next transaction with id: {}",
+    //         //                         "Successfully broadcast next transaction with id: {}",
     //         //                         tx.compute_txid()
     //         //                     );
     //         //                     remove_utxo = Some(*outpoint);
@@ -1576,7 +1576,7 @@ impl BitVMClient {
     //                     match self.esplora.broadcast(&tx).await {
     //                         Ok(_) => {
     //                             println!(
-    //                                 "Succesfully broadcast next transaction with id: {}",
+    //                                 "Successfully broadcast next transaction with id: {}",
     //                                 tx.compute_txid()
     //                             );
     //                             remove_utxo = Some(*outpoint);
