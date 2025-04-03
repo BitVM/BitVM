@@ -130,7 +130,7 @@ fn utils_deserialize_assertions(
     cobjs
 }
 
-// mirror of the funtion get_assertion_from_segments
+// mirror of the function get_assertion_from_segments
 pub(crate) fn get_segments_from_assertion(
     assertions: Assertions,
     vk: ark_groth16::VerifyingKey<Bn254>,
