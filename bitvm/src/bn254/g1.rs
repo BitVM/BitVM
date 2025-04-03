@@ -42,7 +42,7 @@ impl G1Affine {
         (script, hints)
     }
 
-    /// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
+    /// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine coordinates)
     /// two aspects:
     ///     1. T.y - alpha * T.x - bias = 0
     ///     2. Q.y - alpha * Q.x - bias = 0, make sure the alpha/-bias are the right ONEs
