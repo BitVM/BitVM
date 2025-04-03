@@ -385,7 +385,7 @@ async fn test_peg_out_fees() {
         )
         .await
         .unwrap();
-    // crowdfunding discrepency less than dust will be lost as relay fee
+    // crowdfunding discrepancy less than dust will be lost as relay fee
     check_tx_output_sum(
         challenge_input_amount.to_sat() - 1 + DUST_AMOUNT - MIN_RELAY_FEE_CHALLENGE,
         &challenge_tx,
