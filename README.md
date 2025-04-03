@@ -49,7 +49,7 @@ Below is a list of the components and their purpose.
   Groth16 uses BN254 to verify proof, the script is currently around 1 GB.
   Some hints are precomputed in this part, which is related to the paper "On Proving Pairings".
 
-- [**Chunker**](bitvm/src/chunker/):
+- [**Chunk**](bitvm/src/chunk/):
   Splits Groth16 into chunks.
   These chunks make sure two principles:
 
