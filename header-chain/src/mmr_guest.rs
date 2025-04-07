@@ -47,10 +47,6 @@ impl MMRGuest {
         }
         println!("GUEST: calculated subroot: {:?}", current_hash);
         println!("GUEST: subroots: {:?}", self.subroots);
-        if mmr_proof.subroot_idx < self.subroots.len() {
-            self.subroots[mmr_proof.subroot_idx] == current_hash
-        } else {
-            false
-        }
+        self.subroots.get(mmr_proof.subroot_idx) == Some(current_hash)
     }
 }
