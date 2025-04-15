@@ -17,6 +17,7 @@ use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
+use bitcoin::ScriptBuf;
 use bitcoin_script::script;
 
 use crate::{bn254::utils::Hint, execute_script};
@@ -393,7 +394,7 @@ fn utils_execute_chunked_g16(
     aux_hints: Vec<Vec<Hint>>,
     bc_hints: Vec<Script>,
     segments: &[Segment],
-    disprove_scripts: &[Script; NUM_TAPS],
+    disprove_scripts: &[ScriptBuf; NUM_TAPS],
 ) -> Option<(usize, Script)> {
     let mut tap_script_index = 0;
     for i in 0..aux_hints.len() {
@@ -406,10 +407,9 @@ fn utils_execute_chunked_g16(
             }
             {bc_hints[i].clone()}
         };
-        let total_script = script! {
-            {hint_script.clone()}
-            {disprove_scripts[tap_script_index].clone()}
-        };
+        let total_script = hint_script
+            .clone()
+            .push_script(disprove_scripts[tap_script_index].clone());
         let exec_result = execute_script(total_script);
         if exec_result.final_stack.len() > 1 {
             for i in 0..exec_result.final_stack.len() {
@@ -487,10 +487,10 @@ pub(crate) fn execute_script_from_assertion(
     }
 
     // collect partial scripts
-    let partial_scripts: Vec<Script> = partial_scripts_from_segments(segments)
+    let partial_scripts: Vec<ScriptBuf> = partial_scripts_from_segments(segments)
         .into_iter()
         .collect();
-    let partial_scripts: [Script; NUM_TAPS] = partial_scripts.try_into().unwrap();
+    let partial_scripts: [ScriptBuf; NUM_TAPS] = partial_scripts.try_into().unwrap();
     // collect witness
     let mul_hints = utils_collect_mul_hints_per_segment(segments);
     let bc_hints = collect_wots_msg_as_witness_per_segment(segments, assts);
@@ -502,7 +502,7 @@ pub(crate) fn execute_script_from_assertion(
 pub(crate) fn execute_script_from_signature(
     segments: &[Segment],
     signed_assts: Signatures,
-    disprove_scripts: &[Script; NUM_TAPS],
+    disprove_scripts: &[ScriptBuf; NUM_TAPS],
 ) -> Option<(usize, Script)> {
     // if there is a disprove script; with locking script; i can use bitcom witness
     // segments and signatures
@@ -601,6 +601,7 @@ pub(crate) fn get_pubkeys(secret_key: Vec<String>) -> PublicKeys {
 mod test {
     use crate::chunk::api_compiletime_utils::append_bitcom_locking_script_to_partial_scripts;
     use ark_serialize::CanonicalDeserialize;
+    use bitcoin::ScriptBuf;
 
     use super::*;
 
@@ -713,12 +714,10 @@ mod test {
             .collect::<Vec<String>>();
         let pubkeys = get_pubkeys(secrets);
         println!("execute_script_from_signature");
-        let partial_scripts: Vec<Script> = partial_scripts_from_segments(&segments)
-            .into_iter()
-            .collect();
+        let partial_scripts: Vec<ScriptBuf> = partial_scripts_from_segments(&segments);
         let disprove_scripts =
             append_bitcom_locking_script_to_partial_scripts(pubkeys, partial_scripts.to_vec());
-        let disprove_scripts: [Script; NUM_TAPS] = disprove_scripts.try_into().unwrap();
+        let disprove_scripts: [ScriptBuf; NUM_TAPS] = disprove_scripts.try_into().unwrap();
 
         let res = execute_script_from_signature(&segments, signed_assts, &disprove_scripts);
         assert!(res.is_none());

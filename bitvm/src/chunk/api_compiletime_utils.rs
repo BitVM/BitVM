@@ -12,6 +12,7 @@ use ark_bn254::Bn254;
 use ark_ec::bn::BnConfig;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
+use bitcoin::ScriptBuf;
 use bitcoin_script::script;
 use num_bigint::BigUint;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -38,9 +39,7 @@ pub(crate) struct Vkey {
     pub(crate) vky0: ark_bn254::G1Affine,
 }
 
-pub(crate) fn generate_partial_script(
-    vk: &ark_groth16::VerifyingKey<Bn254>,
-) -> Vec<bitcoin_script::Script> {
+pub(crate) fn generate_partial_script(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec<ScriptBuf> {
     println!("generate_partial_script");
     assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1);
 
@@ -68,10 +67,9 @@ pub(crate) fn generate_partial_script(
     println!("generate_partial_script; generate_segments_using_mock_proof");
     let segments = generate_segments_using_mock_proof(vk, false);
     println!("generate_partial_script; partial_scripts_from_segments");
-    let op_scripts: Vec<Script> = partial_scripts_from_segments(&segments)
-        .into_iter()
-        .collect();
+    let op_scripts: Vec<ScriptBuf> = partial_scripts_from_segments(&segments);
     assert_eq!(op_scripts.len(), NUM_TAPS);
+
     op_scripts
 }
 
@@ -80,8 +78,8 @@ pub(crate) fn generate_partial_script(
 // we do not need values at the input or outputs of tapscript
 pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     inpubkeys: PublicKeys,
-    ops_scripts: Vec<bitcoin_script::Script>,
-) -> Vec<bitcoin_script::Script> {
+    ops_scripts: Vec<ScriptBuf>,
+) -> Vec<ScriptBuf> {
     println!("append_bitcom_locking_script_to_partial_scripts; generage_segments_using_mock_vk_and_mock_proof");
     // mock_vk can be used because generating locking_script doesn't depend upon values or partial scripts; it's only a function of pubkey and ordering of input/outputs
     let mock_segments = generate_segments_using_mock_vk_and_mock_proof();
@@ -93,17 +91,14 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
             .filter(|f| !f.is_empty())
             .collect();
     assert_eq!(ops_scripts.len(), bitcom_scripts.len());
-    let res: Vec<treepp::Script> = ops_scripts
+    let res: Vec<ScriptBuf> = ops_scripts
         .into_iter()
         .zip(bitcom_scripts)
         .map(|(op_scr, bit_scr)| {
-            script! {
-                {bit_scr}
-                {op_scr}
-            }
+            let joint_scr = bit_scr.push_script(op_scr);
+            joint_scr.compile()
         })
         .collect();
-
     res
 }
 
@@ -195,7 +190,7 @@ pub(crate) fn generate_segments_using_mock_vk_and_mock_proof() -> Vec<Segment> {
     generate_segments_using_mock_proof(mock_vk, true)
 }
 
-pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<treepp::Script> {
+pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<ScriptBuf> {
     fn serialize_element_types(elems: &[ElementType]) -> String {
         // 1. Convert each variant to its string representation.
         let joined = elems
@@ -213,7 +208,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<treepp:
         format!("{}|{}", joined, unique_hash)
     }
 
-    let mut op_scripts: Vec<treepp::Script> = vec![];
+    let mut op_scripts: Vec<ScriptBuf> = vec![];
 
     // cache hashing script as it is repititive
     let mut hashing_script_cache: HashMap<String, Script> = HashMap::new();
@@ -259,10 +254,13 @@ pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<treepp:
             let elem_types_str = serialize_element_types(&elem_types_to_hash);
             let hash_scr = hashing_script_cache.get(&elem_types_str).unwrap();
 
-            op_scripts.push(script! {
-                {op_scr}
-                {hash_scr.clone()}
-            });
+            op_scripts.push(
+                script! {
+                    {script!().push_script(op_scr)}
+                    {hash_scr.clone()}
+                }
+                .compile(),
+            );
         }
     }
     op_scripts
