@@ -19,10 +19,10 @@ use super::{
     },
 };
 use ark_ff::Field;
+use bitcoin::ScriptBuf;
 use bitcoin_script::script;
 
 use super::taps_ext_miller::{chunk_final_verify, chunk_frob_fp12, chunk_hash_c, chunk_hash_c_inv};
-use crate::treepp::Script;
 
 pub type SegmentID = u32;
 
@@ -33,7 +33,7 @@ pub(crate) struct Segment {
     pub result: (DataType, ElementType),
     pub hints: Vec<Hint>,
     pub scr_type: ScriptType,
-    pub scr: Script,
+    pub scr: ScriptBuf,
     pub is_valid_input: bool,
 }
 
@@ -92,7 +92,7 @@ pub(crate) fn wrap_hint_squaring(skip: bool, segment_id: usize, in_a: &Segment) 
         result: (DataType::Fp6Data(sq), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::MillerSquaring,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -130,7 +130,7 @@ pub(crate) fn wrap_hint_init_t4(
         result: (DataType::G2EvalData(tmpt4), ElementType::G2EvalPoint),
         hints: op_hints,
         scr_type: ScriptType::PreMillerInitT4,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -160,7 +160,7 @@ pub(crate) fn wrap_hints_dense_dense_mul(
         result: (DataType::Fp6Data(dmul0), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::FoldedFp12Multiply,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -188,7 +188,7 @@ pub(crate) fn wrap_hints_frob_fp12(
         result: (DataType::Fp6Data(cp), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::PostMillerFrobFp12(power as u8),
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -254,7 +254,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         result: (DataType::G2EvalData(dbladd), ElementType::G2Eval),
         hints: op_hints,
         scr_type: ScriptType::MillerPointOpsStep1(is_dbl, ate_bit, is_frob),
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -282,7 +282,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_2(
         result: (DataType::Fp6Data(cp), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::MillerPointOpsStep2,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -323,7 +323,7 @@ pub(crate) fn wrap_hint_msm(
                 result: (DataType::G1Data(hout_msm), ElementType::G1),
                 hints: op_hints,
                 scr_type: ScriptType::MSM(msm_chunk_index as u32),
-                scr,
+                scr: scr.compile(),
             });
         }
     } else {
@@ -344,7 +344,7 @@ pub(crate) fn wrap_hint_msm(
                 result: (DataType::G1Data(hout_msm), ElementType::G1),
                 hints: vec![],
                 scr_type: ScriptType::MSM(msm_chunk_index),
-                scr: script! {},
+                scr: ScriptBuf::new(),
             });
         }
     }
@@ -373,7 +373,7 @@ pub(crate) fn wrap_hint_hash_p(
         result: (DataType::G1Data(p3), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashP,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -404,7 +404,7 @@ pub(crate) fn wrap_hints_precompute_p(
         result: (DataType::G1Data(p3d), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputeP,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -429,7 +429,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
         result: (DataType::G1Data(p3d), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputePFromHash,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -457,7 +457,7 @@ pub(crate) fn wrap_hint_hash_c(skip: bool, segment_id: usize, in_c: Vec<Segment>
         result: (DataType::Fp6Data(c), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashC,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -485,7 +485,7 @@ pub(crate) fn wrap_hint_hash_c_inv(skip: bool, segment_id: usize, in_c: Vec<Segm
         result: (DataType::Fp6Data(c), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashCInv,
-        scr,
+        scr: scr.compile(),
     }
 }
 
@@ -534,6 +534,6 @@ pub(crate) fn wrap_chunk_final_verify(
         result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
         scr_type: ScriptType::PostMillerFinalVerify,
-        scr,
+        scr: scr.compile(),
     }
 }

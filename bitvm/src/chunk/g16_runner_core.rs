@@ -3,7 +3,7 @@ use crate::chunk::{
 };
 use ark_ec::CurveGroup;
 use ark_ff::{Field, PrimeField};
-use bitcoin_script::script;
+use bitcoin::ScriptBuf;
 
 use super::{
     api::NUM_PUBS,
@@ -371,7 +371,7 @@ fn raw_input_proof_to_segments(
             result: (DataType::U256Data(*f), ElementType::ScalarElem),
             hints: vec![],
             scr_type: ScriptType::NonDeterministic,
-            scr: script! {},
+            scr: ScriptBuf::new(),
         })
         .collect();
     all_output_hints.extend_from_slice(&pub_scalars);
@@ -391,7 +391,7 @@ fn raw_input_proof_to_segments(
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script! {},
+        scr: ScriptBuf::new(),
     })
     .collect();
     all_output_hints.extend_from_slice(&p4vec);
@@ -408,7 +408,7 @@ fn raw_input_proof_to_segments(
             result: (DataType::U256Data(*f), ElementType::FieldElem),
             hints: vec![],
             scr_type: ScriptType::NonDeterministic,
-            scr: script! {},
+            scr: ScriptBuf::new(),
         })
         .collect();
     all_output_hints.extend_from_slice(&gc);
@@ -428,7 +428,7 @@ fn raw_input_proof_to_segments(
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script! {},
+        scr: ScriptBuf::new(),
     })
     .collect();
     all_output_hints.extend_from_slice(&temp_q4);
