@@ -39,9 +39,7 @@ pub(crate) struct Vkey {
     pub(crate) vky0: ark_bn254::G1Affine,
 }
 
-pub(crate) fn generate_partial_script(
-    vk: &ark_groth16::VerifyingKey<Bn254>,
-) -> Vec<ScriptBuf> {
+pub(crate) fn generate_partial_script(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec<ScriptBuf> {
     println!("generate_partial_script");
     assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1);
 
@@ -256,10 +254,13 @@ pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<ScriptB
             let elem_types_str = serialize_element_types(&elem_types_to_hash);
             let hash_scr = hashing_script_cache.get(&elem_types_str).unwrap();
 
-            op_scripts.push(script! {
-                {script!().push_script(op_scr)}
-                {hash_scr.clone()}
-            }.compile());
+            op_scripts.push(
+                script! {
+                    {script!().push_script(op_scr)}
+                    {hash_scr.clone()}
+                }
+                .compile(),
+            );
         }
     }
     op_scripts

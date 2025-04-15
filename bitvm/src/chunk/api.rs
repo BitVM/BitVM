@@ -391,7 +391,6 @@ mod test {
         use crate::chunk::api::NUM_PUBS;
         use crate::chunk::api::NUM_U256;
         use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
-        use crate::treepp::*;
         use bitcoin::ScriptBuf;
         use std::collections::HashMap;
         use std::error::Error;
@@ -431,7 +430,10 @@ mod test {
             write_map_to_file(&buf, file).unwrap();
         }
 
-        pub fn write_scripts_to_separate_files(sig_cache: HashMap<u32, Vec<ScriptBuf>>, file: &str) {
+        pub fn write_scripts_to_separate_files(
+            sig_cache: HashMap<u32, Vec<ScriptBuf>>,
+            file: &str,
+        ) {
             let mut buf: HashMap<u32, Vec<Vec<u8>>> = HashMap::new();
             std::fs::create_dir_all("bridge_data/chunker_data")
                 .expect("Failed to create directory structure");
@@ -607,7 +609,9 @@ mod test {
         let (index, hint_script) = invalid_tap.unwrap();
         println!("STEP 4 EXECUTING DISPROVE SCRIPT at index {}", index);
 
-        let scr = hint_script.clone().push_script(disprove_scripts[index].clone());
+        let scr = hint_script
+            .clone()
+            .push_script(disprove_scripts[index].clone());
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             println!("Stack ");
@@ -743,7 +747,9 @@ mod test {
         assert!(invalid_tap.is_some());
         let (index, hint_script) = invalid_tap.unwrap();
         println!("STEP 4 EXECUTING DISPROVE SCRIPT at index {}", index);
-        let scr = hint_script.clone().push_script(disprove_scripts[index].clone());
+        let scr = hint_script
+            .clone()
+            .push_script(disprove_scripts[index].clone());
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             println!("Stack ");
@@ -1313,7 +1319,9 @@ mod test {
             if fault.is_some() {
                 let (index, hint_script) = fault.unwrap();
                 println!("taproot index {:?}", index);
-                let scr = hint_script.clone().push_script(verifier_scripts[index].clone());
+                let scr = hint_script
+                    .clone()
+                    .push_script(verifier_scripts[index].clone());
                 let res = execute_script(scr);
                 for i in 0..res.final_stack.len() {
                     println!("{i:} {:?}", res.final_stack.get(i));

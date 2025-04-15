@@ -407,7 +407,9 @@ fn utils_execute_chunked_g16(
             }
             {bc_hints[i].clone()}
         };
-        let total_script = hint_script.clone().push_script(disprove_scripts[tap_script_index].clone());
+        let total_script = hint_script
+            .clone()
+            .push_script(disprove_scripts[tap_script_index].clone());
         let exec_result = execute_script(total_script);
         if exec_result.final_stack.len() > 1 {
             for i in 0..exec_result.final_stack.len() {

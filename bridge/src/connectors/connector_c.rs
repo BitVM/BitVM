@@ -124,9 +124,7 @@ impl ConnectorC {
         let locs: Vec<ScriptBuf> = self
             .lock_scripts_bytes()
             .into_iter()
-            .map(|f| {
-                ScriptBuf::from_bytes(f)
-            })
+            .map(|f| ScriptBuf::from_bytes(f))
             .collect();
         let locs = locs.try_into().unwrap();
         let exec_res = validate_assertions(vk, sigs, pubs, &locs);
@@ -330,11 +328,8 @@ fn generate_assert_leaves(
     let default_proof = RawProof::default(); // mock a default proof to generate scripts
     let partial_scripts = api_generate_partial_script(&default_proof.vk);
     let pks: PublicKeys = utils_typed_pubkey_from_raw(sorted_pks);
-    let locks =  api_generate_full_tapscripts(pks, &partial_scripts);
-    let locks = locks
-        .into_iter()
-        .map(|f| f.into_bytes())
-        .collect();
+    let locks = api_generate_full_tapscripts(pks, &partial_scripts);
+    let locks = locks.into_iter().map(|f| f.into_bytes()).collect();
     locks
 }
 
