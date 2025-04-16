@@ -5,8 +5,8 @@ use bitcoin::ScriptBuf;
 use bitcoin_script_stack::optimizer::optimize;
 use libfuzzer_sys::fuzz_target;
 
-use bitvm::bigint::{std::bigint_verify_output_script, BigIntImpl, U254, U256, U64};
 use bitvm::execute_script_buf;
+use bitvm::bigint::{std::bigint_verify_output_script, BigIntImpl, U254, U256, U64};
 use bitvm_fuzz::match_bigint_type;
 
 pub type U384 = BigIntImpl<384, 29>;
@@ -62,31 +62,18 @@ impl BigIntType {
 
 impl BigIntConfig {
     pub fn create_transform_script(&self) -> Vec<u8> {
-        let mut bytes = match_bigint_type!(self.bigint_type, push_u32_le, self.value.as_ref())
-            .compile()
-            .to_bytes();
+        let mut bytes = match_bigint_type!(self.bigint_type, push_u32_le, self.value.as_ref()).compile().to_bytes();
 
-        let first_transform = match_bigint_type!(
-            self.bigint_type,
-            transform_limbsize,
-            self.bigint_type.limb_size(),
-            self.transform_list[0]
-        );
+        let first_transform = match_bigint_type!(self.bigint_type, transform_limbsize, self.bigint_type.limb_size(), self.transform_list[0]);
         bytes.extend_from_slice(first_transform.compile().as_bytes());
 
         // Intermediate transforms
         for window in self.transform_list.windows(2) {
-            let transform =
-                match_bigint_type!(self.bigint_type, transform_limbsize, window[0], window[1]);
+            let transform = match_bigint_type!(self.bigint_type, transform_limbsize, window[0], window[1]);
             bytes.extend_from_slice(transform.compile().as_bytes());
         }
 
-        let final_transform = match_bigint_type!(
-            self.bigint_type,
-            transform_limbsize,
-            *self.transform_list.last().unwrap(),
-            self.bigint_type.limb_size()
-        );
+        let final_transform = match_bigint_type!(self.bigint_type, transform_limbsize, *self.transform_list.last().unwrap(), self.bigint_type.limb_size());
         bytes.extend_from_slice(final_transform.compile().as_bytes());
 
         let push_original = match_bigint_type!(self.bigint_type, push_u32_le, self.value.as_ref());

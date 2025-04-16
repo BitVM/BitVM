@@ -210,8 +210,10 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     #[inline]
-    pub fn push_zero() -> Script { push_to_stack(0, Self::N_LIMBS as usize) }
-
+    pub fn push_zero() -> Script {
+        push_to_stack(0, Self::N_LIMBS as usize)
+    }
+    
     #[inline]
     pub fn push_one() -> Script {
         script! {
@@ -537,9 +539,9 @@ pub fn extract_digits(start_index: u32, window: u32) -> Script {
 pub fn bigint_verify_output_script(n_elements: u32) -> Script {
     script! {
         for i in (2..n_elements + 1).rev() {
-            {i}
-            OP_ROLL
-            OP_EQUALVERIFY
+            {i}           
+            OP_ROLL       
+            OP_EQUALVERIFY 
         }
         OP_EQUAL
     }
