@@ -224,10 +224,22 @@ mod tests {
     fn test_connector_b_leaf_2_script() {
         const TWO_WEEKS_IN_SECONDS: u32 = 60 * 60 * 24 * 14;
 
-        // TODO: setup the test headers appropriately for the verification in the script to pass
-        let committed_sb = get_superblock_header();
+        // Setup test headers appropriately for the verification in the script to pass
+        let start_time = get_start_time_block_number(Regtest);
+        
+        // Create committed superblock with lower weight (higher hash value)
+        let mut committed_sb = get_superblock_header();
+        committed_sb.bits = CompactTarget::from_hex("0x1a030ecd").unwrap(); // Higher difficulty target
+        
+        // Create disprove superblock with higher weight (lower hash value)
         let mut disprove_sb = get_superblock_header();
-        disprove_sb.time = get_start_time_block_number(Regtest) + 1;
+        disprove_sb.bits = CompactTarget::from_hex("0x17030ecd").unwrap(); // Lower difficulty target
+        
+        // Set times to satisfy time constraints:
+        // 1. disprove_sb.time > start_time
+        // 2. disprove_sb.time < start_time + 2 weeks
+        disprove_sb.time = start_time + 100; // Some time after start_time
+        
         let mut disprove_sb_message = crate::superblock::get_superblock_message(&disprove_sb);
         disprove_sb_message.reverse();
 
@@ -238,7 +250,7 @@ mod tests {
             signing_key: &committed_sb_hash_secret,
         };
 
-        let start_time_message = get_start_time_block_number(Regtest).to_le_bytes();
+        let start_time_message = start_time.to_le_bytes();
         assert!(start_time_message.len() == START_TIME_MESSAGE_LENGTH);
         let start_time_secret = WinternitzSecret::new(START_TIME_MESSAGE_LENGTH);
         let start_time_public_key = WinternitzPublicKey::from(&start_time_secret);
