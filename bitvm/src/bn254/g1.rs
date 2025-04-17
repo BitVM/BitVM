@@ -739,7 +739,7 @@ mod test {
         let exec_result = execute_script(script);
         assert!(exec_result.success);
         println!(
-            "hinted_add_line: {} @ {} stack",
+            "hinted_check_add: {} @ {} stack",
             hinted_check_add.len(),
             exec_result.stats.max_nb_stack_items
         );
