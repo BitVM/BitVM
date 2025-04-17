@@ -389,19 +389,18 @@ impl Converter for ToBytesConverter {
         ps.byte_message_length()
     }
     fn get_script(ps: &Parameters) -> Script {
-        let mut turning_into_bytes = script! {};
         if ps.block_length == 8 {
             //already bytes
-            turning_into_bytes = script! {};
+            script! {}
         } else if ps.block_length == 4 {
-            turning_into_bytes = script! {
+            script! {
                 for i in 0..ps.message_length / 2 {
                     OP_SWAP
                     for _ in 0..ps.block_length {
                         OP_DUP OP_ADD
                     }
                     OP_ADD
-                    if i != (ps.message_length/2) - 1 {
+                    if i != (ps.message_length / 2) - 1 {
                         OP_TOALTSTACK
                     }
                 }
@@ -410,23 +409,43 @@ impl Converter for ToBytesConverter {
                         OP_FROMALTSTACK
                     }
                 }
-            };
+            }
         } else {
             let mut lens: Vec<u32> = vec![];
-            let mut script_lines: Vec<Script> = vec![];
+            let mut split_save = vec![];
             for i in 0..ps.message_length {
                 let start = i * ps.block_length;
                 let next_stop = start + 8 - (start % 8);
                 let split = next_stop - start;
+                split_save.push(split);
                 if split >= ps.block_length {
                     lens.push(ps.block_length);
-                    script_lines.push(script! {
-                        OP_TOALTSTACK
-                    });
                 } else {
                     lens.push(split);
                     lens.push(ps.block_length - split);
-                    script_lines.push(script! {
+                }
+            }
+            lens.reverse();
+            let mut last_bytes_var = (8 - (ps.message_length * ps.block_length % 8)) % 8;
+            let mut is_last_zero_var = true;
+            let mut last_bytes_save = vec![];
+            let mut is_last_zero_save = vec![];
+            for l in lens.clone() {
+                last_bytes_save.push(last_bytes_var);
+                if last_bytes_var >= 8 {
+                    last_bytes_var = 0;
+                    is_last_zero_var = true;
+                }
+                is_last_zero_save.push(is_last_zero_var);
+                is_last_zero_var = false;
+                last_bytes_var += l;
+            }
+
+            script! {
+                for split in split_save {
+                    if split >= ps.block_length {
+                        OP_TOALTSTACK
+                    } else {
                         OP_0
                         for j in (split..ps.block_length).rev() {
                             if j != ps.block_length - 1 {
@@ -449,43 +468,22 @@ impl Converter for ToBytesConverter {
                         OP_SWAP
                         OP_TOALTSTACK
                         OP_TOALTSTACK
-                    });
+                    }
                 }
-            }
-            lens.reverse();
-            let mut last_bytes = (8 - (ps.message_length * ps.block_length % 8)) % 8;
-            let mut is_last_zero = true;
-            script_lines.push(script! {
                 OP_0
-            });
-            for l in lens {
-                if last_bytes >= 8 {
-                    last_bytes = 0;
-                    script_lines.push(script! {
+                for (l, (last_bytes, is_last_zero)) in lens.into_iter().zip(last_bytes_save.into_iter().zip(is_last_zero_save.into_iter())) {
+                    if last_bytes >= 8 {
                         OP_0
-                    });
-                    is_last_zero = true;
-                }
-                if !is_last_zero {
-                    script_lines.push(script! {
+                    }
+                    if !is_last_zero {
                         for _ in 0..l {
                             OP_DUP OP_ADD
                         }
-                    });
+                    }
+                    OP_FROMALTSTACK OP_ADD
                 }
-                is_last_zero = false;
-                script_lines.push(script! {
-                    OP_FROMALTSTACK
-                    OP_ADD
-                });
-                last_bytes += l;
-            }
-
-            for script_line in script_lines {
-                turning_into_bytes = turning_into_bytes.push_script(script_line.compile());
             }
         }
-        turning_into_bytes
     }
 }
 
