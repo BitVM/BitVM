@@ -5,9 +5,9 @@ use bitcoin::ScriptBuf;
 use bitcoin_script_stack::optimizer::optimize;
 use libfuzzer_sys::fuzz_target;
 
-use bitvm::bigint::{std::bigint_verify_output_script, BigIntImpl, U254, U256, U64};
+use bitvm::bigint::{BigIntImpl, U254, U256, U64};
 use bitvm::execute_script_buf;
-use bitvm_fuzz::match_bigint_type;
+use bitvm_fuzz::{match_bigint_type, utils::bigint_verify_output_script};
 
 pub type U384 = BigIntImpl<384, 29>;
 
