@@ -265,15 +265,10 @@ mod tests {
         println!("Committed SB hash: {}", committed_hash);
         println!("Disprove SB hash: {}", disprove_hash);
         
-        // Serialize hashes to bytes and compare lexicographically
-        let committed_hash_bytes = committed_hash.to_string();
-        let disprove_hash_bytes = disprove_hash.to_string();
-        let is_disprove_heavier = disprove_hash_bytes < committed_hash_bytes;
-        println!("Is disprove SB heavier: {} (should be true)", is_disprove_heavier);
-        
-        if !is_disprove_heavier {
-            panic!("Disprove superblock is not heavier than committed superblock! Test precondition failed.");
-        }
+        // Directly compare the hashes without serialization
+        // Lower hash value means higher weight in Bitcoin
+        assert!(disprove_hash < committed_hash, "Disprove superblock is not heavier than committed superblock! Test precondition failed.");
+        println!("Is disprove SB heavier: true (verified by direct hash comparison)");
         
         let mut disprove_sb_message = crate::superblock::get_superblock_message(&disprove_sb);
         disprove_sb_message.reverse();
