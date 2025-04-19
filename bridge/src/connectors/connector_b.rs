@@ -220,14 +220,58 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_connector_b_leaf_2_script() {
         const TWO_WEEKS_IN_SECONDS: u32 = 60 * 60 * 24 * 14;
 
-        // TODO: setup the test headers appropriately for the verification in the script to pass
-        let committed_sb = get_superblock_header();
-        let mut disprove_sb = get_superblock_header();
-        disprove_sb.time = get_start_time_block_number(Regtest) + 1;
+        // Setup test headers appropriately for the verification in the script to pass
+        let start_time = get_start_time_block_number(Regtest);
+
+        // Create a baseline header
+        let base_header = get_superblock_header();
+
+        // Create committed superblock with lower weight (higher hash value)
+        // Higher bits value = lower difficulty/weight
+        let mut committed_sb = base_header.clone();
+        committed_sb.bits = CompactTarget::from_hex("0x1d030ecd").unwrap(); // Much lower difficulty
+
+        // Create disprove superblock with higher weight (lower hash value)
+        // Lower bits value = higher difficulty/weight
+        let mut disprove_sb = base_header;
+        disprove_sb.bits = CompactTarget::from_hex("0x17030ecd").unwrap(); // Much higher difficulty
+
+        // Make them distinct blocks with very different hashes
+        committed_sb.nonce = 0x12345678;
+        disprove_sb.nonce = 0x87654321;
+        committed_sb.merkle_root = TxMerkleNode::from_str(
+            "1064b0d54f20412756ba7ce07b0594f3548b06f2dad5cfeaac2aca508634ed19",
+        )
+        .unwrap();
+        disprove_sb.merkle_root = TxMerkleNode::from_str(
+            "2064b0d54f20412756ba7ce07b0594f3548b06f2dad5cfeaac2aca508634ed19",
+        )
+        .unwrap();
+
+        // Set times to satisfy time constraints:
+        // 1. disprove_sb.time > start_time
+        // 2. disprove_sb.time < start_time + 2 weeks
+        committed_sb.time = start_time - 100; // Some time before start_time (doesn't matter for test)
+        disprove_sb.time = start_time + 1000; // Some time after start_time but less than 2 weeks
+
+        // Debug print to verify the targets and hashes
+        println!("Committed SB bits: {:?}", committed_sb.bits);
+        println!("Disprove SB bits: {:?}", disprove_sb.bits);
+
+        // Calculate and print actual block hashes for debugging
+        let committed_hash = committed_sb.block_hash();
+        let disprove_hash = disprove_sb.block_hash();
+        println!("Committed SB hash: {}", committed_hash);
+        println!("Disprove SB hash: {}", disprove_hash);
+
+        // Directly compare the hashes without serialization
+        // Lower hash value means higher weight in Bitcoin
+        assert!(disprove_hash < committed_hash, "Disprove superblock is not heavier than committed superblock! Test precondition failed.");
+        println!("Is disprove SB heavier: true (verified by direct hash comparison)");
+
         let mut disprove_sb_message = crate::superblock::get_superblock_message(&disprove_sb);
         disprove_sb_message.reverse();
 
@@ -238,7 +282,7 @@ mod tests {
             signing_key: &committed_sb_hash_secret,
         };
 
-        let start_time_message = get_start_time_block_number(Regtest).to_le_bytes();
+        let start_time_message = start_time.to_le_bytes();
         assert!(start_time_message.len() == START_TIME_MESSAGE_LENGTH);
         let start_time_secret = WinternitzSecret::new(START_TIME_MESSAGE_LENGTH);
         let start_time_public_key = WinternitzPublicKey::from(&start_time_secret);
@@ -300,6 +344,16 @@ mod tests {
         };
 
         let result = execute_script(s);
+
+        if !result.success {
+            println!(
+                "Script execution failed. Final stack: {:?}",
+                result.final_stack
+            );
+            if let Some(error) = result.error {
+                println!("Script error: {:?}", error);
+            }
+        }
 
         assert!(result.success);
     }
