@@ -1,7 +1,7 @@
 To test Full Execution:
 cargo test --package bitvm --lib -- chunk::api::test::full_e2e_execution --exact --nocapture
 
-The following show tests for step wise execution.
+The following shows tests for step wise execution.
 
 1. Generate Partial Scripts
 
@@ -30,7 +30,7 @@ Directory:
 
 `elements` - data structure to represent inputs and outputs of each chunk
 
-`g16_runner_core` - function to generate execute chunked groth16 verifier and collect necessary information
+`g16_runner_core` - function to generate and execute chunked groth16 verifier and collect necessary information
 
 `g16_runner_utils` - set of functions that wrap tapscripts and is required by g16_runner_core
 
@@ -139,7 +139,7 @@ Optimization on product of Fp_12 accumulator $f$ and line evaluation $le$
 
 line evaluations are always in the form $le = (1, le.c1) $ where $le.c1 = (le.c1.c0, le.c1.c1, 0)$
 
-Because le.c1 has zero as the third coefficient, you get some necessary saving in terms of script and stack use (especially during initialization where a lot of tmul hints have to be loaded).
+Because le.c1 has zero as the third coefficient, you get some necessary savings in terms of script and stack use (especially during initialization where a lot of tmul hints have to be loaded).
 
 Fp6-Sparse-Sparse Mul when we have to multiply two line evaluations. Output is a dense Fp6 element.
 Fp6-Sparse-Dense Mul when we have to multiply a line evaluation with $f$
