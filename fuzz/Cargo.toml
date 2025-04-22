@@ -13,11 +13,22 @@ libfuzzer-sys = "0.4"
 bitvm = { path = "../bitvm", features = ["fuzzing"] }
 blake3 = "=1.5.1"
 bitcoin = { version = "0.32.5" }
+bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script" }
 bitcoin-script-stack = { git = "https://github.com/BitVM/rust-bitcoin-script-stack" }
+
+[lib]
+path = "fuzz_targets/bigint/lib.rs"
 
 [[bin]]
 name = "blake3"
 path = "fuzz_targets/blake3.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bigint_transform"
+path = "fuzz_targets/bigint/bigint_transform.rs"
 test = false
 doc = false
 bench = false
