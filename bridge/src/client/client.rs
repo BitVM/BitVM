@@ -222,6 +222,16 @@ impl BitVMClient {
         &mut self.data
     }
 
+    /// Get a mutable reference to a PegInGraph by its ID
+    pub fn get_peg_in_graph_mut(&mut self, id: &str) -> Option<&mut PegInGraph> {
+        self.data.peg_in_graphs.iter_mut().find(|graph| graph.id() == id)
+    }
+
+    /// Get a mutable reference to a PegOutGraph by its ID
+    pub fn get_peg_out_graph_mut(&mut self, id: &str) -> Option<&mut PegOutGraph> {
+        self.data.peg_out_graphs.iter_mut().find(|graph| graph.id() == id)
+    }
+
     // TODO: This should be private. Currently used in the fees test. See if it can be refactored.
     pub fn private_data(&self) -> &BitVMClientPrivateData {
         &self.private_data
@@ -1337,18 +1347,6 @@ impl BitVMClient {
                 peg_in_graph_id.clone(),
             )))
     }
-
-    // TODO: consider refactor client as static, and use it in graph struct directly
-    //       so we can have this method instead of find_peg_in_or_fail
-    // fn get_peg_in_graph_mut(&mut self, peg_in_graph_id: &String) -> Result<&mut PegInGraph, Error> {
-    //     self.data_mut_ref()
-    //         .peg_in_graphs
-    //         .iter_mut()
-    //         .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id))
-    //         .ok_or(Error::Client(ClientError::PegInGraphNotFound(
-    //             peg_in_graph_id.clone(),
-    //         )))
-    // }
 
     fn find_peg_in_or_fail<'a>(
         data: &'a mut BitVMClientPublicData,
