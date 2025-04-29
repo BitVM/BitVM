@@ -1931,6 +1931,7 @@ version = "0.0.0"
 dependencies = [
  "arbitrary",
  "bitcoin",
+ "bitcoin-script",
  "bitcoin-script-stack",
  "bitvm",
  "blake3",
@@ -1948,9 +1949,9 @@ dependencies = [
 
 [[package]]
 name = "blake3"
-version = "1.5.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30cca6d3674597c30ddf2c587bf8d9d65c9a84d2326d941cc79c9842dfe0ef52"
+checksum = "3888aaa89e4b2a40fca9848e400f6a658a5a3978de7be858e209cafa8be9a4a0"
 dependencies = [
  "arrayref",
  "arrayvec",
