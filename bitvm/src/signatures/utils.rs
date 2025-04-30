@@ -11,64 +11,90 @@ pub(super) const fn log_base_ceil(n: u32, base: u32) -> u32 {
     res
 }
 
-/// Converts the number to given base, smallest digit being at the start (returns `digit_count` smallest digits of it, and standard base representation of it if `digit_count` = -1)
-pub(super) fn to_digits(mut number: u32, base: u32, digit_count: i32) -> Vec<u32> {
-    let mut digits = Vec::new();
-    if digit_count == -1 {
-        while number > 0 {
-            let digit = number % base;
-            number = (number - digit) / base;
-            digits.push(digit);
-        }
-    } else {
-        digits.reserve(digit_count as usize);
-        for _ in 0..digit_count {
-            let digit = number % base;
-            number = (number - digit) / base;
-            digits.push(digit);
-        }
+/// Converts the given `checksum` into a vector of digits.
+///
+/// ## Output format
+///
+/// - sequence of `n_digits` many digits
+/// - each digit a `u32` value in range `0..2.pow(log2_base)`
+/// - checksum converted into BE bytes, in turn converted into digits
+pub(super) fn checksum_to_digits(mut checksum: u32, base: u32, n_digits: u32) -> Vec<u32> {
+    debug_assert!((16..=256).contains(&base));
+    debug_assert!(
+        base.checked_pow(n_digits)
+            .map(|upper_limit| checksum < upper_limit)
+            .unwrap_or(true),
+        "Checksum is too large to fit into the given number of digits"
+    );
+
+    let mut digits = vec![0; n_digits as usize]; // cast safety: 32-bit machine or higher
+
+    for digit in digits.iter_mut().rev() {
+        *digit = checksum % base;
+        checksum = (checksum - *digit) / base;
     }
+
     digits
 }
 
-/// Converts the given bytes to 'len' `u32`'s, each consisting of given number of bits
-pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &[u8]) -> Vec<u32> {
-    assert!(
-        bytes.len() as u32 * 8 <= len * bits_per_item,
-        "Message length is too large for the given length"
+/// Converts the given `message` into a vector of digits.
+///
+/// ## Output format
+///
+/// - sequence of `n_digits` many digits
+/// - each digit a `u32` value in range `0..2.pow(log2_base)`
+/// - message bytes are reversed (but not their nibbles!)
+pub(crate) fn message_to_digits(n_digits: u32, log2_base: u32, message: &[u8]) -> Vec<u32> {
+    debug_assert!((4..=8).contains(&log2_base));
+    debug_assert!(
+        message.len() as u32 * 8 <= n_digits * log2_base,
+        "Message is too long to fit into the given number of digits"
     );
-    let mut res = vec![0u32; len as usize];
-    let mut cur_index: u32 = 0;
-    let mut cur_bit: u32 = 0;
-    for byte in bytes {
-        let mut x: u8 = *byte;
+
+    let mut digits = vec![0u32; n_digits as usize]; // cast safety: 32-bit machine or higher
+    let mut digit_idx: u32 = 0;
+    let mut bit_idx: u32 = 0;
+
+    for mut byte in message.iter().copied() {
         for _ in 0..8 {
-            if cur_bit == bits_per_item {
-                cur_bit = 0;
-                cur_index += 1;
+            if bit_idx == log2_base {
+                bit_idx = 0;
+                digit_idx += 1;
             }
-            res[cur_index as usize] |= ((x & 1) as u32) << cur_bit;
-            x >>= 1;
-            cur_bit += 1;
+            digits[digit_idx as usize] |= ((byte & 1) as u32) << bit_idx; // cast safety: 32-bit machine or higher
+            byte >>= 1;
+            bit_idx += 1;
         }
     }
-    res
+
+    digits.reverse();
+    digits
 }
 
-/// Merges (binary concatenates) the `DIGIT_COUNT` stack elements (each consisting of `LOG_D` bits), most significant one being at the top
-pub fn digits_to_number<const DIGIT_COUNT: usize, const LOG_D: usize>() -> Script {
-    script!(
-        for _ in 0..DIGIT_COUNT - 1 {
+/// Returns a Bitcoin script that converts a message into a number.
+///
+/// ## Precondition
+///
+/// - message is at stack top
+/// - message is split into `N_DIGITS` digits
+/// - each digit is in range `0..2.pow(LOG2_BASE)`
+///
+/// ## Postcondition
+///
+/// - converted number is at stack top
+pub fn digits_to_number<const N_DIGITS: usize, const LOG2_BASE: usize>() -> Script {
+    script! {
+        for _ in 0..N_DIGITS - 1 {
           OP_TOALTSTACK
         }
-        for _ in 0..DIGIT_COUNT - 1 {
-            for _ in 0..LOG_D {
-                OP_DUP OP_ADD
+        for _ in 0..N_DIGITS - 1 {
+            for _ in 0..LOG2_BASE {
+                OP_DUP OP_ADD // simulating OP_MUL
             }
             OP_FROMALTSTACK
             OP_ADD
         }
-    )
+    }
 }
 
 /// Converts number to vector of bytes and removes trailing zeroes
@@ -82,7 +108,8 @@ pub fn u32_to_le_bytes_minimal(a: u32) -> Vec<u8> {
 
 #[cfg(test)]
 mod test {
-    use super::u32_to_le_bytes_minimal;
+    use super::*;
+    use crate::run;
 
     #[test]
     fn test_u32_to_bytes_minimal() {
@@ -90,5 +117,66 @@ mod test {
         let a_bytes = u32_to_le_bytes_minimal(a);
 
         assert_eq!(a_bytes, vec![0x00u8, 0xfeu8]);
+    }
+
+    #[test]
+    fn checksum_to_digits_endianness() {
+        // Integer is encoded as BE digit sequence
+        assert_eq!(
+            checksum_to_digits(0x12345678, 16, 8),
+            vec![1, 2, 3, 4, 5, 6, 7, 8],
+        );
+    }
+
+    #[test]
+    fn message_to_digits_endianness() {
+        let message: u32 = 0x12345678;
+        // Bytes are reversed from BE to LE
+        // Digits stay BE
+        // The result is a weird mix of endianness
+        assert_eq!(
+            message_to_digits(8, 4, &message.to_be_bytes()),
+            vec![7, 8, 5, 6, 3, 4, 1, 2],
+        );
+        // Bytes are reversed from LE to BE
+        // Digits stay BE
+        // The result is a BE sequence
+        assert_eq!(
+            message_to_digits(8, 4, &message.to_le_bytes()),
+            vec![1, 2, 3, 4, 5, 6, 7, 8],
+        );
+    }
+
+    #[test]
+    fn digits_to_number_endianness() {
+        // LE input is glued together as LE
+        let script = script! {
+            { vec![0x07, 0x08, 0x05, 0x06, 0x03, 0x04, 0x01, 0x02] }
+            { digits_to_number::<8, 4>() }
+            { 0x78563412 }
+            OP_EQUAL
+        };
+        run(script);
+        // BE input is glued together as BE
+        let script = script! {
+            { vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08] }
+            { digits_to_number::<8, 4>() }
+            { 0x12345678 }
+            OP_EQUAL
+        };
+        run(script);
+    }
+
+    #[test]
+    fn message_digits_roundtrip() {
+        let message: u32 = 0x12345678;
+        let digits = message_to_digits(8, 4, &message.to_le_bytes());
+        let script = script! {
+            { digits }
+            { digits_to_number::<8, 4>() }
+            { message }
+            OP_EQUAL
+        };
+        run(script);
     }
 }

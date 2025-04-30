@@ -87,24 +87,24 @@ pub fn generate_public_key(ps: &Parameters, secret_key: &SecretKey) -> PublicKey
 }
 
 /// Checksum of the message (negated sum of the digits)
-fn checksum(ps: &Parameters, digits: Vec<u32>) -> u32 {
-    let mut sum = 0;
-    for digit in digits {
-        sum += digit;
-    }
+fn checksum(ps: &Parameters, message_digits: &[u32]) -> u32 {
+    debug_assert_eq!(message_digits.len(), ps.message_length as usize);
+
+    let sum: u32 = message_digits.iter().sum();
     ps.d() * ps.message_length - sum
 }
 
-/// Appends checksum to the given message (digits), and reverses the whole message (with checksum) for the ease of usage in the bitcoin script
-fn add_message_checksum(ps: &Parameters, mut digits: Vec<u32>) -> Vec<u32> {
-    let mut checksum_digits = to_digits(
-        checksum(ps, digits.clone()),
+/// Reverses the message digits and appends the checksum to the result.
+fn add_message_checksum(ps: &Parameters, mut message_digits: Vec<u32>) -> Vec<u32> {
+    debug_assert_eq!(message_digits.len(), ps.message_length as usize);
+
+    let checksum_digits = checksum_to_digits(
+        checksum(ps, &message_digits),
         ps.d() + 1,
-        ps.checksum_length as i32,
+        ps.checksum_length,
     );
-    checksum_digits.append(&mut digits);
-    checksum_digits.reverse();
-    checksum_digits
+    message_digits.extend(checksum_digits);
+    message_digits
 }
 
 /// This trait covers 3 verifiers for the signing and verifying phase of the signatures: `ListpickVerifier`, `BruteforceVerifier`, `BinarysearchVerifier`
@@ -171,7 +171,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         VERIFIER::sign_digits(
             ps,
             secret_key,
-            bytes_to_u32s(ps.message_length, ps.block_length, message_bytes),
+            message_to_digits(ps.message_length, ps.block_length, message_bytes),
         )
     }
 
@@ -620,7 +620,7 @@ mod test {
             // convert to number
             { digits_to_number::<8, 4>() }
 
-             { message }
+            { message }
 
             OP_EQUAL
 
@@ -681,11 +681,11 @@ mod test {
                 true,
             );
 
-            let message_digits = bytes_to_u32s(ps.message_length, ps.block_length, &message);
+            let message_digits = message_to_digits(ps.message_length, ps.block_length, &message);
             let void_message_checker = script! {
-                for i in 0..ps.message_length {
+                for i in (0..ps.message_length).rev() {
                     { message_digits[i as usize] }
-                    if i == ps.message_length - 1 {
+                    if i == 0 {
                         OP_EQUAL
                     } else {
                         OP_EQUALVERIFY
@@ -773,11 +773,11 @@ mod test {
                 false,
             );
 
-            let message_digits = bytes_to_u32s(ps.message_length, ps.block_length, &message);
+            let message_digits = message_to_digits(ps.message_length, ps.block_length, &message);
             let void_message_checker = script! {
-                for i in 0..ps.message_length {
+                for i in (0..ps.message_length).rev() {
                     { message_digits[i as usize] }
-                    if i == ps.message_length - 1 {
+                    if i == 0 {
                         OP_EQUAL
                     } else {
                         OP_EQUALVERIFY

@@ -135,11 +135,7 @@ pub fn winternitz_message_checksig_verify(
 mod tests {
     use super::*;
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::{
-        bn254::g1::G1Affine,
-        execute_script,
-        signatures::{utils::digits_to_number, winternitz::generate_public_key},
-    };
+    use crate::{bn254::g1::G1Affine, execute_script, signatures::utils};
     use crate::{execute_script_with_inputs, ExecuteInfo};
     use ark_ff::UniformRand as _;
     use ark_std::test_rng;
@@ -199,7 +195,7 @@ mod tests {
           },
           ).to_vec() }
           { winternitz_message_checksig(&public_key) }
-          { digits_to_number::<{ 4 * 2}, { LOG_D as usize }>() }
+          { utils::digits_to_number::<{ 4 * 2}, { LOG_D as usize }>() }
           { start_time_block_number }
           OP_EQUAL
         };
