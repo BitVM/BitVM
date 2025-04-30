@@ -533,58 +533,67 @@ mod test {
         }
     }
 
-    macro_rules! test_script {
-        ($ps:expr, $s:expr, $message_checker:expr, $desired_outcome:expr) => {
-            println!(
-                "Winternitz signature size:\n \t{:?} bytes / {:?} bits \n\t{:?} bytes / bit\n",
-                $s.len(),
-                $ps.message_length * $ps.block_length,
-                $s.len() as f64 / ($ps.message_length * $ps.block_length) as f64
+    fn test_script(
+        ps: &Parameters,
+        standard_script: Script,
+        message_checker: Script,
+        desired_outcome: bool,
+    ) {
+        println!(
+            "Winternitz signature size:\n \t{:?} bytes / {:?} bits \n\t{:?} bytes / bit\n",
+            standard_script.len(),
+            ps.message_length * ps.block_length,
+            standard_script.len() as f64 / (ps.message_length * ps.block_length) as f64
+        );
+        if desired_outcome == true {
+            assert!(
+                execute_script(standard_script.push_script(message_checker.clone().compile()))
+                    .success
+                    == true
             );
-            if $desired_outcome == true {
-                assert!(
-                    execute_script($s.push_script($message_checker.clone().compile())).success
+        } else {
+            assert!(
+                execute_script(standard_script.clone()).success == false
+                    || execute_script(standard_script.push_script(message_checker.compile()))
+                        .success
                         == true
-                );
-            } else {
-                assert!(
-                    execute_script($s.clone()).success == false
-                        || execute_script($s.push_script($message_checker.clone().compile()))
-                            .success
-                            == true
-                );
-            }
-        };
+            );
+        }
     }
-    macro_rules! generate_winternitz_tests {
-        (
-            $ps:expr, $secret_key:expr, $public_key:expr, $message:expr, $message_checker:expr, $desired_outcome:expr;
-            $([$verifier:ty, $converter:ty]),*
-        ) => {
-            $(
-                {
-                    let o = Winternitz::<$verifier, $converter>::new();
-                    let standard_script = script! {
-                        { o.sign(&$ps, &$secret_key, &$message) }
-                        if $desired_outcome == false {
-                             { try_malicious(&$ps, &$message, &get_type_name::<$verifier>()) }
-                        }
-                        { o.checksig_verify(&$ps, &$public_key) }
-                    };
 
-                    println!("For message_length:{} and block_length:{}  {} with {} =>", $ps.message_length, $ps.block_length, get_type_name::<$verifier>(), get_type_name::<$converter>());
-                    test_script!($ps, standard_script, $message_checker, $desired_outcome);
-                    if $desired_outcome == true {
-                        let message_remove_script = script! {
-                            { o.sign(&$ps, &$secret_key, &$message) }
-                            { o.checksig_verify_and_clear_stack(&$ps, &$public_key) }
-                            OP_TRUE
-                        };
-                        assert!(execute_script(message_remove_script).success == true);
-                    }
-                }
-            )*
+    fn run_winternitz_test<VERIFIER: Verifier, CONVERTER: Converter>(
+        ps: &Parameters,
+        secret_key: &SecretKey,
+        public_key: &PublicKey,
+        message: &[u8],
+        message_checker: Script,
+        desired_outcome: bool,
+    ) {
+        let o = Winternitz::<VERIFIER, CONVERTER>::new();
+        let standard_script = script! {
+            { o.sign(ps, secret_key, message) }
+            if desired_outcome == false {
+                 { try_malicious(ps, message, &get_type_name::<VERIFIER>()) }
+            }
+            { o.checksig_verify(ps, &public_key) }
         };
+
+        println!(
+            "For message_length:{} and block_length:{}  {} with {} =>",
+            ps.message_length,
+            ps.block_length,
+            get_type_name::<VERIFIER>(),
+            get_type_name::<CONVERTER>()
+        );
+        test_script(ps, standard_script, message_checker, desired_outcome);
+        if desired_outcome == true {
+            let message_remove_script = script! {
+                { o.sign(ps, secret_key, message) }
+                { o.checksig_verify_and_clear_stack(ps, public_key) }
+                OP_TRUE
+            };
+            assert!(execute_script(message_remove_script).success == true);
+        }
     }
 
     #[test]
@@ -646,12 +655,32 @@ mod test {
                     }
                 }
             };
-            generate_winternitz_tests!(
-                ps, secret_key, public_key, message, message_checker, true;
-                [ListpickVerifier, ToBytesConverter],
-                [BruteforceVerifier, ToBytesConverter],
-                [BinarysearchVerifier, ToBytesConverter]
+
+            run_winternitz_test::<ListpickVerifier, ToBytesConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                message_checker.clone(),
+                true,
             );
+            run_winternitz_test::<BruteforceVerifier, ToBytesConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                message_checker.clone(),
+                true,
+            );
+            run_winternitz_test::<BinarysearchVerifier, ToBytesConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                message_checker,
+                true,
+            );
+
             let message_digits = bytes_to_u32s(ps.message_length, ps.block_length, &message);
             let void_message_checker = script! {
                 for i in 0..ps.message_length {
@@ -663,11 +692,30 @@ mod test {
                     }
                 }
             };
-            generate_winternitz_tests!(
-                ps, secret_key, public_key, message, void_message_checker, true;
-                [ListpickVerifier, VoidConverter],
-                [BruteforceVerifier, VoidConverter],
-                [BinarysearchVerifier, VoidConverter]
+
+            run_winternitz_test::<ListpickVerifier, VoidConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                void_message_checker.clone(),
+                true,
+            );
+            run_winternitz_test::<BruteforceVerifier, VoidConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                void_message_checker.clone(),
+                true,
+            );
+            run_winternitz_test::<BinarysearchVerifier, VoidConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                void_message_checker,
+                true,
             );
         }
     }
@@ -699,12 +747,32 @@ mod test {
                     }
                 }
             };
-            generate_winternitz_tests!(
-                ps, secret_key, public_key, message, message_checker, false;
-                [ListpickVerifier, ToBytesConverter],
-                [BruteforceVerifier, ToBytesConverter],
-                [BinarysearchVerifier, ToBytesConverter]
+
+            run_winternitz_test::<ListpickVerifier, ToBytesConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                message_checker.clone(),
+                false,
             );
+            run_winternitz_test::<BruteforceVerifier, ToBytesConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                message_checker.clone(),
+                false,
+            );
+            run_winternitz_test::<BinarysearchVerifier, ToBytesConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                message_checker,
+                false,
+            );
+
             let message_digits = bytes_to_u32s(ps.message_length, ps.block_length, &message);
             let void_message_checker = script! {
                 for i in 0..ps.message_length {
@@ -716,11 +784,30 @@ mod test {
                     }
                 }
             };
-            generate_winternitz_tests!(
-                ps, secret_key, public_key, message, void_message_checker, false;
-                [ListpickVerifier, VoidConverter],
-                [BruteforceVerifier, VoidConverter],
-                [BinarysearchVerifier, VoidConverter]
+
+            run_winternitz_test::<ListpickVerifier, VoidConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                void_message_checker.clone(),
+                false,
+            );
+            run_winternitz_test::<BruteforceVerifier, VoidConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                void_message_checker.clone(),
+                false,
+            );
+            run_winternitz_test::<BinarysearchVerifier, VoidConverter>(
+                &ps,
+                &secret_key,
+                &public_key,
+                &message,
+                void_message_checker,
+                false,
             );
         }
     }
