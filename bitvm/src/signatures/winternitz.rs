@@ -41,19 +41,8 @@ impl Parameters {
 
     /// Creates parameters with given message_length (number of bits in the message) and block length (number of bits in one block, in the closed range 4, 8)
     pub const fn new_by_bit_length(number_of_bits: u32, block_length: u32) -> Self {
-        assert!(
-            4 <= block_length && block_length <= 8,
-            "You can only choose block lengths in the range [4, 8]"
-        );
         let message_block_count = number_of_bits.div_ceil(block_length);
-        Parameters {
-            message_length: message_block_count,
-            block_length,
-            checksum_length: log_base_ceil(
-                ((1 << block_length) - 1) * message_block_count,
-                1 << block_length,
-            ) + 1,
-        }
+        Self::new(message_block_count, block_length)
     }
 
     /// Maximum value of a digit
