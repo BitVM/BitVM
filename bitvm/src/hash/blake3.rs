@@ -214,7 +214,7 @@ fn chunk_message(message_bytes: &[u8]) -> Vec<[u8; 64]> {
     message_bytes
         .iter()
         .copied()
-        .chain(std::iter::repeat(0u8).take(needed_padding_bytes))
+        .chain(std::iter::repeat_n(0u8, needed_padding_bytes))
         .chunks(4) // reverse 4-byte chunks
         .into_iter()
         .flat_map(|chunk| chunk.collect::<Vec<u8>>().into_iter().rev())

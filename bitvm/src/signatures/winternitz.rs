@@ -63,7 +63,7 @@ impl Parameters {
 
     /// Number of bytes that can be represented at maximum with the parameters
     pub const fn byte_message_length(&self) -> u32 {
-        (self.message_length * self.block_length + 7) / 8
+        (self.message_length * self.block_length).div_ceil(8)
     }
 
     /// Total number of blocks, i.e. sum of the number of blocks in the actual message and the checksum
@@ -251,13 +251,13 @@ impl Verifier for ListpickVerifier {
                 OP_MIN
                 OP_DUP
                 OP_TOALTSTACK
-                { (ps.d() + 1) / 2 }
+                { ps.d().div_ceil(2) }
                 OP_2DUP
                 OP_LESSTHAN
                 OP_IF
                     OP_DROP
                     OP_TOALTSTACK
-                    for _ in 0..(ps.d() + 1) / 2  {
+                    for _ in 0..ps.d().div_ceil(2)  {
                         OP_HASH160
                     }
                 OP_ELSE
