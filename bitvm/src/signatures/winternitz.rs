@@ -94,7 +94,7 @@ fn checksum(ps: &Parameters, message_digits: &[u32]) -> u32 {
     ps.d() * ps.message_length - sum
 }
 
-/// Reverses the message digits and appends the checksum to the result.
+/// Appends the checksum to the end of the message.
 fn add_message_checksum(ps: &Parameters, mut message_digits: Vec<u32>) -> Vec<u32> {
     debug_assert_eq!(message_digits.len(), ps.message_length as usize);
 
@@ -107,11 +107,24 @@ fn add_message_checksum(ps: &Parameters, mut message_digits: Vec<u32>) -> Vec<u3
     message_digits
 }
 
-/// This trait covers 3 verifiers for the signing and verifying phase of the signatures: `ListpickVerifier`, `BruteforceVerifier`, `BinarysearchVerifier`
+/// Trait for creating and for verifying Winternitz signatures.
 pub trait Verifier {
-    /// Default digit signatures for `ListpickVerifier` and `BinarysearchVerifier`, in the format: hash_{n - 1}, digit_{n - 1}, hash_{n - 2}, digit_{n - 2} ... hash_0, digit_0
-    fn sign_digits(ps: &Parameters, secret_key: &SecretKey, digits: Vec<u32>) -> Witness {
-        let digits = add_message_checksum(ps, digits);
+    /// Creates a Winternitz signature for the given `secret_key` and `digits`.
+    ///
+    /// ## Output format
+    ///
+    /// - `hash(digits[0])`
+    /// - `digits[0]`
+    /// - `hash(digits[1])`
+    /// - `digits[1]`
+    /// - ...
+    /// - `hash(digits[n + m - 1])`
+    /// - `digits[n + m - 1]`
+    ///
+    /// There are `n` message digits followed by `m` checksum digits.
+    /// The checksum is computed internally.
+    fn sign_digits(ps: &Parameters, secret_key: &SecretKey, message_digits: Vec<u32>) -> Witness {
+        let digits = add_message_checksum(ps, message_digits);
         let mut result = Witness::new();
         for i in 0..ps.total_length() {
             let sig = digit_signature(secret_key, i, digits[i as usize]);
@@ -120,22 +133,44 @@ pub trait Verifier {
         }
         result
     }
+
+    /// Returns a Bitcoin script that verifies a Winternitz signature for the given `public_key`.
+    ///
+    /// The checksum is verified by a separate Bitcoin script.
+    ///
+    /// ## Precondition
+    ///
+    /// - `hash(digits[0])`
+    /// - `digits[0]`
+    /// - `hash(digits[1])`
+    /// - `digits[1]`
+    /// - ...
+    /// - `hash(digits[n + m - 1])`
+    /// - `digits[n + m - 1]` (stack top)
+    ///
+    /// For `n` message digits followed by `m` checksum digits.
+    ///
+    /// ## Postcondition
+    ///
+    /// - `digits[n + m - 1]`
+    /// - `digits[n + m - 2]`
+    /// - ...
+    /// - `digits[0]` (alt stack top)
+    ///
+    /// The input is consumed from the stack.
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script;
 }
 
-/// This trait covers 2 converters for converting the final message (which is left in the form of blocks): `VoidConverter`, `ToBytesConverter`
+/// Trait for converting the message on the stack after signature verification.
 pub trait Converter {
-    /// Wrapper for converter functions
+    /// Returns a Bitcoin script that converts the message on the stack.
     fn get_script(ps: &Parameters) -> Script;
-    /// Length of the final message
+
+    /// Returns the number of stack elements of the conversion output.
     fn length_of_final_message(ps: &Parameters) -> u32;
 }
-/// Winternitz struct to used for its operations \
-/// Sample Usage:
-/// - Pick the algorithms you want to use, i.e. `BinarysearchVerifier` and `ToBytesConverter`
-/// - Construct your struct: `let o = Winternitz::<BinarysearchVerifier, ToBytesConverter>::new()`
-/// - Identify your message parameters:` let p = Parameters::new(message_block_count, block_length)` or `let p = Parameters::new_by_bit_length(number_of_bits_of_the_message, block_length)`
-/// - Use the methods for the necessary operations, for example: `o.sign(&p, ...)`, `o.checksig_verify(&p, ...)`, `o.checksig_verify_remove_message(&p, ...)`
+
+/// Marker for the set of used Winternitz algorithms.
 pub struct Winternitz<VERIFIER: Verifier, CONVERTER: Converter> {
     phantom0: PhantomData<VERIFIER>,
     phantom1: PhantomData<CONVERTER>,
@@ -147,7 +182,6 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Default for Winternitz<VERIFIER, 
     }
 }
 
-/// Implementation of the default functions regardless of the algorithms that are chosen
 impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     pub const fn new() -> Self {
         Winternitz {
@@ -156,7 +190,11 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         }
     }
 
-    /// Wrapper to sign the digits
+    /// Creates a Winternitz signature for the given `secret_key` and `digits`.
+    ///
+    /// ## See
+    ///
+    /// [`Verifier::sign_digits`]
     pub fn sign_digits(
         &self,
         ps: &Parameters,
@@ -166,16 +204,37 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         VERIFIER::sign_digits(ps, secret_key, digits)
     }
 
-    /// Wrapper to sign the message in bytes (converts to digits inside)
-    pub fn sign(&self, ps: &Parameters, secret_key: &SecretKey, message_bytes: &[u8]) -> Witness {
+    /// Creates a Winternitz signature for the given `secret_key` and `message`.
+    ///
+    /// The message is internally converted into digits.
+    ///
+    /// ## See
+    ///
+    /// [`Verifier::sign_digits`]
+    pub fn sign(&self, ps: &Parameters, secret_key: &SecretKey, message: &[u8]) -> Witness {
         VERIFIER::sign_digits(
             ps,
             secret_key,
-            message_to_digits(ps.message_length, ps.block_length, message_bytes),
+            message_to_digits(ps.message_length, ps.block_length, message),
         )
     }
 
-    /// Expects the signature in the format of the used verification algorithm, start of the message being on the top and checksum being at the bottom, and verifies if the given signature is accurate leaving digits of the message on the stack start of it being on top
+    /// Returns a Bitcoin script that verifies a Winternitz signature for the given `public_key`.
+    ///
+    /// ## Precondition
+    ///
+    /// Signature (in the verifier's format) is at the stack top.
+    ///
+    /// ## Postcondition
+    ///
+    /// The converted message is on the stack top.
+    /// The checksum is consumed.
+    ///
+    /// ## See
+    ///
+    /// [`Verifier::verify_digits`]
+    ///
+    /// [`Converter::get_script`]
     pub fn checksig_verify(&self, ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             { VERIFIER::verify_digits(ps, public_key) }
@@ -184,7 +243,19 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         }
     }
 
-    /// Expects the signature in the format of the used verification algorithm, start of the message being on the top and checksum being at the bottom, and verifies if the given signature is accurate without leaving any trace on stack
+    /// Returns a Bitcoin script that verifies a Winternitz signature for the given `public_key`.
+    ///
+    /// ## Precondition
+    ///
+    /// Signature (in the verifier's format) is at the stack top.
+    ///
+    /// ## Postcondition
+    ///
+    /// The message and checksum are consumed.
+    ///
+    /// ## See
+    ///
+    /// [`Verifier::verify_digits`]
     pub fn checksig_verify_and_clear_stack(
         &self,
         ps: &Parameters,
@@ -202,8 +273,26 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         }
     }
 
-    /// Verifies the checksum after the whole message is verified, expects the digits of the whole message at the alt stack, the first element of the message being at the bottom. \
-    /// Removes the checksum digits and leaves the actual message on stack
+    /// Returns a Bitcoin script that verifies the message checksum.
+    ///
+    /// ## Precondition
+    ///
+    /// - `digits[n + m - 1]`
+    /// - `digits[n + m - 2]`
+    /// - ...
+    /// - `digits[0]` (alt stack top)
+    ///
+    /// On the alt stack, there are `m` checksum digits followed by `n` message digits.
+    /// The digits order is flipped.
+    ///
+    /// ## Postcondition
+    ///
+    /// - `digits[0]`
+    /// - `digits[1]`
+    /// - ...
+    /// - `digits[n - 1]` (stack top)
+    ///
+    /// The input is consumed from the alt stack.
     fn verify_checksum(&self, ps: &Parameters) -> Script {
         script! {
             OP_FROMALTSTACK OP_DUP OP_NEGATE
@@ -225,13 +314,29 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     }
 }
 
-/// - Verification Algorithm: Generates hashes for each possible value and then uses `OP_PICK` to get the corresponding one from the created list. \
-///   As a small improvement, it also divides the length of the list by 2 in the start
-/// - Signature format: hash_{n - 1}, digit_{n - 1}, hash_{n - 2}, digit_{n - 2} ... hash_0, digit_0 (With digits)
-/// - Approximate Max Stack Depth Used During Verification: 2 * `total_length()` + (2 ^ `block_length`)/2   
+/// ## Verification Algorithm
+///
+/// Generates hashes for each possible value and then uses `OP_PICK` to get the corresponding one from the created list.
+/// As a small improvement, it also divides the length of the list by 2 in the start.
+///
+/// ## Signature format
+///
+/// - `hash(digits[0])`
+/// - `digits[0]`
+/// - `hash(digits[1])`
+/// - `digits[1]`
+/// - ...
+/// - `hash(digits[n + m - 1])`
+/// - `digits[n + m - 1]`
+///
+/// There are `n` message digits followed by `m` checksum digits.
+///
+/// ## Approximate Max Stack Depth Used During Verification
+///
+/// 2 * `total_length()` + (2 ^ `block_length`) / 2
 pub struct ListpickVerifier {}
+
 impl Verifier for ListpickVerifier {
-    /// Expects the signature in the verifier's format, checks and verifies if the given signature is accurate with the given public key, leaving the message (with checksum) on the stack in given order
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_length() {
@@ -267,14 +372,39 @@ impl Verifier for ListpickVerifier {
         }
     }
 }
-/// - Verification Algorithm: Tries each possible digit value
-/// - Signature Format: hash_{n - 1}, hash_{n - 2} ... hash_0 (Without digits)
-/// - Approximate Max Stack Depth Used During Verification: `total_length()`
+
+/// ## Verification Algorithm
+///
+/// Tries each possible digit value.
+///
+/// ## Signature Format
+///
+/// - `hash(digit[0])`
+/// - `hash(digit[1])`
+/// - ...
+/// - `hash(digit[n + m - 1])`
+///
+/// There are `n` message digits followed by `m` checksum digits.
+///
+/// ## Approximate Max Stack Depth Used During Verification
+///
+/// `total_length()`
 pub struct BruteforceVerifier {}
+
 impl Verifier for BruteforceVerifier {
-    /// Signature in the verifier's format
-    fn sign_digits(ps: &Parameters, secret_key: &SecretKey, digits: Vec<u32>) -> Witness {
-        let digits = add_message_checksum(ps, digits);
+    /// Create a Winternitz signature for the given `secret_key` and `digits`.
+    ///
+    /// ## Signature Format
+    ///
+    /// - `hash(digit[0])`
+    /// - `hash(digit[1])`
+    /// - ...
+    /// - `hash(digit[n + m - 1])`
+    ///
+    /// There are `n` message digits followed by `m` checksum digits.
+    /// The checksum is computed internally.
+    fn sign_digits(ps: &Parameters, secret_key: &SecretKey, message_digits: Vec<u32>) -> Witness {
+        let digits = add_message_checksum(ps, message_digits);
         let mut result = Witness::new();
         for i in 0..ps.total_length() {
             let sig = digit_signature(secret_key, i, digits[i as usize]);
@@ -282,13 +412,32 @@ impl Verifier for BruteforceVerifier {
         }
         result
     }
-    /// Expects the signature in the verifier's format, checks and verifies if the given signature is accurate with the given public key, leaving the message (with checksum) on the stack in given order
+
+    /// Returns a Bitcoin script that verifies a Winternitz signature for the given `public_key`.
+    ///
+    /// ## Precondition
+    ///
+    /// - `hash(digits[0])`
+    /// - `hash(digits[1])`
+    /// - ...
+    /// - `hash(digits[n + m - 1])` (stack top)
+    ///
+    /// There are `n` message digits followed by `m` checksum digits.
+    ///
+    /// ## Postcondition
+    ///
+    /// - `digits[n - 1]`
+    /// - `digits[n - 2]`
+    /// - ...
+    /// - `digits[0]` (alt stack top)
+    ///
+    /// The input is consumed from the stack.
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_length() {
                 { public_key[(ps.total_length() - 1 - digit_index) as usize].to_vec() }
                 OP_SWAP
-                { -1 } OP_TOALTSTACK // To avoid illegal stack acces, same -1 is checked later
+                { -1 } OP_TOALTSTACK // To avoid illegal stack access, same -1 is checked later
                 OP_2DUP
                 OP_EQUAL
                 OP_IF
@@ -316,12 +465,28 @@ impl Verifier for BruteforceVerifier {
     }
 }
 
-/// - Verification Algorithm: Simulates a for loop of hashing using binary search on the digit
-/// - Signature Format: hash_{n - 1}, digit_{n - 1}, hash_{n - 2}, digit_{n - 2} ... hash_0, digit_0 (With digits)
-/// - Approximate Max Stack Depth Used During Verification: 2 * `total_length()`
+/// ## Verification Algorithm
+///
+/// Simulates a for loop of hashing using binary search on the digit.
+///
+/// ## Signature Format
+///
+/// - `hash(digits[0])`
+/// - `digits[0]`
+/// - `hash(digits[1])`
+/// - `digits[1]`
+/// - ...
+/// - `hash(digits[n + m - 1])`
+/// - `digits[n + m - 1]`
+///
+/// There are `n` message digits followed by `m` checksum digits.
+///
+/// ## Approximate Max Stack Depth Used During Verification
+///
+/// 2 * `total_length()`
 pub struct BinarysearchVerifier {}
+
 impl Verifier for BinarysearchVerifier {
-    /// Expects the signature in the verifier's format, checks and verifies if the given signature is accurate with the given public key, leaving the message (with checksum) on the stack in given order
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_length() {
@@ -359,24 +524,28 @@ impl Verifier for BinarysearchVerifier {
     }
 }
 
-/// Does nothing, leaving each stack each element as a block from Winternitz
+/// Leaves the digits on the stack as they are.
 pub struct VoidConverter {}
+
 impl Converter for VoidConverter {
     fn length_of_final_message(ps: &Parameters) -> u32 {
         ps.message_length
     }
+
     fn get_script(ps: &Parameters) -> Script {
         let _ = ps;
         script! {}
     }
 }
 
-/// Alters message (divides it into 8 bit pieces), leaving each stack each element as a byte
+/// Converts the digits into bytes and leaves them on the stack.
 pub struct ToBytesConverter {}
+
 impl Converter for ToBytesConverter {
     fn length_of_final_message(ps: &Parameters) -> u32 {
         ps.byte_message_length()
     }
+
     fn get_script(ps: &Parameters) -> Script {
         if ps.block_length == 8 {
             //already bytes
