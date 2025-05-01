@@ -29,7 +29,7 @@ macro_rules! impl_wots {
             pub const PS: winternitz::Parameters =
                 winternitz::Parameters::new_by_bit_length(MSG_LEN * 8, 4);
             /// Total number of "digits" in the signature.
-            pub const N_DIGITS: u32 = PS.total_length();
+            pub const N_DIGITS: u32 = PS.total_digit_len();
 
             /// Public key is an array of 20-byte arrays.
             pub type PublicKey = [[u8; 20]; N_DIGITS as usize];

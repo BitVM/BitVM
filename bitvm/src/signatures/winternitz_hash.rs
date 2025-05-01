@@ -3,7 +3,8 @@ use bitcoin::Witness;
 use blake3::hash;
 
 const MESSAGE_HASH_LEN: u32 = 20;
-/// Winternitz parameters for the 20 byte blake3 variant with the block length 4
+
+/// Winternitz parameters for the 20 byte blake3 variant
 pub const WINTERNITZ_HASH_PARAMETERS: Parameters =
     Parameters::new_by_bit_length(MESSAGE_HASH_LEN * 8, 4);
 
@@ -11,15 +12,15 @@ pub const WINTERNITZ_HASH_PARAMETERS: Parameters =
 pub const WINTERNITZ_HASH_VERIFIER: Winternitz<ListpickVerifier, ToBytesConverter> =
     Winternitz::new();
 
-/// Winternitz verifier, returns the message in blocks
+/// Winternitz verifier, returns the message in digits
 pub const WINTERNITZ_MESSAGE_VERIFIER: Winternitz<ListpickVerifier, VoidConverter> =
     Winternitz::new();
 
-/// Winternitz verifier, returns the message in in bytes
+/// Winternitz verifier, returns the message in bytes
 pub const WINTERNITZ_VARIABLE_VERIFIER: Winternitz<ListpickVerifier, ToBytesConverter> =
     Winternitz::new();
 
-/// Winternitz verifier for compact signature representation, returns the message in in bytes
+/// Winternitz verifier for compact signature representation, returns the message in bytes
 pub const WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz<BruteforceVerifier, VoidConverter> =
     Winternitz::new();
 
