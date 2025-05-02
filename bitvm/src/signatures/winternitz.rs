@@ -25,7 +25,7 @@ pub struct Parameters {
 impl Parameters {
     /// Creates parameters for messages of the given number of digits of the given base.
     ///
-    /// The base must be in the range `16..=256`.
+    /// The log2_base must be in the range `4..=8`.
     pub const fn new(message_digit_len: u32, log2_base: u32) -> Self {
         assert!(
             4 <= log2_base && log2_base <= 8,
@@ -43,7 +43,7 @@ impl Parameters {
 
     /// Creates parameters for messages of the given bit length and for digits of the given base.
     ///
-    /// The base must be in the range `16..=256`.
+    /// The log2_base must be in the range `4..=8`.
     pub const fn new_by_bit_length(message_n_bits: u32, log2_base: u32) -> Self {
         let message_digit_len = message_n_bits.div_ceil(log2_base);
         Self::new(message_digit_len, log2_base)
@@ -90,7 +90,7 @@ pub fn generate_public_key(ps: &Parameters, secret_key: &SecretKey) -> PublicKey
     public_key
 }
 
-/// Checksum of the message (negated sum of the digits)
+/// Computes the checksum for the given message.
 fn checksum(ps: &Parameters, message_digits: &[u32]) -> u32 {
     debug_assert_eq!(message_digits.len(), ps.message_digit_len as usize);
 
@@ -111,7 +111,7 @@ fn add_message_checksum(ps: &Parameters, mut message_digits: Vec<u32>) -> Vec<u3
     message_digits
 }
 
-/// Trait for creating and for verifying Winternitz signatures.
+/// Creates and verifies Winternitz signatures.
 pub trait Verifier {
     /// Creates a Winternitz signature for the given `secret_key` and `digits`.
     ///
@@ -165,7 +165,7 @@ pub trait Verifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script;
 }
 
-/// Trait for converting the message on the stack after signature verification.
+/// Converts the message on the stack after signature verification.
 pub trait Converter {
     /// Returns a Bitcoin script that converts the message on the stack.
     fn get_script(ps: &Parameters) -> Script;
@@ -187,6 +187,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Default for Winternitz<VERIFIER, 
 }
 
 impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
+    /// Creates a marker for the given [`Verifier`] and [`Converter`].
     pub const fn new() -> Self {
         Winternitz {
             phantom0: PhantomData,
@@ -236,9 +237,8 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     ///
     /// ## See
     ///
-    /// [`Verifier::verify_digits`]
-    ///
-    /// [`Converter::get_script`]
+    /// - [`Verifier::verify_digits`]
+    /// - [`Converter::get_script`]
     pub fn checksig_verify(&self, ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             { VERIFIER::verify_digits(ps, public_key) }
@@ -318,6 +318,8 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     }
 }
 
+/// Winternitz signature verification using lists and `OP_PICK`.
+///
 /// ## Verification Algorithm
 ///
 /// Generates hashes for each possible value and then uses `OP_PICK` to get the corresponding one from the created list.
@@ -377,6 +379,8 @@ impl Verifier for ListpickVerifier {
     }
 }
 
+/// Winternitz signature verification using brute force.
+///
 /// ## Verification Algorithm
 ///
 /// Tries each possible digit value.
@@ -396,7 +400,7 @@ impl Verifier for ListpickVerifier {
 pub struct BruteforceVerifier {}
 
 impl Verifier for BruteforceVerifier {
-    /// Create a Winternitz signature for the given `secret_key` and `digits`.
+    /// Creates a Winternitz signature for the given `secret_key` and `digits`.
     ///
     /// ## Signature Format
     ///
@@ -469,6 +473,8 @@ impl Verifier for BruteforceVerifier {
     }
 }
 
+/// Winternitz signature verification using binary search.
+///
 /// ## Verification Algorithm
 ///
 /// Simulates a for loop of hashing using binary search on the digit.

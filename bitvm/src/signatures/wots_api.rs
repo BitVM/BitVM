@@ -55,54 +55,54 @@ macro_rules! impl_wots {
                 }
             }
 
-            /// Create a verification script for a WOTS public key.
+            /// Creates a verification script for a WOTS `public_key`.
             pub fn checksig_verify(public_key: PublicKey) -> Script {
                 WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&PS, &public_key.to_vec())
             }
 
-            /// Changes the format of the signature, from bitcoin witness to array
-            pub fn raw_witness_to_signature(sigs: &Witness) -> Signature {
+            /// Changes the format of the `signature`, from bitcoin witness to array.
+            pub fn raw_witness_to_signature(signature: &Witness) -> Signature {
                 // Iterate over the signature pieces two at a time.
                 let mut sigs_vec: Vec<([u8; 20], u8)> = Vec::new();
-                for i in (0..sigs.len()).step_by(2) {
-                    let preimage: [u8; 20] = if sigs[i].len() == 0 {
+                for i in (0..signature.len()).step_by(2) {
+                    let preimage: [u8; 20] = if signature[i].len() == 0 {
                         [0; 20]
                     } else {
-                        sigs[i].try_into().unwrap()
+                        signature[i].try_into().unwrap()
                     };
-                    let digit_arr: [u8; 1] = if sigs[i + 1].len() == 0 {
+                    let digit_arr: [u8; 1] = if signature[i + 1].len() == 0 {
                         [0]
                     } else {
-                        sigs[i + 1].try_into().unwrap()
+                        signature[i + 1].try_into().unwrap()
                     };
                     sigs_vec.push((preimage, digit_arr[0]));
                 }
                 sigs_vec.try_into().unwrap()
             }
 
-            /// Changes the format of the signature, from array to bitcoin witness
-            pub fn signature_to_raw_witness(sigs: &Signature) -> Witness {
+            /// Changes the format of the `signature`, from array to bitcoin witness
+            pub fn signature_to_raw_witness(signature: &Signature) -> Witness {
                 let mut w = Witness::new();
-                for (h, digit) in sigs.iter() {
+                for (h, digit) in signature.iter() {
                     w.push(h.to_vec());
                     w.push(u32_to_le_bytes_minimal(*digit as u32));
                 }
                 w
             }
 
-            /// Generate a signature for a message using the provided secret.
-            pub fn get_signature(secret: &str, msg_bytes: &[u8]) -> Signature {
+            /// Generates a signature for a `message` using the provided `secret`.
+            pub fn get_signature(secret: &str, message: &[u8]) -> Signature {
                 let secret_key = match Vec::<u8>::from_hex(secret) {
                     Ok(bytes) => bytes,
                     Err(_) => panic!("Invalid hex string for secret"),
                 };
 
-                let sigs = WINTERNITZ_MESSAGE_VERIFIER.sign(&PS, &secret_key, &msg_bytes.to_vec());
+                let sigs = WINTERNITZ_MESSAGE_VERIFIER.sign(&PS, &secret_key, &message.to_vec());
                 assert_eq!(sigs.len(), 2 * N_DIGITS as usize);
                 raw_witness_to_signature(&sigs)
             }
 
-            /// Generate a WOTS public key using the provided secret.
+            /// Generates a WOTS public key using the provided `secret`.
             pub fn generate_public_key(secret: &str) -> PublicKey {
                 let secret_key = match Vec::<u8>::from_hex(secret) {
                     Ok(bytes) => bytes,
@@ -119,38 +119,38 @@ macro_rules! impl_wots {
                 /// The compact signature is just the 20-byte preimages.
                 pub type Signature = [[u8; 20]; N_DIGITS as usize];
 
-                /// Create a verification script for the compact WOTS public key.
+                /// Creates a verification script for the compact WOTS `public_key`.
                 pub fn checksig_verify(public_key: PublicKey) -> Script {
                     WINTERNITZ_MESSAGE_COMPACT_VERIFIER.checksig_verify(&PS, &public_key.to_vec())
                 }
 
-                /// Changes the format of the signature, from bitcoin witness to array
-                pub fn raw_witness_to_signature(sigs: &Witness) -> Signature {
+                /// Changes the format of the `signature`, from bitcoin witness to array.
+                pub fn raw_witness_to_signature(signature: &Witness) -> Signature {
                     // Iterate over the signature pieces two at a time.
                     let mut sigs_vec: Vec<[u8; 20]> = Vec::new();
                     // Iterate over the signature pieces using step_by.
-                    for i in 0..sigs.len() {
-                        let preimage: [u8; 20] = if sigs[i].len() == 0 {
+                    for i in 0..signature.len() {
+                        let preimage: [u8; 20] = if signature[i].len() == 0 {
                             [0; 20]
                         } else {
-                            sigs[i].try_into().unwrap()
+                            signature[i].try_into().unwrap()
                         };
                         sigs_vec.push(preimage);
                     }
                     sigs_vec.try_into().unwrap()
                 }
 
-                /// Changes the format of the signature, from array to bitcoin witness
-                pub fn signature_to_raw_witness(sigs: &Signature) -> Witness {
+                /// Changes the format of the `signature`, from array to bitcoin witness.
+                pub fn signature_to_raw_witness(signature: &Signature) -> Witness {
                     let mut w = Witness::new();
-                    for h in sigs.iter() {
+                    for h in signature.iter() {
                         w.push(h.to_vec());
                     }
                     w
                 }
 
-                /// Generate a compact signature for a message.
-                pub fn get_signature(secret: &str, msg_bytes: &[u8]) -> Signature {
+                /// Generates a compact signature for a `message`.
+                pub fn get_signature(secret: &str, message: &[u8]) -> Signature {
                     let secret_key = match Vec::<u8>::from_hex(secret) {
                         Ok(bytes) => bytes,
                         Err(_) => panic!("Invalid hex string for secret"),
@@ -159,7 +159,7 @@ macro_rules! impl_wots {
                     let sigs = WINTERNITZ_MESSAGE_COMPACT_VERIFIER.sign(
                         &PS,
                         &secret_key,
-                        &msg_bytes.to_vec(),
+                        &message.to_vec(),
                     );
                     assert_eq!(sigs.len(), N_DIGITS as usize);
                     raw_witness_to_signature(&sigs)
@@ -171,6 +171,5 @@ macro_rules! impl_wots {
 const BIGINT_LEN: u32 = 32;
 pub const HASH_LEN: u32 = 16; // bytes, can lower it to value like 16 or 13 lesser acceptable security
 
-// Expand the macro for the two variants.
 impl_wots!(wots_hash, HASH_LEN);
 impl_wots!(wots256, BIGINT_LEN);
