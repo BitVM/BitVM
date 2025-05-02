@@ -16,7 +16,7 @@ pub(super) const fn log_base_ceil(n: u32, base: u32) -> u32 {
 /// ## Output format
 ///
 /// - sequence of `n_digits` many digits
-/// - each digit a `u32` value in range `0..2.pow(log2_base)`
+/// - each digit a `u32` value in range `0..base`
 /// - checksum converted into BE bytes, in turn converted into digits
 pub(super) fn checksum_to_digits(mut checksum: u32, base: u32, n_digits: u32) -> Vec<u32> {
     debug_assert!((16..=256).contains(&base));
