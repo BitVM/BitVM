@@ -47,7 +47,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     pub fn limb_from_bytes() -> Script {
-        let bytes_per_limb = (LIMB_SIZE + 7) / 8;
+        let bytes_per_limb = LIMB_SIZE.div_ceil(8);
 
         assert!(LIMB_SIZE > 0, "LIMB_SIZE must not be 0");
         assert!(LIMB_SIZE < 33, "LIMB_SIZE must be less than 33");

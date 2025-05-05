@@ -18,7 +18,7 @@ pub struct WinternitzSecret {
     parameters: Parameters,
 }
 
-// Bits per digit (block)
+/// Bits per digit.
 pub const LOG_D: u32 = 4;
 
 impl WinternitzSecret {
@@ -40,7 +40,7 @@ impl WinternitzSecret {
     pub fn from_string(secret: &str, parameters: &Parameters) -> Self {
         WinternitzSecret {
             secret_key: secret.as_bytes().to_lower_hex_string().into(),
-            parameters: parameters.clone(),
+            parameters: *parameters,
         }
     }
 }
@@ -55,7 +55,7 @@ impl From<&WinternitzSecret> for WinternitzPublicKey {
     fn from(secret: &WinternitzSecret) -> Self {
         WinternitzPublicKey {
             public_key: generate_public_key(&secret.parameters, &secret.secret_key),
-            parameters: secret.parameters.clone(),
+            parameters: secret.parameters,
         }
     }
 }
@@ -135,11 +135,7 @@ pub fn winternitz_message_checksig_verify(
 mod tests {
     use super::*;
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::{
-        bn254::g1::G1Affine,
-        execute_script,
-        signatures::{utils::digits_to_number, winternitz::generate_public_key},
-    };
+    use crate::{bn254::g1::G1Affine, execute_script, signatures::utils};
     use crate::{execute_script_with_inputs, ExecuteInfo};
     use ark_ff::UniformRand as _;
     use ark_std::test_rng;
@@ -199,7 +195,7 @@ mod tests {
           },
           ).to_vec() }
           { winternitz_message_checksig(&public_key) }
-          { digits_to_number::<{ 4 * 2}, { LOG_D as usize }>() }
+          { utils::digits_to_number::<{ 4 * 2}, { LOG_D as usize }>() }
           { start_time_block_number }
           OP_EQUAL
         };
@@ -227,7 +223,7 @@ mod tests {
         let public_key = WinternitzPublicKey::from(&secret);
         let reference_public_key = generate_public_key(&secret.parameters, &secret.secret_key);
 
-        for i in 0..secret.parameters.total_length() {
+        for i in 0..secret.parameters.total_digit_len() {
             assert_eq!(
                 public_key.public_key[i as usize],
                 reference_public_key[i as usize]
@@ -242,9 +238,9 @@ mod tests {
 
         assert_eq!(
             public_key.public_key.len(),
-            public_key.parameters.total_length() as usize
+            public_key.parameters.total_digit_len() as usize
         );
-        for i in 0..public_key.parameters.total_length() {
+        for i in 0..public_key.parameters.total_digit_len() {
             assert_eq!(
                 public_key.public_key[i as usize].len(),
                 20,
