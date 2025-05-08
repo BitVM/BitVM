@@ -9,7 +9,7 @@ use bridge::{
     },
     commitments::CommitmentMessageId,
     graphs::{
-        base::{max, BaseGraph, DUST_AMOUNT, MIN_RELAY_FEE_ASSERT_SET, PEG_IN_FEE, PEG_OUT_FEE},
+        base::{max, DUST_AMOUNT, MIN_RELAY_FEE_ASSERT_SET, PEG_IN_FEE, PEG_OUT_FEE},
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },

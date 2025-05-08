@@ -224,12 +224,18 @@ impl BitVMClient {
 
     /// Get a mutable reference to a PegInGraph by its ID
     pub fn get_peg_in_graph_mut(&mut self, id: &str) -> Option<&mut PegInGraph> {
-        self.data.peg_in_graphs.iter_mut().find(|graph| graph.id() == id)
+        self.data
+            .peg_in_graphs
+            .iter_mut()
+            .find(|graph| graph.id() == id)
     }
 
     /// Get a mutable reference to a PegOutGraph by its ID
     pub fn get_peg_out_graph_mut(&mut self, id: &str) -> Option<&mut PegOutGraph> {
-        self.data.peg_out_graphs.iter_mut().find(|graph| graph.id() == id)
+        self.data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|graph| graph.id() == id)
     }
 
     // TODO: This should be private. Currently used in the fees test. See if it can be refactored.
