@@ -95,8 +95,9 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
         .into_iter()
         .zip(bitcom_scripts)
         .map(|(op_scr, bit_scr)| {
-            let joint_scr = bit_scr.push_script(op_scr);
-            joint_scr.compile()
+            let mut full_script_bytes = bit_scr.compile().to_bytes();
+            full_script_bytes.extend_from_slice(op_scr.as_bytes());
+            ScriptBuf::from_bytes(full_script_bytes)
         })
         .collect();
     res
