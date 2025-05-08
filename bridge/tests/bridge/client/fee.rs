@@ -9,7 +9,7 @@ use bridge::{
     },
     commitments::CommitmentMessageId,
     graphs::{
-        base::{max, BaseGraph, DUST_AMOUNT, MIN_RELAY_FEE_ASSERT_SET, PEG_IN_FEE, PEG_OUT_FEE},
+        base::{max, DUST_AMOUNT, MIN_RELAY_FEE_ASSERT_SET, PEG_IN_FEE, PEG_OUT_FEE},
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
@@ -544,22 +544,10 @@ async fn test_peg_out_fees() {
     check_tx_output_sum(reward_amount - DUST_AMOUNT * 4, &disprove_tx);
 }
 
-// TODO: consider making the graph getter in client public after refactor
 fn get_peg_in_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegInGraph {
-    client
-        .data_mut()
-        .peg_in_graphs
-        .iter_mut()
-        .find(|graph| graph.id().eq(&id))
-        .unwrap()
+    client.get_peg_in_graph_mut(&id).unwrap()
 }
 
-// TODO: consider making the graph getter in client public after refactor
 fn get_peg_out_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegOutGraph {
-    client
-        .data_mut()
-        .peg_out_graphs
-        .iter_mut()
-        .find(|graph| graph.id().eq(&id))
-        .unwrap()
+    client.get_peg_out_graph_mut(&id).unwrap()
 }
