@@ -44,7 +44,7 @@ use bitvm::{
     //     common::RawWitness,
     //     disprove_execution::{disprove_exec, RawProof},
     // },
-    signatures::signing_winternitz::WinternitzPublicKey,
+    signatures::{signing_winternitz::WinternitzPublicKey, winternitz},
 };
 use zstd::DEFAULT_COMPRESSION_LEVEL;
 
@@ -113,8 +113,8 @@ impl ConnectorC {
         sorted_pks.sort_by(|a, b| a.0.cmp(&b.0));
         let sorted_pks = sorted_pks
             .iter()
-            .map(|f| &f.1)
-            .collect::<Vec<&WinternitzPublicKey>>();
+            .map(|f| &f.1.public_key)
+            .collect::<Vec<&winternitz::PublicKey>>();
 
         let mut commit_witness = commit_1_witness.clone();
         commit_witness.extend_from_slice(&commit_2_witness);
@@ -322,8 +322,8 @@ fn generate_assert_leaves(
     sorted_pks.sort_by(|a, b| a.0.cmp(&b.0));
     let sorted_pks = sorted_pks
         .iter()
-        .map(|f| &f.1)
-        .collect::<Vec<&WinternitzPublicKey>>();
+        .map(|f| &f.1.public_key)
+        .collect::<Vec<&winternitz::PublicKey>>();
 
     let default_proof = RawProof::default(); // mock a default proof to generate scripts
     let partial_scripts = api_generate_partial_script(&default_proof.vk);
