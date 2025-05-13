@@ -7,7 +7,7 @@ use crate::chunk::api_runtime_utils::{
     get_segments_from_assertion, get_segments_from_groth16_proof,
 };
 
-use crate::signatures::wots_api::{wots256, wots_hash};
+use crate::signatures::{Wots, Wots16, Wots32};
 use crate::treepp::*;
 use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
@@ -28,15 +28,15 @@ pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS;
 pub type PublicInputs = [ark_bn254::Fr; NUM_PUBS];
 
 pub type PublicKeys = (
-    [wots256::PublicKey; NUM_PUBS],
-    [wots256::PublicKey; NUM_U256],
-    [wots_hash::PublicKey; NUM_HASH],
+    [<Wots32 as Wots>::PublicKey; NUM_PUBS],
+    [<Wots32 as Wots>::PublicKey; NUM_U256],
+    [<Wots16 as Wots>::PublicKey; NUM_HASH],
 );
 
 pub type Signatures = (
-    Box<[wots256::Signature; NUM_PUBS]>,
-    Box<[wots256::Signature; NUM_U256]>,
-    Box<[wots_hash::Signature; NUM_HASH]>,
+    Box<[<Wots32 as Wots>::Signature; NUM_PUBS]>,
+    Box<[<Wots32 as Wots>::Signature; NUM_U256]>,
+    Box<[<Wots16 as Wots>::Signature; NUM_HASH]>,
 );
 
 pub type Assertions = (
@@ -54,14 +54,12 @@ pub fn api_get_assertions_from_signature(signed_asserts: Signatures) -> Assertio
 }
 
 pub mod type_conversion_utils {
+    use super::*;
     use crate::chunk::api::Signatures;
     use crate::{
         chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256},
         execute_script,
-        signatures::{
-            signing_winternitz::WinternitzPublicKey,
-            wots_api::{wots256, wots_hash},
-        },
+        signatures::GenericWinternitzPublicKey,
         treepp::Script,
     };
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -93,18 +91,17 @@ pub mod type_conversion_utils {
         assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_HASH);
         let mut asigs = vec![];
         for i in 0..NUM_PUBS {
-            let a = wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i]));
+            let a = Wots32::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i]));
             asigs.push(a);
         }
         let mut bsigs = vec![];
         for i in 0..NUM_U256 {
-            let a =
-                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS]));
+            let a = Wots32::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS]));
             bsigs.push(a);
         }
         let mut csigs = vec![];
         for i in 0..NUM_HASH {
-            let a = wots_hash::raw_witness_to_signature(&Witness::from_slice(
+            let a = Wots16::raw_witness_to_signature(&Witness::from_slice(
                 &raw_wits[i + NUM_PUBS + NUM_U256],
             ));
             csigs.push(a);
@@ -124,13 +121,13 @@ pub mod type_conversion_utils {
         let mut raw_wits = Vec::with_capacity(asigs.len() + bsigs.len() + csigs.len());
 
         for sig in asigs.iter() {
-            raw_wits.push(wots256::signature_to_raw_witness(sig).to_vec());
+            raw_wits.push(Wots32::signature_to_raw_witness(sig).to_vec());
         }
         for sig in bsigs.iter() {
-            raw_wits.push(wots256::signature_to_raw_witness(sig).to_vec());
+            raw_wits.push(Wots32::signature_to_raw_witness(sig).to_vec());
         }
         for sig in csigs.iter() {
-            raw_wits.push(wots_hash::signature_to_raw_witness(sig).to_vec());
+            raw_wits.push(Wots16::signature_to_raw_witness(sig).to_vec());
         }
 
         raw_wits
@@ -146,20 +143,20 @@ pub mod type_conversion_utils {
     }
 
     pub fn utils_typed_pubkey_from_raw(
-        commits_public_keys: Vec<&WinternitzPublicKey>,
+        commits_public_keys: Vec<&GenericWinternitzPublicKey>,
     ) -> PublicKeys {
         let mut apubs = vec![];
         let mut bpubs = vec![];
         let mut cpubs = vec![];
         for (idx, f) in commits_public_keys.into_iter().enumerate() {
             if idx < NUM_PUBS {
-                let p: wots256::PublicKey = f.public_key.clone().try_into().unwrap();
+                let p: <Wots32 as Wots>::PublicKey = f.clone().try_into().unwrap();
                 apubs.push(p);
             } else if idx < NUM_PUBS + NUM_U256 {
-                let p: wots256::PublicKey = f.public_key.clone().try_into().unwrap();
+                let p: <Wots32 as Wots>::PublicKey = f.clone().try_into().unwrap();
                 bpubs.push(p);
             } else if idx < NUM_PUBS + NUM_U256 + NUM_HASH {
-                let p: wots_hash::PublicKey = f.public_key.clone().try_into().unwrap();
+                let p: <Wots16 as Wots>::PublicKey = f.clone().try_into().unwrap();
                 cpubs.push(p);
             }
         }
@@ -356,8 +353,6 @@ mod test {
     use crate::chunk::api::generate_signatures_for_any_proof;
 
     use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
-    use crate::chunk::wrap_wots::{byte_array_to_wots256_sig, byte_array_to_wots_hash_sig};
-    use crate::signatures::wots_api::{wots256, wots_hash};
     use ark_bn254::Bn254;
     use ark_ff::UniformRand;
     use ark_serialize::CanonicalDeserialize;
@@ -369,6 +364,8 @@ mod test {
         write_scripts_to_file, write_scripts_to_separate_files,
     };
 
+    use super::Signatures;
+    use crate::signatures::{Wots, Wots16, Wots32};
     use crate::{
         chunk::{
             api::{
@@ -382,8 +379,6 @@ mod test {
         },
         execute_script,
     };
-
-    use super::Signatures;
 
     mod test_utils {
         use crate::chunk::api::Assertions;
@@ -768,29 +763,29 @@ mod test {
         let (ps, fs, hs) = (assn.0, assn.1, assn.2);
         let secret = MOCK_SECRET;
 
-        let mut psig: Vec<wots256::Signature> = vec![];
+        let mut psig: Vec<<Wots32 as Wots>::Signature> = vec![];
         for i in 0..NUM_PUBS {
-            let psi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", i), &ps[i]);
+            let secret = format!("{secret}{:04x}", i);
+            let psi = Wots32::sign(&Wots16::secret_from_str(&secret), &ps[i]);
             psig.push(psi);
         }
-        let psig: Box<[wots256::Signature; NUM_PUBS]> = Box::new(psig.try_into().unwrap());
+        let psig: Box<[<Wots32 as Wots>::Signature; NUM_PUBS]> = Box::new(psig.try_into().unwrap());
 
-        let mut fsig: Vec<wots256::Signature> = vec![];
+        let mut fsig: Vec<<Wots32 as Wots>::Signature> = vec![];
         for i in 0..NUM_U256 {
-            let fsi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", NUM_PUBS + i), &fs[i]);
+            let secret = format!("{secret}{:04x}", NUM_PUBS + i);
+            let fsi = Wots32::sign(&Wots16::secret_from_str(&secret), &fs[i]);
             fsig.push(fsi);
         }
-        let fsig: Box<[wots256::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
+        let fsig: Box<[<Wots32 as Wots>::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
 
-        let mut hsig: Vec<wots_hash::Signature> = vec![];
+        let mut hsig: Vec<<Wots16 as Wots>::Signature> = vec![];
         for i in 0..NUM_HASH {
-            let hsi = byte_array_to_wots_hash_sig(
-                &format!("{secret}{:04x}", NUM_PUBS + NUM_U256 + i),
-                &hs[i],
-            );
+            let secret = format!("{secret}{:04x}", NUM_PUBS + NUM_U256 + i);
+            let hsi = Wots16::sign(&Wots16::secret_from_str(&secret), &hs[i]);
             hsig.push(hsi);
         }
-        let hsig: Box<[wots_hash::Signature; NUM_HASH]> = Box::new(hsig.try_into().unwrap());
+        let hsig: Box<[<Wots16 as Wots>::Signature; NUM_HASH]> = Box::new(hsig.try_into().unwrap());
 
         (psig, fsig, hsig)
     }

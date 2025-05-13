@@ -2,14 +2,13 @@ use super::elements::ElementType;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     hash::blake3::blake3_compute_script,
-    signatures::wots_api,
     treepp::*,
 };
 use hash_utils::{
     hash_fp2, hash_fp6, hash_g2acc, hash_g2acc_with_hash_t, hash_g2acc_with_hashed_le,
 };
 
-pub const BLAKE3_HASH_LENGTH: usize = wots_api::HASH_LEN as usize;
+pub const BLAKE3_HASH_LENGTH: usize = 16;
 
 /// truncate 32 byte output hash to {BLAKE3_HASH_LENGTH} hash output and pad with zeros
 fn wrap_scr(scr: Script) -> Script {
