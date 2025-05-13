@@ -15,11 +15,11 @@ pub type SecretKey = Vec<u8>;
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Parameters {
     /// Number of digits per message (including zero padding at the end).
-    message_digit_len: u32,
+    pub(super) message_digit_len: u32,
     /// Number of bits per digit.
-    log2_base: u32,
+    pub(super) log2_base: u32,
     /// Number of digits per checksum.
-    checksum_digit_len: u32,
+    pub(super) checksum_digit_len: u32,
 }
 
 impl Parameters {
