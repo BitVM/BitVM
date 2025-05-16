@@ -37,9 +37,11 @@ pub(crate) mod hash_utils {
         treepp::Script,
     };
     use bitcoin_script::script;
+    use cached::proc_macro::cached;
 
     /// Compute hash of top two field elements on stack: [a00, a01]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
+    #[cached]
     pub(crate) fn hash_fp2() -> Script {
         script! {
             // [a00, a01]
@@ -51,6 +53,7 @@ pub(crate) mod hash_utils {
 
     /// Compute hash of top four field elements on stack: [a00, a01, a10, a11]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
+    #[cached]
     pub(crate) fn hash_fp4() -> Script {
         script! {
             // [a00, a01, a10, a11]
@@ -65,6 +68,7 @@ pub(crate) mod hash_utils {
 
     /// Compute hash of top six field elements on stack: [a00, a01, a10, a11, a20, a21]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
+    #[cached]
     pub(crate) fn hash_fp6() -> Script {
         script! {
             // [a00, a01, a10, a11, a20, a21]
@@ -79,6 +83,7 @@ pub(crate) mod hash_utils {
 
     /// Compute hash of top six field elements on stack: [a00, a01,.., a60, a61]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
+    #[cached]
     pub(crate) fn hash_fp14() -> Script {
         script! {
             // [a00, a01,... ,a60, a61]
@@ -93,6 +98,7 @@ pub(crate) mod hash_utils {
 
     /// Compute hash of G2 Point Accumulator (i.e. [t(4), partial_product(14)]) where Hash(partial_product) has been passed as auxiliary input on stack.
     /// Stack: [t(4), Hash_partial_product(1)]
+    #[cached]
     pub(crate) fn hash_g2acc_with_hashed_le() -> Script {
         script! {
             // [t, Hash_partial_product]
@@ -108,6 +114,7 @@ pub(crate) mod hash_utils {
 
     /// Compute hash of G2 Point Accumulator (i.e. [t(4), partial_product(14)]) where all elements are passed as raw value on stack
     /// Stack: [t(4), partial_product(14)]
+    #[cached]
     pub(crate) fn hash_g2acc() -> Script {
         script! {
             // [t, partial_product]
@@ -136,6 +143,7 @@ pub(crate) mod hash_utils {
 
     /// Compute hash of G2 Point Accumulator (i.e. [t(4), partial_product(14)]) where Hash(t) has been passed as auxiliary input on stack.
     /// Stack: [Hash_partial_priduct(14), Hash_t(1)]
+    #[cached]
     pub(crate) fn hash_g2acc_with_hash_t() -> Script {
         script! {
             // [partial_product, Hash_t]
