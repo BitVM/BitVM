@@ -30,7 +30,6 @@ ark-crypto-primitives.workspace = true
 ark-relations.workspace = true
 tqdm.workspace = true
 regex.workspace = true
-cached = "0.55.1"
 
 [features]
 fuzzing = []
