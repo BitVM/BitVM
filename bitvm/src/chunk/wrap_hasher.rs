@@ -30,7 +30,7 @@ pub(crate) fn hash_n_bytes<const N: usize>() -> Script {
 // helpers to directly hash data structures that we work with
 // example: extension field elements, point accumulators
 pub(crate) mod hash_utils {
-    use std::sync::OnceLock;
+    use std::sync::LazyLock;
 
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2},
@@ -42,148 +42,134 @@ pub(crate) mod hash_utils {
     /// Compute hash of top two field elements on stack: [a00, a01]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
     pub(crate) fn hash_fp2() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [a00, a01]
-                    { hash_n_bytes::<64>() }
-                    // Hash(a00|a01)
-                    { pack_nibbles_to_limbs() }
-                }
-            })
-            .clone()
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [a00, a01]
+                { hash_n_bytes::<64>() }
+                // Hash(a00|a01)
+                { pack_nibbles_to_limbs() }
+            }
+        });
+        SCRIPT.clone()
     }
 
     /// Compute hash of top four field elements on stack: [a00, a01, a10, a11]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
     pub(crate) fn hash_fp4() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [a00, a01, a10, a11]
-                    {Fq2::roll(2)}
-                    // [a10, a11, a00, a01]
-                    // Requires first msg-block at the top of stack
-                    { hash_n_bytes::<128>() }
-                    // Hash(a00|a01|a10|a11)
-                    { pack_nibbles_to_limbs() }
-                }
-            })
-            .clone()
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [a00, a01, a10, a11]
+                {Fq2::roll(2)}
+                // [a10, a11, a00, a01]
+                // Requires first msg-block at the top of stack
+                { hash_n_bytes::<128>() }
+                // Hash(a00|a01|a10|a11)
+                { pack_nibbles_to_limbs() }
+            }
+        });
+        SCRIPT.clone()
     }
 
     /// Compute hash of top six field elements on stack: [a00, a01, a10, a11, a20, a21]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
     pub(crate) fn hash_fp6() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [a00, a01, a10, a11, a20, a21]
-                    {Fq2::roll(2)} {Fq2::roll(4)}
-                    // [a20, a21, a10, a11, a00, a01]
-                    // Requires first msg-block at the top of stack
-                    {hash_n_bytes::<192>()}
-                    // Hash(a00|a01|a10|a11|a20|a21)
-                    {pack_nibbles_to_limbs()}
-                }
-            })
-            .clone()
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [a00, a01, a10, a11, a20, a21]
+                {Fq2::roll(2)} {Fq2::roll(4)}
+                // [a20, a21, a10, a11, a00, a01]
+                // Requires first msg-block at the top of stack
+                {hash_n_bytes::<192>()}
+                // Hash(a00|a01|a10|a11|a20|a21)
+                {pack_nibbles_to_limbs()}
+            }
+        });
+        SCRIPT.clone()
     }
 
     /// Compute hash of top six field elements on stack: [a00, a01,.., a60, a61]
     /// Output is {BLAKE3_HASH_LENGTH} byte output represented in limb-form
     pub(crate) fn hash_fp14() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [a00, a01,... ,a60, a61]
-                    {Fq2::roll(2)} {Fq2::roll(4)} {Fq2::roll(6)}
-                    {Fq2::roll(8)} {Fq2::roll(10)} {Fq2::roll(12)}
-                    // [a60, a61,... ,a00, a01]
-                    {hash_n_bytes::<448>()}
-                    // Hash(a00|a01|..|a60|a61)
-                    {pack_nibbles_to_limbs()}
-                }
-            })
-            .clone()
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [a00, a01,... ,a60, a61]
+                {Fq2::roll(2)} {Fq2::roll(4)} {Fq2::roll(6)}
+                {Fq2::roll(8)} {Fq2::roll(10)} {Fq2::roll(12)}
+                // [a60, a61,... ,a00, a01]
+                {hash_n_bytes::<448>()}
+                // Hash(a00|a01|..|a60|a61)
+                {pack_nibbles_to_limbs()}
+            }
+        });
+        SCRIPT.clone()
     }
 
     /// Compute hash of G2 Point Accumulator (i.e. [t(4), partial_product(14)]) where Hash(partial_product) has been passed as auxiliary input on stack.
     /// Stack: [t(4), Hash_partial_product(1)]
     pub(crate) fn hash_g2acc_with_hashed_le() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [t, Hash_partial_product]
-                    {Fq::toaltstack()}
-                    {hash_fp4()}
-                    {Fq::fromaltstack()}
-                    // [Hash_t, Hash_partial_product]
-                    {hash_fp2()}
-                    // [ Hash(Hash_t|Hash_partial_product) ]
-                    // [ Hash(G2Acc) ]
-                }
-            })
-            .clone()
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [t, Hash_partial_product]
+                {Fq::toaltstack()}
+                {hash_fp4()}
+                {Fq::fromaltstack()}
+                // [Hash_t, Hash_partial_product]
+                {hash_fp2()}
+                // [ Hash(Hash_t|Hash_partial_product) ]
+                // [ Hash(G2Acc) ]
+            }
+        });
+        SCRIPT.clone()
     }
 
     /// Compute hash of G2 Point Accumulator (i.e. [t(4), partial_product(14)]) where all elements are passed as raw value on stack
     /// Stack: [t(4), partial_product(14)]
     pub(crate) fn hash_g2acc() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [t, partial_product]
-                    for _ in 0..14 {
-                        {Fq::toaltstack()}
-                    }
-                    // [t] [partial_product]
-                    {hash_fp4()}
-                    // [Hash_t] [partial_product]
-                    for _ in 0..14 {
-                        {Fq::fromaltstack()}
-                    }
-                    // [Hash_t partial_product]
-                    {Fq::roll(14)} {Fq::toaltstack()}
-                    // [partial_product] [Hash_t]
-                    {hash_fp14()}
-                    // [Hash_partial_product] [Hash_t]
-                    {Fq::fromaltstack()}
-                    {Fq::roll(1)}
-                    // [ Hash_t, Hash_partial_product ]
-                    {hash_fp2()}
-                    // [ Hash(Hash_t|Hash_partial_priduct) ]
-                    // [ Hash(G2Acc) ]
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [t, partial_product]
+                for _ in 0..14 {
+                    {Fq::toaltstack()}
                 }
-            })
-            .clone()
+                // [t] [partial_product]
+                {hash_fp4()}
+                // [Hash_t] [partial_product]
+                for _ in 0..14 {
+                    {Fq::fromaltstack()}
+                }
+                // [Hash_t partial_product]
+                {Fq::roll(14)} {Fq::toaltstack()}
+                // [partial_product] [Hash_t]
+                {hash_fp14()}
+                // [Hash_partial_product] [Hash_t]
+                {Fq::fromaltstack()}
+                {Fq::roll(1)}
+                // [ Hash_t, Hash_partial_product ]
+                {hash_fp2()}
+                // [ Hash(Hash_t|Hash_partial_priduct) ]
+                // [ Hash(G2Acc) ]
+            }
+        });
+        SCRIPT.clone()
     }
 
     /// Compute hash of G2 Point Accumulator (i.e. [t(4), partial_product(14)]) where Hash(t) has been passed as auxiliary input on stack.
     /// Stack: [Hash_partial_priduct(14), Hash_t(1)]
     pub(crate) fn hash_g2acc_with_hash_t() -> Script {
-        static CACHE: OnceLock<Script> = OnceLock::new();
-        CACHE
-            .get_or_init(|| {
-                script! {
-                    // [partial_product, Hash_t]
-                    {Fq::toaltstack()}
-                    {hash_fp14()}
-                    {Fq::fromaltstack()}
-                    {Fq::roll(1)}
-                    // [ Hash_t, Hash_partial_product ]
-                    {hash_fp2()}
-                    // [ Hash(Hash_t|Hash_partial_priduct) ]
-                    // [ Hash(G2Acc) ]
-                }
-            })
-            .clone()
+        static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+            script! {
+                // [partial_product, Hash_t]
+                {Fq::toaltstack()}
+                {hash_fp14()}
+                {Fq::fromaltstack()}
+                {Fq::roll(1)}
+                // [ Hash_t, Hash_partial_product ]
+                {hash_fp2()}
+                // [ Hash(Hash_t|Hash_partial_priduct) ]
+                // [ Hash(G2Acc) ]
+            }
+        });
+        SCRIPT.clone()
     }
 }
 
