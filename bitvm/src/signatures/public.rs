@@ -4,8 +4,7 @@ use bitcoin_script::Script;
 use super::utils::u32_to_le_bytes_minimal;
 use crate::signatures::winternitz;
 use crate::signatures::winternitz::{
-    BruteforceVerifier, Converter, ListpickVerifier, Parameters, ToBytesConverter, VoidConverter,
-    Winternitz,
+    BruteforceVerifier, Converter, ListpickVerifier, Parameters, VoidConverter, Winternitz,
 };
 
 /// Secret key for Winternitz signatures.
@@ -171,7 +170,7 @@ pub trait Wots {
             .collect();
         // Convert little endian digits [LSD, MSD] to big endian [MSD, LSD].
         // "LSD" means "least significant digit" and
-        // "MSB" means "most significant digit".
+        // "MSD" means "most significant digit".
         let bytes = digits
             .chunks(2)
             .map(|bn| (bn[1] << 4) + bn[0])
@@ -328,14 +327,21 @@ pub struct Wots16;
 pub struct Wots32;
 /// Winternitz signatures for 64-byte messages.
 pub struct Wots64;
-/// Winternitz signatures for 72-byte messages.
-pub struct Wots72;
 /// Winternitz signatures for 80-byte messages.
 pub struct Wots80;
 
+/// Implements the [`Wots`] and [`CompactWots`] traits for the given type.
+///
+/// ## Parameters
+///
+/// - `name`: name of the implementing type
+/// - `msg_byte_len`: message length in bytes
+/// - `converter`: a type that implements the [`Converter`] trait
+#[macro_export]
 macro_rules! impl_wots {
     ($name:ident, $msg_byte_len:expr, $converter:ty) => {
         impl Wots for $name {
+            /// Converts the message on the stack after signature verification has finished.
             type Converter = $converter;
             /// The public key type for this Winternitz signing algorithm.
             type PublicKey = [[u8; 20]; Self::TOTAL_DIGIT_LEN as usize];
@@ -361,12 +367,12 @@ impl_wots!(Wots4, 4, VoidConverter);
 impl_wots!(Wots16, 16, VoidConverter);
 impl_wots!(Wots32, 32, VoidConverter);
 impl_wots!(Wots64, 64, VoidConverter);
-impl_wots!(Wots72, 72, ToBytesConverter);
 impl_wots!(Wots80, 80, VoidConverter);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::signatures::winternitz::ToBytesConverter;
     use crate::u32::u32_std::u32_compress;
     use crate::{bn254::g1::G1Affine, execute_script, signatures::utils};
     use crate::{execute_script_with_inputs, ExecuteInfo};
@@ -375,7 +381,8 @@ mod tests {
     use std::fs::File;
     use std::io;
     use std::io::Read;
-    #[allow(unused_imports)]
+
+    #[expect(unused_imports)]
     use std::io::Write; // needed to generate test vectors (see below)
 
     use ark_ff::UniformRand as _;
@@ -388,6 +395,7 @@ mod tests {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use serde_json;
 
+    /// Extracts the items of the final stack after execution.
     fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
         res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
             vector.push(x);
@@ -397,7 +405,7 @@ mod tests {
 
     /// Compare two elements of n length.
     /// If them are not equal, return script's failure directly.
-    pub fn equalverify(n: usize) -> Script {
+    fn equalverify(n: usize) -> Script {
         script!(
             for _ in 0..n {
                 OP_TOALTSTACK
@@ -415,7 +423,10 @@ mod tests {
         )
     }
 
-    pub fn u32_witness_to_bytes(witness: Vec<Vec<u8>>) -> Vec<u8> {
+    /// Convert the raw Bitcoin witness into a byte vector.
+    ///
+    /// The witness encodes the signed message in digit form.
+    fn u32_witness_to_bytes(witness: Vec<Vec<u8>>) -> Vec<u8> {
         let mut bytes = vec![];
         for element in witness.iter() {
             let limb = read_scriptint(element).unwrap() as u32;
@@ -471,6 +482,14 @@ mod tests {
         }
     }
 
+    /// Winternitz signatures for 72-byte messages.
+    ///
+    /// This is a custom implementation for the G1 unit test.
+    /// The checksig script converts the message to bytes.
+    struct Wots72;
+
+    impl_wots!(Wots72, 72, ToBytesConverter);
+
     #[test]
     fn test_recover_g1_point_on_stack() {
         const G1_POINT_BYTES_LENGTH: usize = 9 * 4 * 2; // two fq elements
@@ -525,6 +544,20 @@ mod tests {
         );
     }
 
+    /// Test vector for WOTS.
+    ///
+    /// A message is signed with the WOTS implementation for the given length,
+    /// using the provided secret key.
+    ///
+    /// The test vector records the expected signature, ranging over all possible formats:
+    /// - non-compact signature
+    /// - non-compact Bitcoin witness
+    /// - compact signature
+    /// - compact Bitcoin witness
+    ///
+    /// The expected Bitcoin witness data is included to ensure compliance
+    /// with Bitcoin consensus rules and to track any changes to the witness
+    /// in future versions of BitVM.
     #[derive(Serialize, Deserialize)]
     struct TestVector {
         #[serde(
@@ -606,6 +639,10 @@ mod tests {
             .collect()
     }
 
+    /// Creates a test vector for the given `WOTS` implementation.
+    ///
+    /// The test vector stores the output of signing the given `message`
+    /// with the given `secret_key`.
     #[allow(dead_code)]
     fn create_test_vector<WOTS: Wots + CompactWots>(
         message: &WOTS::Message,
@@ -646,6 +683,7 @@ mod tests {
         }
     }
 
+    /// Creates randomized test vectors for the given `WOTS` implementation.
     #[allow(dead_code)]
     fn generate_test_vectors_for<WOTS: Wots + CompactWots, const MSG_BYTE_LEN: usize>(
     ) -> Vec<TestVector> {
@@ -749,6 +787,7 @@ mod tests {
         Ok(test_vectors)
     }
 
+    /// Run the test vector and verify the expected outputs.
     fn verify_test_vector<WOTS: Wots + CompactWots>(test_vector: TestVector) {
         let message =
             WOTS::Message::try_from(test_vector.message.clone()).expect("Invalid message bytes");

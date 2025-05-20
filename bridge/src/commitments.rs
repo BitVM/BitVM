@@ -6,6 +6,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use bitvm::{
     chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256},
     signatures::signing_winternitz::WinternitzSecret,
+    signatures::HASH_LEN,
 };
 
 use super::{
@@ -116,9 +117,9 @@ impl CommitmentMessageId {
             commitment_map.insert(
                 CommitmentMessageId::Groth16IntermediateValues((
                     format!("{}", i + NUM_PUBS + NUM_U256),
-                    16,
+                    HASH_LEN,
                 )),
-                WinternitzSecret::new(16),
+                WinternitzSecret::new(HASH_LEN),
             );
         }
 

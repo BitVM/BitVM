@@ -20,15 +20,15 @@ pub struct WinternitzSecret {
 /// Bits per digit.
 pub const LOG_D: u32 = 4;
 
-/// Winternitz verifier, returns the message in digits
+/// Winternitz verifier, returns the message in digits.
 pub const WINTERNITZ_MESSAGE_VERIFIER: Winternitz<ListpickVerifier, VoidConverter> =
     Winternitz::new();
 
-/// Winternitz verifier, returns the message in bytes
+/// Winternitz verifier, returns the message in bytes.
 pub const WINTERNITZ_VARIABLE_VERIFIER: Winternitz<ListpickVerifier, ToBytesConverter> =
     Winternitz::new();
 
-/// Winternitz verifier for compact signature representation, returns the message in bytes
+/// Winternitz verifier for compact signature representation, returns the message in bytes.
 pub const WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz<BruteforceVerifier, VoidConverter> =
     Winternitz::new();
 
@@ -161,6 +161,7 @@ mod tests {
 
     const BLAKE3_HASH_LENGTH: usize = 20;
 
+    /// Extracts the items of the final stack after execution.
     fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
         res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
             vector.push(x);
@@ -170,7 +171,7 @@ mod tests {
 
     /// Compare two elements of n length.
     /// If them are not equal, return script's failure directly.
-    pub fn equalverify(n: usize) -> Script {
+    fn equalverify(n: usize) -> Script {
         script!(
             for _ in 0..n {
                 OP_TOALTSTACK
@@ -188,7 +189,10 @@ mod tests {
         )
     }
 
-    pub fn u32_witness_to_bytes(witness: Vec<Vec<u8>>) -> Vec<u8> {
+    /// Convert the raw Bitcoin witness into a byte vector.
+    ///
+    /// The witness encodes the signed message in digit form.
+    fn u32_witness_to_bytes(witness: Vec<Vec<u8>>) -> Vec<u8> {
         let mut bytes = vec![];
         for element in witness.iter() {
             let limb = read_scriptint(element).unwrap() as u32;
