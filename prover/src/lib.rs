@@ -191,8 +191,8 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../elfs/mainnet-final-spv-guest");
-        let header_chain_circuit_elf = include_bytes!("../elfs/mainnet-header-chain-guest");
+        let final_circuit_elf = include_bytes!("../elfs/mainnet-final-spv-guest.bin");
+        let header_chain_circuit_elf = include_bytes!("../elfs/mainnet-header-chain-guest.bin");
         println!(
             "Header chain circuit id: {:#?}",
             compute_image_id(header_chain_circuit_elf)

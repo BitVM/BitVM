@@ -89,13 +89,21 @@ pub fn stark_to_succinct(
     println!("Succinct control root a0 dec: {:?}", a0_dec);
     println!("Succinct control root a1 dec: {:?}", a1_dec);
     println!("CONTROL_ID: {:?}", ident_receipt.control_id);
-    let id_bn254_fr_bits: Vec<String> = ident_receipt
+    let mut id_bn254_fr_bits: Vec<String> = ident_receipt
         .control_id
         .as_bytes()
         .iter()
         .flat_map(|&byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
         .collect();
     println!("id_bn254_fr_bits: {:?}", id_bn254_fr_bits);
+    // remove 248th and 249th bits
+    id_bn254_fr_bits.remove(248);
+    id_bn254_fr_bits.remove(248);
+
+    println!(
+        "id_bn254_fr_bits after removing 2 extra bits: {:?}",
+        id_bn254_fr_bits
+    );
 
     let mut seal_json: Value = {
         let file_content = fs::read_to_string(&seal_path).unwrap();
@@ -112,6 +120,7 @@ pub fn stark_to_succinct(
     let output = Command::new("docker")
         .arg("run")
         .arg("--rm")
+        .arg("--platform=linux/amd64") // Force linux/amd64 platform
         .arg("-v")
         .arg(format!("{}:/mnt", work_dir.to_string_lossy()))
         .arg("ozancw/risc0-to-bitvm2-groth16-prover:latest")
@@ -119,6 +128,7 @@ pub fn stark_to_succinct(
         .stderr(Stdio::piped())
         .output()
         .unwrap();
+
     println!("Output: {:?}", output);
 
     if !output.status.success() {
@@ -130,6 +140,7 @@ pub fn stark_to_succinct(
     println!("proof_path: {:?}", proof_path);
     let proof_content = std::fs::read_to_string(proof_path).unwrap();
     let output_content_dec = std::fs::read_to_string(output_path).unwrap();
+    println!("output content: {:?}", output_content_dec);
     let proof_json: ProofJson = serde_json::from_str(&proof_content).unwrap();
     // let output_json: Value = serde_json::from_str(&output_content).unwrap();
     // Convert output_content_dec from decimal to hex
@@ -149,8 +160,7 @@ pub fn stark_to_succinct(
     };
 
     // Step 3: Decode the hexadecimal string to a byte vector
-    let output_byte_vec = Vec::<u8>::from_hex(&output_content_hex).unwrap();
-    // let output_byte_vec = Vec::<u8>::from_hex(output_hex).unwrap();
+    let output_byte_vec = Vec::from_hex(&output_content_hex).unwrap();
     let output_bytes: [u8; 31] = output_byte_vec.as_slice().try_into().unwrap();
     (proof_json.try_into().unwrap(), output_bytes)
 }
