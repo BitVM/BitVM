@@ -29,8 +29,8 @@ use crate::{bn254::utils::Hint, execute_script};
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 enum SigData {
-    Sig256(<Wots32 as Wots>::Signature),
-    SigHash(<Wots16 as Wots>::Signature),
+    Wots16(<Wots16 as Wots>::Signature),
+    Wots32(<Wots32 as Wots>::Signature),
 }
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
@@ -509,17 +509,17 @@ pub(crate) fn execute_script_from_signature(
         let scalar_sigs: Vec<SigData> = signed_asserts
             .0
             .iter()
-            .map(|f| SigData::Sig256(*f))
+            .map(|f| SigData::Wots32(*f))
             .collect();
         let felts_sigs: Vec<SigData> = signed_asserts
             .1
             .iter()
-            .map(|f| SigData::Sig256(*f))
+            .map(|f| SigData::Wots32(*f))
             .collect();
         let hash_sigs: Vec<SigData> = signed_asserts
             .2
             .iter()
-            .map(|f| SigData::SigHash(*f))
+            .map(|f| SigData::Wots16(*f))
             .collect();
         let mut bitcom_sig_arr = vec![];
         bitcom_sig_arr.extend_from_slice(&scalar_sigs);
@@ -548,10 +548,10 @@ pub(crate) fn execute_script_from_signature(
             for index in index_of_bitcommitted_msg {
                 let sig_data = &bitcom_sig_arr[index as usize];
                 let sig_preimage = match sig_data {
-                    SigData::SigHash(signature) => Wots16::compact_signature_to_raw_witness(
+                    SigData::Wots16(signature) => Wots16::compact_signature_to_raw_witness(
                         &Wots16::signature_to_compact_signature(signature),
                     ),
-                    SigData::Sig256(signature) => Wots32::compact_signature_to_raw_witness(
+                    SigData::Wots32(signature) => Wots32::compact_signature_to_raw_witness(
                         &Wots32::signature_to_compact_signature(signature),
                     ),
                 };
