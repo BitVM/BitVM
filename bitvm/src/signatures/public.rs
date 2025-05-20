@@ -64,9 +64,7 @@ pub trait Wots {
     /// For backwards compatibility, the original conversion function is used.
     /// The `secret` string is converted into ASCII bytes,
     /// which are in turn converted into lower hex ASCII bytes.
-    ///
-    /// Usage of this method is generally discouraged.
-    /// It is better to create a [`WinternitzSecret`] via [`Vec<u8>`].
+    #[deprecated(note = "It is safer to use Vec<u8> directly")]
     fn secret_from_str(secret: &str) -> WinternitzSecret {
         secret.as_bytes().to_lower_hex_string().into_bytes()
     }

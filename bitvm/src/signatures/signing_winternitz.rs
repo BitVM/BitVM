@@ -33,21 +33,33 @@ pub const WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz<BruteforceVerifier, Vo
     Winternitz::new();
 
 impl WinternitzSecret {
-    /// Generate a random 160 bit number and return a hex encoded representation of it.
-    pub fn new(message_size: usize) -> Self {
+    /// Creates a secret key from a 160-bit random number,
+    /// for signing messages of the given `message_len` (in bytes).
+    pub fn new(message_len: usize) -> Self {
         let mut buffer = [0u8; 20];
         let mut rng = rand::rngs::OsRng;
         rand::RngCore::fill_bytes(&mut rng, &mut buffer);
 
-        // Best parameters depend on the stack depth, without that limitation best option is LOG_D = 4 and used Winternitz version here
-        //let parameters = WINTERNITZ_HASH_PARAMETERS;
-        let parameters = Parameters::new_by_bit_length(message_size as u32 * 8, LOG_D);
-        WinternitzSecret {
-            secret_key: buffer.to_lower_hex_string().into(),
+        Self::from_bytes(message_len, buffer.to_lower_hex_string().into())
+    }
+
+    /// Creates a secret key from the given `secret_bytes`,
+    /// for signing messages of the given `message_len` (in bytes).
+    pub fn from_bytes(message_len: usize, secret_bytes: Vec<u8>) -> Self {
+        let parameters = Parameters::new_by_bit_length(message_len as u32 * 8, LOG_D);
+        Self {
+            secret_key: secret_bytes,
             parameters,
         }
     }
 
+    /// Creates a secret key from the given `secret` string.
+    ///
+    /// ## Warning
+    ///
+    /// The `secret` string is converted into ASCII bytes,
+    /// which are in turn converted into lower hex ASCII bytes.
+    #[deprecated(note = "It is safer to use WinternitzSecret::from_bytes")]
     pub fn from_string(secret: &str, parameters: &Parameters) -> Self {
         WinternitzSecret {
             secret_key: secret.as_bytes().to_lower_hex_string().into(),
