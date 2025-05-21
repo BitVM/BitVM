@@ -403,8 +403,10 @@ mod tests {
         })
     }
 
-    /// Compare two elements of n length.
-    /// If them are not equal, return script's failure directly.
+    /// Returns a Bitcoin script that compares two elements of length `n`.
+    ///
+    /// The script consumes its inputs.
+    /// If the two elements are not equal, then the script fails immediately.
     fn equalverify(n: usize) -> Script {
         script!(
             for _ in 0..n {

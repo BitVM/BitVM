@@ -73,9 +73,9 @@ mod test {
         let f = ark_bn254::Fq::rand(&mut prng);
         let a: ark_ff::BigInt<4> = f.into();
         let a = CompressedStateObject::U256(a);
-        let a_bytes: [u8; 32] = a.clone().serialize_to_byte_array().try_into().unwrap();
+        let a_bytes: [u8; 32] = a.clone().serialize_to_byte_array().try_into().expect("should be 32 bytes");
 
-        let secret = Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").unwrap();
+        let secret = Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").expect("should be valid hex");
         let signature = Wots32::sign(&secret, &a_bytes);
 
         let msg_bytes = Wots32::signature_to_message(&signature);
@@ -108,9 +108,9 @@ mod test {
                 .collect::<Vec<ark_bn254::Fq>>(),
         );
         let a = CompressedStateObject::Hash(a);
-        let a_bytes: [u8; 16] = a.clone().serialize_to_byte_array().try_into().unwrap();
+        let a_bytes: [u8; 16] = a.clone().serialize_to_byte_array().try_into().expect("should be 16 bytes");
 
-        let secret = Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").unwrap();
+        let secret = Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").expect("should be valid hex");
 
         let signature = Wots16::sign(&secret, &a_bytes);
         let msg_bytes = Wots16::signature_to_message(&signature);
@@ -142,8 +142,8 @@ mod test {
                 .collect::<Vec<ark_bn254::Fq>>(),
         );
         let a = CompressedStateObject::Hash(a);
-        let a_bytes: [u8; 16] = a.clone().serialize_to_byte_array().try_into().unwrap();
-        let secret = Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").unwrap();
+        let a_bytes: [u8; 16] = a.clone().serialize_to_byte_array().try_into().expect("should be 16 bytes");
+        let secret = Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").expect("should be valid hex");
         {
             let signature = Wots16::sign(&secret, &a_bytes);
             assert!(
