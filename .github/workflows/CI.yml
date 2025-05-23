@@ -37,9 +37,6 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build guests
       run: |
-        curl -L https://risczero.com/install | bash
-        rzup install cargo-risczero 2.0.2
-        rzup install rust 1.85.0
         REPR_GUEST_BUILD=1 BITCOIN_NETWORK=mainnet cargo build -p header-chain-circuit --release
         REPR_GUEST_BUILD=1 BITCOIN_NETWORK=mainnet cargo build -p final-spv-circuit --release
 
