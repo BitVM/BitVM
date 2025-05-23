@@ -15,11 +15,11 @@ pub type SecretKey = Vec<u8>;
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Parameters {
     /// Number of digits per message (including zero padding at the end).
-    message_digit_len: u32,
+    pub(super) message_digit_len: u32,
     /// Number of bits per digit.
-    log2_base: u32,
+    pub(super) log2_base: u32,
     /// Number of digits per checksum.
-    checksum_digit_len: u32,
+    pub(super) checksum_digit_len: u32,
 }
 
 impl Parameters {
@@ -132,6 +132,9 @@ pub trait Verifier {
         let mut result = Witness::new();
         for i in 0..ps.total_digit_len() {
             let sig = digit_signature(secret_key, i, digits[i as usize]);
+            // FIXME: Do trailing zeroes violate Bitcoin Script's minimum data push requirement?
+            //        Maybe the script! macro removes the zeroes.
+            //        There is a 1/256 chance that a signature contains a trailing zero.
             result.push(sig);
             result.push(u32_to_le_bytes_minimal(digits[i as usize]));
         }

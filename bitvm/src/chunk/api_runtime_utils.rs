@@ -11,7 +11,6 @@ use crate::chunk::g16_runner_core::InputProof;
 use crate::chunk::g16_runner_core::InputProofRaw;
 use crate::chunk::g16_runner_core::PublicParams;
 use crate::groth16::offchain_checker::compute_c_wi;
-use crate::signatures::wots_api::{wots256, wots_hash, SignatureImpl};
 use crate::treepp::Script;
 use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
@@ -20,21 +19,18 @@ use ark_ff::Field;
 use bitcoin::ScriptBuf;
 use bitcoin_script::script;
 
-use crate::{bn254::utils::Hint, execute_script};
-
 use super::api::{Assertions, PublicKeys, Signatures, NUM_HASH, NUM_PUBS, NUM_TAPS, NUM_U256};
+use super::elements::CompressedStateObject;
 use super::g16_runner_utils::{ScriptType, Segment};
 use super::wrap_hasher::BLAKE3_HASH_LENGTH;
-use super::{
-    elements::CompressedStateObject,
-    wrap_wots::{wots256_sig_to_byte_array, wots_hash_sig_to_byte_array},
-};
+use crate::signatures::{CompactWots, Wots, Wots16, Wots32};
+use crate::{bn254::utils::Hint, execute_script};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 enum SigData {
-    Sig256(wots256::Signature),
-    SigHash(wots_hash::Signature),
+    Wots16(<Wots16 as Wots>::Signature),
+    Wots32(<Wots32 as Wots>::Signature),
 }
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
@@ -304,26 +300,29 @@ pub(crate) fn get_signature_from_assertion(assn: Assertions, secrets: Vec<String
     // sign and return Signatures
     let (ps, fs, hs) = (assn.0, assn.1, assn.2);
 
-    let mut psig: Vec<wots256::Signature> = vec![];
+    let mut psig: Vec<<Wots32 as Wots>::Signature> = vec![];
     for i in 0..NUM_PUBS {
-        let psi = wots256::get_signature(secrets[i].as_str(), &ps[i]);
+        let secret = Wots32::secret_from_str(secrets[i].as_str());
+        let psi = Wots32::sign(&secret, &ps[i]);
         psig.push(psi);
     }
-    let psig: Box<[wots256::Signature; NUM_PUBS]> = Box::new(psig.try_into().unwrap());
+    let psig: Box<[<Wots32 as Wots>::Signature; NUM_PUBS]> = Box::new(psig.try_into().unwrap());
 
-    let mut fsig: Vec<wots256::Signature> = vec![];
+    let mut fsig: Vec<<Wots32 as Wots>::Signature> = vec![];
     for i in 0..fs.len() {
-        let fsi = wots256::get_signature(secrets[i + NUM_PUBS].as_str(), &fs[i]);
+        let secret = Wots32::secret_from_str(secrets[i + NUM_PUBS].as_str());
+        let fsi = Wots32::sign(&secret, &fs[i]);
         fsig.push(fsi);
     }
-    let fsig: Box<[wots256::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
+    let fsig: Box<[<Wots32 as Wots>::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
 
-    let mut hsig: Vec<wots_hash::Signature> = vec![];
+    let mut hsig: Vec<<Wots16 as Wots>::Signature> = vec![];
     for i in 0..hs.len() {
-        let hsi = wots_hash::get_signature(secrets[i + NUM_PUBS + NUM_U256].as_str(), &hs[i]);
+        let secret = Wots16::secret_from_str(secrets[i + NUM_PUBS + NUM_U256].as_str());
+        let hsi = Wots16::sign(&secret, &hs[i]);
         hsig.push(hsi);
     }
-    let hsig: Box<[wots_hash::Signature; NUM_HASH]> = Box::new(hsig.try_into().unwrap());
+    let hsig: Box<[<Wots16 as Wots>::Signature; NUM_HASH]> = Box::new(hsig.try_into().unwrap());
 
     (psig, fsig, hsig)
 }
@@ -334,24 +333,21 @@ pub(crate) fn get_assertions_from_signature(signed_asserts: Signatures) -> Asser
     println!("get_assertions_from_signature");
     let mut ks: Vec<[u8; 32]> = vec![];
     for i in 0..NUM_PUBS {
-        let nibs = wots256_sig_to_byte_array(signed_asserts.0[i]);
-        let nibs: [u8; 32] = nibs.try_into().unwrap();
+        let nibs = Wots32::signature_to_message(&signed_asserts.0[i]);
         ks.push(nibs);
     }
     let ks: [[u8; 32]; NUM_PUBS] = ks.try_into().unwrap();
 
     let mut numfqs: Vec<[u8; 32]> = vec![];
     for i in 0..NUM_U256 {
-        let nibs = wots256_sig_to_byte_array(signed_asserts.1[i]);
-        let nibs: [u8; 32] = nibs.try_into().unwrap();
+        let nibs = Wots32::signature_to_message(&signed_asserts.1[i]);
         numfqs.push(nibs);
     }
     let num_fqs: [[u8; 32]; NUM_U256] = numfqs.try_into().unwrap();
 
     let mut numhashes: Vec<[u8; BLAKE3_HASH_LENGTH]> = vec![];
     for i in 0..NUM_HASH {
-        let nibs = wots_hash_sig_to_byte_array(signed_asserts.2[i]);
-        let nibs: [u8; BLAKE3_HASH_LENGTH] = nibs.try_into().unwrap();
+        let nibs = Wots16::signature_to_message(&signed_asserts.2[i]);
         numhashes.push(nibs);
     }
 
@@ -513,17 +509,17 @@ pub(crate) fn execute_script_from_signature(
         let scalar_sigs: Vec<SigData> = signed_asserts
             .0
             .iter()
-            .map(|f| SigData::Sig256(*f))
+            .map(|f| SigData::Wots32(*f))
             .collect();
         let felts_sigs: Vec<SigData> = signed_asserts
             .1
             .iter()
-            .map(|f| SigData::Sig256(*f))
+            .map(|f| SigData::Wots32(*f))
             .collect();
         let hash_sigs: Vec<SigData> = signed_asserts
             .2
             .iter()
-            .map(|f| SigData::SigHash(*f))
+            .map(|f| SigData::Wots16(*f))
             .collect();
         let mut bitcom_sig_arr = vec![];
         bitcom_sig_arr.extend_from_slice(&scalar_sigs);
@@ -552,8 +548,12 @@ pub(crate) fn execute_script_from_signature(
             for index in index_of_bitcommitted_msg {
                 let sig_data = &bitcom_sig_arr[index as usize];
                 let sig_preimage = match sig_data {
-                    SigData::SigHash(signature) => signature.to_compact_script(),
-                    SigData::Sig256(signature) => signature.to_compact_script(),
+                    SigData::Wots16(signature) => Wots16::compact_signature_to_raw_witness(
+                        &Wots16::signature_to_compact_signature(signature),
+                    ),
+                    SigData::Wots32(signature) => Wots32::compact_signature_to_raw_witness(
+                        &Wots32::signature_to_compact_signature(signature),
+                    ),
                 };
                 sig_preimages = script! {
                     {sig_preimages}
@@ -577,16 +577,19 @@ pub(crate) fn execute_script_from_signature(
 pub(crate) fn get_pubkeys(secret_key: Vec<String>) -> PublicKeys {
     let mut pubins = vec![];
     for i in 0..NUM_PUBS {
-        pubins.push(wots256::generate_public_key(secret_key[i].as_str()));
+        let secret = Wots32::secret_from_str(secret_key[i].as_str());
+        pubins.push(Wots32::generate_public_key(&secret));
     }
     let mut fq_arr = vec![];
     for i in 0..NUM_U256 {
-        let p256 = wots256::generate_public_key(secret_key[i + NUM_PUBS].as_str());
+        let secret = Wots32::secret_from_str(secret_key[i + NUM_PUBS].as_str());
+        let p256 = Wots32::generate_public_key(&secret);
         fq_arr.push(p256);
     }
     let mut h_arr = vec![];
     for i in 0..NUM_HASH {
-        let phash = wots_hash::generate_public_key(secret_key[i + NUM_PUBS + NUM_U256].as_str());
+        let secret = Wots16::secret_from_str(secret_key[i + NUM_PUBS + NUM_U256].as_str());
+        let phash = Wots16::generate_public_key(&secret);
         h_arr.push(phash);
     }
     let wotspubkey: PublicKeys = (

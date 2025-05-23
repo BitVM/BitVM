@@ -5,7 +5,8 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 
 use bitvm::{
     chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256},
-    signatures::{signing_winternitz::WinternitzSecret, wots_api},
+    signatures::signing_winternitz::WinternitzSecret,
+    signatures::HASH_LEN,
 };
 
 use super::{
@@ -116,9 +117,9 @@ impl CommitmentMessageId {
             commitment_map.insert(
                 CommitmentMessageId::Groth16IntermediateValues((
                     format!("{}", i + NUM_PUBS + NUM_U256),
-                    wots_api::HASH_LEN as usize,
+                    HASH_LEN,
                 )),
-                WinternitzSecret::new(wots_api::HASH_LEN as usize),
+                WinternitzSecret::new(HASH_LEN),
             );
         }
 

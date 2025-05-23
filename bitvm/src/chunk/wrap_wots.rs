@@ -3,13 +3,13 @@ use bitcoin_script::script;
 use crate::chunk::helpers::pack_bytes_to_limbs;
 use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
 use crate::pseudo::NMUL;
-use crate::signatures::wots_api::{wots256, wots_hash};
+use crate::signatures::{CompactWots, Wots, Wots16, Wots32};
 use crate::treepp::Script;
 
 pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
     match pub_key {
         WOTSPubKey::PHash(pb) => {
-            let sc_nib = wots_hash::compact::checksig_verify(*pb);
+            let sc_nib = Wots16::compact_checksig_verify(pb);
             const N0: usize = BLAKE3_HASH_LENGTH * 2;
             script! {
                 {sc_nib}
@@ -27,7 +27,7 @@ pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
             }
         }
         WOTSPubKey::P256(pb) => {
-            let sc_nib = wots256::compact::checksig_verify(*pb);
+            let sc_nib = Wots32::compact_checksig_verify(pb);
             script! {
                 {sc_nib}
                 for i in 1..64 {
@@ -41,67 +41,27 @@ pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn byte_array_to_wots_hash_sig(secret: &str, msg_bytes: &[u8]) -> wots_hash::Signature {
-    wots_hash::get_signature(secret, msg_bytes)
-}
-
-#[allow(dead_code)]
-pub(crate) fn byte_array_to_wots256_sig(secret: &str, msg_bytes: &[u8]) -> wots256::Signature {
-    wots256::get_signature(secret, msg_bytes)
-}
-
-pub(crate) fn wots256_sig_to_byte_array(sig: wots256::Signature) -> Vec<u8> {
-    let nibs = sig.map(|(_, digit)| digit);
-    // [MSB, LSB, MSB, LSB, ..., checksum]
-    let mut nibs = nibs[0..64].to_vec(); // remove checksum
-                                         // [MSB, LSB, MSB, LSB]
-    nibs.reverse(); // sigs are obtained in reverse order so undo
-                    // [LSB, MSB, LSB, MSB,.., LSB]
-    let nibs = nibs
-        .chunks(2)
-        .map(|bn| (bn[1] << 4) + bn[0]) // endian assumed by wots
-        .collect::<Vec<u8>>();
-    nibs
-}
-
-pub(crate) fn wots_hash_sig_to_byte_array(sig: wots_hash::Signature) -> Vec<u8> {
-    let nibs = sig.map(|(_, digit)| digit);
-    // [MSB, LSB, MSB, LSB, ..., checksum]
-    let mut nibs = nibs[0..BLAKE3_HASH_LENGTH * 2].to_vec(); // remove checksum
-                                                             // [MSB, LSB, MSB, LSB]
-    nibs.reverse(); // sigs are obtained in reverse order so undo
-                    // [LSB, MSB, LSB, MSB,.., LSB]
-    let nibs = nibs
-        .chunks(2)
-        .map(|bn| (bn[1] << 4) + bn[0]) // endian assumed by wots
-        .collect::<Vec<u8>>();
-    nibs
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::large_enum_variant)]
 pub enum WOTSPubKey {
-    PHash(wots_hash::PublicKey),
-    P256(wots256::PublicKey),
+    PHash(<Wots16 as Wots>::PublicKey),
+    P256(<Wots32 as Wots>::PublicKey),
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq},
         chunk::{
             elements::CompressedStateObject,
             helpers::extern_hash_fps,
-            wrap_wots::{
-                byte_array_to_wots256_sig, byte_array_to_wots_hash_sig, checksig_verify_to_limbs,
-                wots256_sig_to_byte_array, wots_hash_sig_to_byte_array, WOTSPubKey,
-            },
+            wrap_wots::{checksig_verify_to_limbs, WOTSPubKey},
         },
         execute_script,
-        signatures::wots_api::{wots256, wots_hash, SignatureImpl},
     };
     use ark_ff::{Field, UniformRand};
+    use bitcoin::hex::FromHex;
     use bitcoin_script::script;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
@@ -113,20 +73,25 @@ mod test {
         let f = ark_bn254::Fq::rand(&mut prng);
         let a: ark_ff::BigInt<4> = f.into();
         let a = CompressedStateObject::U256(a);
-        let a_bytes = a.clone().serialize_to_byte_array();
+        let a_bytes: [u8; 32] = a
+            .clone()
+            .serialize_to_byte_array()
+            .try_into()
+            .expect("should be 32 bytes");
 
-        let secret: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
-        let signature = byte_array_to_wots256_sig(secret, &a_bytes);
+        let secret =
+            Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").expect("should be valid hex");
+        let signature = Wots32::sign(&secret, &a_bytes);
 
-        let msg_bytes = wots256_sig_to_byte_array(signature);
+        let msg_bytes = Wots32::signature_to_message(&signature);
         assert_eq!(msg_bytes, a_bytes);
-        let msg = CompressedStateObject::deserialize_from_byte_array(msg_bytes);
+        let msg = CompressedStateObject::deserialize_from_byte_array(msg_bytes.to_vec());
         assert_eq!(a, msg);
 
-        let sig_witness = signature.to_compact_script();
-        let pub_key = WOTSPubKey::P256(wots256::generate_public_key(secret));
+        let compact_signature_witness = Wots32::compact_sign_to_raw_witness(&secret, &a_bytes);
+        let pub_key = WOTSPubKey::P256(Wots32::generate_public_key(&secret));
         let scr = script! {
-            {sig_witness}
+            {compact_signature_witness}
             {checksig_verify_to_limbs(&pub_key)}
             {a.as_hint_type().push()}
             {Fq::equalverify(1, 0)}
@@ -148,20 +113,25 @@ mod test {
                 .collect::<Vec<ark_bn254::Fq>>(),
         );
         let a = CompressedStateObject::Hash(a);
-        let a_bytes = a.clone().serialize_to_byte_array();
+        let a_bytes: [u8; 16] = a
+            .clone()
+            .serialize_to_byte_array()
+            .try_into()
+            .expect("should be 16 bytes");
 
-        let secret: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
+        let secret =
+            Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").expect("should be valid hex");
 
-        let signature = byte_array_to_wots_hash_sig(secret, &a_bytes);
-        let msg_bytes = wots_hash_sig_to_byte_array(signature);
+        let signature = Wots16::sign(&secret, &a_bytes);
+        let msg_bytes = Wots16::signature_to_message(&signature);
         assert_eq!(msg_bytes, a_bytes);
-        let msg = CompressedStateObject::deserialize_from_byte_array(msg_bytes);
+        let msg = CompressedStateObject::deserialize_from_byte_array(msg_bytes.to_vec());
         assert_eq!(a, msg);
 
-        let sig_witness = signature.to_compact_script();
-        let pub_key = WOTSPubKey::PHash(wots_hash::generate_public_key(secret));
+        let compact_signature_witness = Wots16::compact_sign_to_raw_witness(&secret, &a_bytes);
+        let pub_key = WOTSPubKey::PHash(Wots16::generate_public_key(&secret));
         let scr = script! {
-            {sig_witness}
+            {compact_signature_witness}
             {checksig_verify_to_limbs(&pub_key)}
             {a.as_hint_type().push()}
             {Fq::equalverify(1, 0)}
@@ -182,41 +152,28 @@ mod test {
                 .collect::<Vec<ark_bn254::Fq>>(),
         );
         let a = CompressedStateObject::Hash(a);
-        let a_bytes = a.clone().serialize_to_byte_array();
-        let secret: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
+        let a_bytes: [u8; 16] = a
+            .clone()
+            .serialize_to_byte_array()
+            .try_into()
+            .expect("should be 16 bytes");
+        let secret =
+            Vec::from_hex("a138982ce17ac813d505a5b40b665d404e9528e7").expect("should be valid hex");
         {
-            let signature = wots_hash::get_signature(secret, &a_bytes);
+            let signature = Wots16::sign(&secret, &a_bytes);
             assert!(
                 signature
-                    == wots_hash::raw_witness_to_signature(&wots_hash::signature_to_raw_witness(
+                    == Wots16::raw_witness_to_signature(&Wots16::signature_to_raw_witness(
                         &signature
                     ))
             );
         }
         {
-            let signature = wots_hash::compact::get_signature(secret, &a_bytes);
+            let signature = Wots16::compact_sign(&secret, &a_bytes);
             assert!(
                 signature
-                    == wots_hash::compact::raw_witness_to_signature(
-                        &wots_hash::compact::signature_to_raw_witness(&signature)
-                    )
-            );
-        }
-        {
-            let signature = wots256::get_signature(secret, &a_bytes);
-            assert!(
-                signature
-                    == wots256::raw_witness_to_signature(&wots256::signature_to_raw_witness(
-                        &signature
-                    ))
-            );
-        }
-        {
-            let signature = wots256::compact::get_signature(secret, &a_bytes);
-            assert!(
-                signature
-                    == wots256::compact::raw_witness_to_signature(
-                        &wots256::compact::signature_to_raw_witness(&signature)
+                    == Wots16::compact_raw_witness_to_signature(
+                        &Wots16::compact_signature_to_raw_witness(&signature)
                     )
             );
         }
