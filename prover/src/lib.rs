@@ -1,11 +1,8 @@
 use borsh::BorshDeserialize;
-use header_chain::{
-    header_chain::{
-        BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput,
-        HeaderChainPrevProofType,
-    },
-    risc0_zkvm::{default_prover, ExecutorEnv},
+use header_chain::header_chain::{
+    BlockHeaderCircuitOutput, CircuitBlockHeader, HeaderChainCircuitInput, HeaderChainPrevProofType,
 };
+use risc0_zkvm::{default_prover, ExecutorEnv};
 
 use risc0_circuit_recursion::control_id::BN254_IDENTITY_CONTROL_ID;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
@@ -19,18 +16,18 @@ pub mod docker;
 const HEADER_CHAIN_GUEST_ELF: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => {
-            include_bytes!("../elfs/mainnet-header-chain-guest")
+            include_bytes!("../elfs/mainnet-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"testnet4") => {
-            include_bytes!("../elfs/testnet4-header-chain-guest")
+            include_bytes!("../elfs/testnet4-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"signet") => {
-            include_bytes!("../elfs/signet-header-chain-guest")
+            include_bytes!("../elfs/signet-header-chain-guest.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"regtest") => {
-            include_bytes!("../elfs/regtest-header-chain-guest")
+            include_bytes!("../elfs/regtest-header-chain-guest.bin")
         }
-        None => include_bytes!("../elfs/mainnet-header-chain-guest"),
+        None => include_bytes!("../elfs/mainnet-header-chain-guest.bin"),
         _ => panic!("Invalid path or ELF file"),
     }
 };
@@ -194,8 +191,8 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../elfs/mainnet-final-spv-guest");
-        let header_chain_circuit_elf = include_bytes!("../elfs/mainnet-header-chain-guest");
+        let final_circuit_elf = include_bytes!("../elfs/mainnet-final-spv-guest.bin");
+        let header_chain_circuit_elf = include_bytes!("../elfs/mainnet-header-chain-guest.bin");
         println!(
             "Header chain circuit id: {:#?}",
             compute_image_id(header_chain_circuit_elf)

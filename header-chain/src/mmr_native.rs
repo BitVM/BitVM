@@ -141,6 +141,7 @@ impl MMRInclusionProof {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     use crate::mmr_guest::MMRGuest;

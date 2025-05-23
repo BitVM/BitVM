@@ -385,7 +385,6 @@ pub struct HeaderChainCircuitInput {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::Block;
     use hex_literal::hex;
 
     // From block 800000 to 800015

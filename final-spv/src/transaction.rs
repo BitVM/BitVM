@@ -10,7 +10,7 @@ use bitcoin::transaction::Version;
 use bitcoin::{Amount, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness};
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::utils::calculate_double_sha256;
+use crate::utils::calculate_sha256;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct CircuitTransaction(pub Transaction);
@@ -27,6 +27,12 @@ impl CircuitTransaction {
     /// Returns the transaction id, in big-endian byte order. One must be careful when dealing with
     /// Bitcoin transaction ids, as they are little-endian in the Bitcoin protocol.
     pub fn txid(&self) -> [u8; 32] {
+        let mid_state = self.mid_state_txid();
+        calculate_sha256(&mid_state)
+    }
+
+    /// Returns the first digest of the transaction to be used in SPV
+    pub fn mid_state_txid(&self) -> [u8; 32] {
         let mut tx_bytes_vec = vec![];
         self.inner()
             .version
@@ -44,7 +50,7 @@ impl CircuitTransaction {
             .lock_time
             .consensus_encode(&mut tx_bytes_vec)
             .unwrap();
-        calculate_double_sha256(&tx_bytes_vec)
+        calculate_sha256(&tx_bytes_vec)
     }
 }
 
