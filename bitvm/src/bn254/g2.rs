@@ -472,7 +472,7 @@ pub fn hinted_affine_add_line(
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
     let (hinted_script0, hint0) = Fq2::hinted_square(c3);
-    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square() - tx - qx);
+    let (hinted_script1, hint1) = Fq2::hinted_mul_w4(4, c3, 0, c3.square() - tx - qx);
 
     let script = script! {
         // [c3, c4, T.x, Q.x]
