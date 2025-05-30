@@ -699,7 +699,7 @@ pub trait Fp254Impl {
     ) -> (Script, Vec<Hint>) {
         assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
 
-        let mut hints = Vec::new();
+        let mut hints = Vec::with_capacity(1);
 
         let modulus = &Fq::modulus_as_bigint();
 
@@ -845,7 +845,7 @@ pub trait Fp254Impl {
     ) -> (Script, Vec<Hint>) {
         assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
 
-        let mut hints = Vec::new();
+        let mut hints = Vec::with_capacity(1);
 
         let modulus = &Fq::modulus_as_bigint();
 
