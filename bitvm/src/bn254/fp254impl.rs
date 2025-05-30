@@ -832,6 +832,46 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn hinted_mul_lc2_keep_elements_w4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2_w4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
     // TODO: Optimize using the sqaure feature
     fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();

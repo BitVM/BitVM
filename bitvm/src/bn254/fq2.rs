@@ -207,7 +207,7 @@ impl Fq2 {
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) =
-            Fq::hinted_mul_lc2_keep_elements(3, a.c0, 2, a.c1, 1, b.c1, 0, b.c0);
+            Fq::hinted_mul_lc2_keep_elements_w4(3, a.c0, 2, a.c1, 1, b.c1, 0, b.c0);
         let (hinted_script2, hint2) = Fq::hinted_mul_lc2_w4(3, a.c0, 2, a.c1, 1, b.c0, 0, -b.c1);
 
         let script = script! {
