@@ -533,6 +533,33 @@ mod test {
     }
 
     #[test]
+    fn test_bn254_fq2_hinted_mul_w4() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq2::hinted_mul_w4(2, a, 0, b);
+            println!("Fq2::hinted_mul_w4: {} bytes", hinted_mul.len());
+
+            let script = script! {
+                for hint in hints {
+                    { hint.push() }
+                }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
+                { hinted_mul.clone() }
+                { Fq2::push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            run(script);
+        }
+    }
+
+    #[test]
     fn test_bn254_fq2_hinted_mul_by_constant() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
