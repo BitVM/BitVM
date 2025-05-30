@@ -47,6 +47,12 @@ impl Fq {
         }
     }
 
+    pub fn tmul_lc2_w4() -> Script {
+        script! {
+            { <Fq as Fp254Mul2LCW4>::tmul() }
+        }
+    }
+
     pub fn tmul_lc4() -> Script {
         script! {
             { <Fq as Fp254Mul4LC>::tmul() }
@@ -408,6 +414,7 @@ macro_rules! fp_lc_mul {
 
 fp_lc_mul!(Mul, 4, 4, [true]);
 fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
+fp_lc_mul!(Mul2LCW4, 4, 4, [true, true]);
 fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 
 #[cfg(test)]

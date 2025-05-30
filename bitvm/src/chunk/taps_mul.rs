@@ -27,10 +27,10 @@ pub(crate) fn utils_fq6_ss_mul(
     let i = b * e;
     let result = ark_bn254::Fq6::new(g, h, i);
 
-    let (g_scr, g_hints) = Fq2::hinted_mul(2, d, 0, a);
+    let (g_scr, g_hints) = Fq2::hinted_mul_w4(2, d, 0, a);
     // We use lc4 to compute h as it requires lesser number of tmul hints compared to doing the same thing with two LC2s
     let (h_scr, h_hints) = Fq2::hinted_mul_lc4_keep_elements(b, d, e, a);
-    let (i_scr, i_hints) = Fq2::hinted_mul(2, e, 0, b);
+    let (i_scr, i_hints) = Fq2::hinted_mul_w4(2, e, 0, b);
 
     let mut hints = vec![];
     for hint in [i_hints, g_hints, h_hints] {
