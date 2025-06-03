@@ -192,6 +192,10 @@ impl Fq2 {
         (script, hints)
     }
 
+    // Given Fq2 elements a and b, compute their product
+    // A = a0 + a1 u, B = b0 + b1 u, where $u^2$ is quadratic non-residue, for bn-254 $u^2$ = -1
+    // A.B = (a0.b0 + a1.b1 $u^2$) + u (a0.b1 + a1b0) = (a0.b0 - a1.b1) + u (a0.b1 + a1.b0)
+    // This specific version uses tmul of 4-bit window to compute each of the two terms above.
     pub fn hinted_mul_w4(
         mut a_depth: u32,
         mut a: ark_bn254::Fq2,

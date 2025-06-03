@@ -47,6 +47,10 @@ impl Fq {
         }
     }
 
+    // Wrapper over 4-bit windowed tmul that computes a linear combination of two terms
+    // Computes r = a * c + b * d (mod p)
+    // Input Stack: [hint, a, b, c, d]
+    // Output Stack: [r]
     pub fn tmul_lc2_w4() -> Script {
         script! {
             { <Fq as Fp254Mul2LCW4>::tmul() }

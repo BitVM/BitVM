@@ -686,6 +686,9 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
+    // Assumes tmul hint (1 BigInteger) at the top of stack
+    // and operands (a, b, c, d) at stack depths (a_depth, b_depth, c_depth, d_depth)
+    // Computes r = a * c + b * d (mod p)
     #[allow(clippy::too_many_arguments)]
     fn hinted_mul_lc2_w4(
         a_depth: u32,
@@ -832,6 +835,7 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
+    // Same as hinted_mul_lc2_keep_elements(), except retains operands (a, b, c, d) on stack
     #[allow(clippy::too_many_arguments)]
     fn hinted_mul_lc2_keep_elements_w4(
         a_depth: u32,
