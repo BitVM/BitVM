@@ -192,6 +192,46 @@ impl Fq2 {
         (script, hints)
     }
 
+    // Given Fq2 elements a and b, compute their product
+    // A = a0 + a1 u, B = b0 + b1 u, where $u^2$ is quadratic non-residue, for bn-254 $u^2$ = -1
+    // A.B = (a0.b0 + a1.b1 $u^2$) + u (a0.b1 + a1b0) = (a0.b0 - a1.b1) + u (a0.b1 + a1.b0)
+    // This specific version uses tmul of 4-bit window to compute each of the two terms above.
+    pub fn hinted_mul_w4(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq2,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq2,
+    ) -> (Script, Vec<Hint>) {
+        if a_depth < b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
+        }
+        assert_ne!(a_depth, b_depth);
+
+        let mut hints = Vec::with_capacity(2);
+
+        let (hinted_script1, hint1) =
+            Fq::hinted_mul_lc2_keep_elements_w4(3, a.c0, 2, a.c1, 1, b.c1, 0, b.c0);
+        let (hinted_script2, hint2) = Fq::hinted_mul_lc2_w4(3, a.c0, 2, a.c1, 1, b.c0, 0, -b.c1);
+
+        let script = script! {
+            { Fq2::roll(a_depth) }
+            { Fq2::roll(b_depth + 2) }                       // a.c0 a.c1 b.c0 b.c1
+            { Fq::roll(1) }                                  // a.c0 a.c1 b.c1 b.c0
+            { hinted_script1 }                               // a.c0 a.c1 b.c1 b.c0 a.c0*b.c1+a.c1*b.c0
+            { Fq::toaltstack() }                             // a.c0 a.c1 b.c1 b.c0 | a.c0*b.c1+a.c1*b.c0
+            { Fq::roll(1) }                                  // a.c0 a.c1 b.c0 b.c1 | a.c0*b.c1+a.c1*b.c0
+            { Fq::neg(0) }                                   // a.c0 a.c1 b.c0 -b.c1 | a.c0*b.c1+a.c1*b.c0
+            { hinted_script2 }                               // a.c0*b.c0-a.c1*b.c1 | a.c0*b.c1+a.c1*b.c0
+            { Fq::fromaltstack() }                           // a.c0*b.c0-a.c1*b.c1 a.c0*b.c1+a.c1*b.c0
+        };
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+
+        (script, hints)
+    }
+
     pub fn hinted_mul_by_constant(
         a: ark_bn254::Fq2,
         constant: &ark_bn254::Fq2,
@@ -480,6 +520,33 @@ mod test {
 
             let (hinted_mul, hints) = Fq2::hinted_mul(2, a, 0, b);
             println!("Fq2::hinted_mul: {} bytes", hinted_mul.len());
+
+            let script = script! {
+                for hint in hints {
+                    { hint.push() }
+                }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
+                { hinted_mul.clone() }
+                { Fq2::push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            run(script);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_hinted_mul_w4() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq2::hinted_mul_w4(2, a, 0, b);
+            println!("Fq2::hinted_mul_w4: {} bytes", hinted_mul.len());
 
             let script = script! {
                 for hint in hints {
