@@ -419,9 +419,9 @@ impl QueryCommand {
             .arg(arg!(<DESTINATION_CHAIN_ADDRESS> "Depositor's destination address on L2 Chain").required(true))
             .arg(arg!(<OUTPOINT> "Previous output for peg-in deposit transaction input, format: <txid>:<vout>").required(true))
             .arg(arg!(<SATS> "Amount of satoshis to deposit, should be also the value of previous output").required(true))
-            .arg(arg!(<DEPOSIT> "Sinature hex for peg-in deposit").required(true))
-            .arg(arg!(<CONFIRM> "Sinature hex for peg-in confirm").required(true))
-            .arg(arg!(<REFUND> "Sinature hex for peg-in refund").required(true))
+            .arg(arg!(<DEPOSIT> "Signature hex for peg-in deposit").required(true))
+            .arg(arg!(<CONFIRM> "Signature hex for peg-in confirm").required(true))
+            .arg(arg!(<REFUND> "Signature hex for peg-in refund").required(true))
     }
 
     pub async fn handle_signatures(
