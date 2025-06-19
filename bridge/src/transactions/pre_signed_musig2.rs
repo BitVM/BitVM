@@ -124,7 +124,7 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let script = &tx.prev_scripts()[input_index].clone();
     let musig2_nonces = &tx.musig2_nonces()[&input_index].values().cloned().collect();
 
-    let partial_signature = generate_taproot_partial_signature(
+    let partial_signature = match generate_taproot_partial_signature(
         context,
         tx.tx_mut(),
         secret_nonce,
@@ -133,8 +133,13 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
         prev_outs,
         script,
         sighash_type,
-    )
-    .unwrap(); // TODO: Add error handling.
+    ) {
+        Ok(sig) => sig,
+        Err(e) => {
+            eprintln!("Failed to generate taproot partial signature: {e}");
+            return;
+        }
+    };
 
     let musig2_signatures = tx.musig2_signatures_mut();
     if musig2_signatures.get(&input_index).is_none() {
@@ -168,7 +173,7 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let tx_mut = tx.tx_mut();
 
     // Aggregate signature
-    let signature = generate_taproot_aggregated_signature(
+    let signature = match generate_taproot_aggregated_signature(
         context,
         tx_mut,
         &generate_aggregated_nonce(musig2_nonces),
@@ -177,8 +182,13 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
         script,
         sighash_type,
         musig2_signatures, // TODO: Is there a more elegant way of doing this?
-    )
-    .unwrap(); // TODO: Add error handling.
+    ) {
+        Ok(sig) => sig,
+        Err(e) => {
+            eprintln!("Failed to generate taproot aggregated signature: {e}");
+            return;
+        }
+    };
 
     let final_signature = bitcoin::taproot::Signature {
         signature: signature.into(),
