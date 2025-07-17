@@ -169,11 +169,9 @@ fn execute_script_buf_optional_stack_limit(
     for (i, a) in exec.stack().iter_str().enumerate() {
         if i % 32 == 31 {
             println!(", {:?}", a);
-        }
-        else if i % 32 == 0 {
+        } else if i % 32 == 0 {
             print!("stack[{}]: {:?}", i / 32, a);
-        }
-        else {
+        } else {
             print!(", {:?}", a);
         }
     }

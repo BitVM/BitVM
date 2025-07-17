@@ -36,8 +36,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             while !bits[ms_one] {
                 if ms_one != 0 {
                     ms_one -= 1;
-                }
-                else {
+                } else {
                     break;
                 }
             }
