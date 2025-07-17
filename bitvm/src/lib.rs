@@ -166,6 +166,18 @@ fn execute_script_buf_optional_stack_limit(
             break;
         }
     }
+    for (i, a) in exec.stack().iter_str().enumerate() {
+        if i % 32 == 31 {
+            println!(", {:?}", a);
+        }
+        else if i % 32 == 0 {
+            print!("stack[{}]: {:?}", i / 32, a);
+        }
+        else {
+            print!(", {:?}", a);
+        }
+    }
+    println!("");
     let res = exec.result().unwrap();
     ExecuteInfo {
         success: res.success,
