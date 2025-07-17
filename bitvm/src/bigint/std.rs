@@ -30,6 +30,22 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 bits.push((elem & (1 << i)) != 0);
             }
         }
+        // make sure most significant 1 lies inside the limits
+        let ms_one = if bits.len() > 0 {
+            let mut ms_one = bits.len() - 1;
+            while !bits[ms_one] {
+                if ms_one != 0 {
+                    ms_one -= 1;
+                }
+                else {
+                    break;
+                }
+            }
+            ms_one
+        } else {
+            0
+        };
+        assert!(ms_one < Self::N_BITS as usize);
         bits.resize(N_BITS as usize, false);
 
         let mut limbs = vec![];
