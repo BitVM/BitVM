@@ -234,7 +234,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
             OP_NIP
             { b_depth + 1 } OP_PICK
-            OP_ROT
+            OP_SWAP
             { limb_add_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
@@ -361,7 +361,7 @@ fn limb_add_with_carry_prevent_overflow(head_offset: u32) -> Script {
         OP_2SWAP                                             // {a+b+c_nlo} {x} {a} {sign_b} {a+b+c_nlo} {x}
         OP_GREATERTHANOREQUAL                                // {a+b+c_nlo} {x} {a} {sign_b} {I:0/1}
         OP_2SWAP                                             // {a+b+c_nlo} {sign_b} {I:0/1} {x} {a}
-        OP_GREATERTHANOREQUAL                                // {a+b+c_nlo} {sign_b} {I:0/1} {sign_a}
+        OP_GREATERTHAN                                       // {a+b+c_nlo} {sign_b} {I:0/1} {sign_a}
         OP_ADD OP_ADD 1 3 OP_WITHIN OP_VERIFY                // verify (sign_a, sign_b, I) is not (0, 0, 0) or (1, 1, 1) which would mean overflow
     }
 }
@@ -417,7 +417,7 @@ fn limb_double_with_carry_prevent_overflow(head_offset: u32) -> Script {
         OP_TUCK OP_DUP OP_ADD                            // {a} {x} {2a+c} {2x}
         OP_2DUP OP_GREATERTHANOREQUAL                    // {a} {x} {2a+c} {2x} {L:0/1}
         OP_NOTIF OP_NOT OP_ENDIF OP_SUB                  // {a} {x} {2a+c_nlo}
-        OP_2DUP OP_LESSTHAN                              // {a} {x} {2a+c_nlo} {I:0/1}
+        OP_2DUP OP_LESSTHANOREQUAL                       // {a} {x} {2a+c_nlo} {I:0/1}
         OP_2SWAP                                         // {2a+c_nlo} {I:0/1} {a} {x}
         OP_LESSTHAN                                      // {2a+c_nlo} {I:0/1} {sign_a}
 
