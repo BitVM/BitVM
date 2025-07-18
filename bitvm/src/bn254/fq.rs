@@ -1,9 +1,12 @@
 #![allow(clippy::reversed_empty_ranges)]
+use std::str::FromStr;
+
 use num_bigint::{BigInt, BigUint};
 use num_traits::{FromPrimitive, Num, ToPrimitive};
 
 use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
+use crate::bn254::utils::Hint;
 use crate::pseudo::NMUL;
 use crate::treepp::*;
 
@@ -86,6 +89,372 @@ impl Fq {
         script! {
             { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
         }
+    }
+
+    pub fn hinted_mul(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert_ne!(a_depth, b_depth);
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
+        }
+
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 1) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    // TODO: Optimize by using the constant feature
+    pub fn hinted_mul_by_constant(a: ark_bn254::Fq, constant: &ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&constant.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(1) }
+            { Fq::push(*constant) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    pub fn hinted_mul_keep_element(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert_ne!(a_depth, b_depth);
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
+        }
+
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    // Assumes tmul hint (1 BigInteger) at the top of stack
+    // and operands (a, b, c, d) at stack depths (a_depth, b_depth, c_depth, d_depth)
+    // Computes r = a * c + b * d (mod p)
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2_w4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::with_capacity(1);
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::tmul_lc2_w4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+
+        e_depth: u32,
+        e: ark_bn254::Fq,
+        f_depth: u32,
+        f: ark_bn254::Fq,
+        g_depth: u32,
+        g: ark_bn254::Fq,
+        h_depth: u32,
+        h: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(
+            a_depth > b_depth
+                && b_depth > c_depth
+                && c_depth > d_depth
+                && d_depth > e_depth
+                && e_depth > f_depth
+                && f_depth > g_depth
+                && g_depth > h_depth
+        );
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x1 = BigInt::from_str(&a.to_string()).unwrap();
+        let y1 = BigInt::from_str(&b.to_string()).unwrap();
+        let z1 = BigInt::from_str(&c.to_string()).unwrap();
+        let w1 = BigInt::from_str(&d.to_string()).unwrap();
+
+        let x2 = BigInt::from_str(&e.to_string()).unwrap();
+        let y2 = BigInt::from_str(&f.to_string()).unwrap();
+        let z2 = BigInt::from_str(&g.to_string()).unwrap();
+        let w2 = BigInt::from_str(&h.to_string()).unwrap();
+
+        let q = (x1 * x2 + y1 * y2 + z1 * z2 + w1 * w2) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::roll(e_depth + 5) }
+            { Fq::roll(f_depth + 6) }
+            { Fq::roll(g_depth + 7) }
+            { Fq::roll(h_depth + 8) }
+            { Fq::tmul_lc4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC4(q));
+
+        (script, hints)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2_keep_elements(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    // Same as hinted_mul_lc2_keep_elements(), except retains operands (a, b, c, d) on stack
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2_keep_elements_w4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::with_capacity(1);
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2_w4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    // TODO: Optimize using the sqaure feature
+    pub fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = &BigInt::from_str(&a.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * x) / modulus;
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(1) }
+            { Fq::copy(0) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    pub fn hinted_inv(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = &BigInt::from_str(&a.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let y = &x.modinv(modulus).unwrap();
+        let q = (x * y) / modulus;
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // x, y, q
+            { Fq::roll(2) }
+            { Fq::copy(2) }
+            // y, q, x, y
+            { Fq::tmul() }
+            // y, 1
+            { Fq::push_one() }
+            { Fq::equalverify(1, 0) }
+        };
+        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
     }
 }
 
