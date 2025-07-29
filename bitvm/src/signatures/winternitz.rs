@@ -469,7 +469,8 @@ impl Verifier for BruteforceVerifier {
                 OP_DUP
                 { -1 }
                 OP_NUMNOTEQUAL OP_VERIFY
-                OP_FROMALTSTACK OP_DROP
+                OP_FROMALTSTACK 
+                { -1 } OP_EQUALVERIFY // Verify the sentinel value -1 to avoid altstack overflow in the rare case where pk == hash160^n(pk).
                 OP_TOALTSTACK
             }
         }
