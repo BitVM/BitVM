@@ -124,7 +124,10 @@ impl Fq {
     }
 
     // TODO: Optimize by using the constant feature
-    pub fn hinted_mul_by_constant(a: ark_bn254::Fq, constant: &ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul_by_constant(
+        a: ark_bn254::Fq,
+        constant: &ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let x = BigInt::from_str(&a.to_string()).unwrap();
         let y = BigInt::from_str(&constant.to_string()).unwrap();
