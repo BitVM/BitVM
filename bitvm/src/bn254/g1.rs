@@ -4,6 +4,7 @@ use crate::bn254::utils::Hint;
 use crate::treepp::{script, Script};
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
+use bitcoin::opcodes::all::OP_ELSE;
 use num_bigint::BigUint;
 
 use super::fq2::Fq2;
@@ -159,8 +160,8 @@ impl G1Affine {
 
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
-
-        let (alpha, bias) = if !t.is_zero() && !q.is_zero() {
+        
+        let (alpha, bias) = if !t.is_zero() && !q.is_zero() && (t.x != q.x) {
             let alpha = (t.y - q.y) / (t.x - q.x);
             let bias = t.y - alpha * t.x;
             (alpha, bias)
@@ -181,23 +182,28 @@ impl G1Affine {
                 OP_IF
                     { G1Affine::drop() }
                 OP_ELSE                                // qx qy tx ty
-                    for _ in 0..Fq::N_LIMBS {
-                        OP_DEPTH OP_1SUB OP_ROLL
-                    }
-                    for _ in 0..Fq::N_LIMBS {
-                        OP_DEPTH OP_1SUB OP_ROLL
-                    }                                  // qx qy tx ty c3 c4
-                    { Fq::copy(1) }
-                    { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
-                    { Fq::copy(5) }
-                    { Fq::roll(5) }                    // qx qy tx c3 c4 c3 c4 tx ty
-                    { Fq::copy(8) }
-                    { Fq::roll(8) }                    // qx tx c3 c4 c3 c4 tx ty qx qy
-                    { hinted_script1 }                 // qx tx c3 c4 0/1
-                    OP_VERIFY
-                    { Fq::roll(2) }
-                    { Fq::roll(3) }                    // c3 c4 tx qx
-                    { hinted_script2 }                 // x' y'
+                    { G1Affine::equalverify()}
+                    OP_IF                   
+                    { G1Affine::is_zero_keep_element() }
+                        OP_ELSE
+                        for _ in 0..Fq::N_LIMBS {
+                            OP_DEPTH OP_1SUB OP_ROLL
+                        }
+                        for _ in 0..Fq::N_LIMBS {
+                            OP_DEPTH OP_1SUB OP_ROLL
+                        }                                  // qx qy tx ty c3 c4
+                        { Fq::copy(1) }
+                        { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
+                        { Fq::copy(5) }
+                        { Fq::roll(5) }                    // qx qy tx c3 c4 c3 c4 tx ty
+                        { Fq::copy(8) }
+                        { Fq::roll(8) }                    // qx tx c3 c4 c3 c4 tx ty qx qy
+                        { hinted_script1 }                 // qx tx c3 c4 0/1
+                        OP_VERIFY
+                        { Fq::roll(2) }
+                        { Fq::roll(3) }                    // c3 c4 tx qx
+                        { hinted_script2 }                 // x' y'
+                    OP_ENDIF
                 OP_ENDIF
             OP_ENDIF
         };
