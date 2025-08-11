@@ -112,7 +112,7 @@ macro_rules! fp_lc_mul {
             trait [<Fp254 $NAME>] {
                 const LIMB_SIZE: u32 = 29;
                 const LCS: [bool; $LCS.len()] = $LCS;
-                const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
+                const LC_BITS: u32 = usize::BITS - ($LCS.len() - 1).leading_zeros();
                 type U;
                 type T;
                 fn tmul() -> Script;
@@ -169,7 +169,7 @@ macro_rules! fp_lc_mul {
                     // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
-                            (1..=6).contains(&window),
+                            (2..=6).contains(&window),
                             "expected 1<=window<=6; got window={}",
                             window
                         );
@@ -431,6 +431,7 @@ mod test {
     use ark_ff::Field;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul, Rem, Sub};
+    use std::str::FromStr;
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
     use num_traits::{Num, Signed};
     use rand::{Rng, SeedableRng};
@@ -1038,5 +1039,55 @@ mod test {
             <Fq as Fp254Mul2LC>::tmul().len(),
             max_stack
         );
+    }
+
+    fp_lc_mul!(ZellicMulNonPowerTwoLCSLength, 3, 3, [true, true, true]);
+
+    #[test]
+    fn test_zellic_windowed_mul_overflow_non_power_two_lcs() {
+        type U = <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::U;
+        type T = <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::T;
+
+        println!("LCS = {:?}", <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LCS);
+        println!("LC_BITS = {}", <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LC_BITS);
+        println!("T::N_BITS = {}", T::N_BITS);
+
+        let lcs = <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LCS;
+
+        let zero = &BigInt::ZERO;
+        let modulus = &Fq::modulus_as_bigint();
+
+        let xs = lcs.map(|_| modulus - BigInt::from_str("1").unwrap());
+        let ys = lcs.map(|_| BigInt::from_str_radix("11000001100100010011100011001011101111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", 2).unwrap());
+        let mut qs = vec![];
+        let mut rs = vec![];
+
+        let mut c = zero.clone();
+        for i in 0..lcs.len() {
+            let xy = &xs[i] * &ys[i];
+            qs.push(&xy / modulus);
+            rs.push(&xy % modulus);
+            c += if lcs[i] { xy } else { -xy };
+        }
+        let r = &c % modulus;
+        let r = &(if r.is_negative() { modulus + r } else { r });
+
+        // correct quotient
+        let q = &(&c / modulus);
+        let script = script! {
+            { T::push_u32_le(&bigint_to_u32_limbs(q.clone(), T::N_BITS)) }
+            for i in 0..lcs.len() {
+                { U::push_u32_le(&xs[i].to_u32_digits().1) }
+            }
+            for i in 0..lcs.len() {
+                { U::push_u32_le(&ys[i].to_u32_digits().1) }
+            }
+            { <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::tmul() }
+            { U::push_u32_le(&r.to_u32_digits().1) }
+            { U::equal(0, 1) }
+        };
+        let res = execute_script(script);
+        assert!(res.success);
+
     }
 }
