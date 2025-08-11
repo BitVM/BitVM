@@ -391,22 +391,19 @@ macro_rules! fp_lc_mul {
                             }
                         }
 
-                        { T::is_positive(size_table(MOD_WIDTH) +                 // q was negative
-                            N_LC * size_table(VAR_WIDTH) + N_LC) } OP_TOALTSTACK // {-q_table} {x0_table} {x1_table} {y0} {y1} {r} -> {0/1}
-                        { T::toaltstack() }                                      // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
+                        { T::toaltstack() }                                      // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r}
 
                         // Cleanup
-                        for _ in 0..N_LC { { T::drop() } }             // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
-                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r} {0/1}
-                        { drop_table(MOD_WIDTH) }                      // -> {r} {0/1}
+                        for _ in 0..N_LC { { T::drop() } }             // {-q_table} {x0_table} {x1_table} -> {r}
+                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r}
+                        { drop_table(MOD_WIDTH) }                      // -> {r}
 
                         // Correction/validation
                         // r = if q < 0 { r + p } else { r }; assert(r < p)
-                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r} {0/1}
-                        { T::fromaltstack() } OP_FROMALTSTACK // {MODULUS} {r} {0/1}
-                        OP_IF { T::add_ref(1) } OP_ENDIF      // {MODULUS} {-r/r}
-                        { T::copy(0) }                        // {MODULUS} {-r/r} {-r/r}
-                        { T::lessthan(0, 2) } OP_VERIFY       // {-r/r}
+                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r}
+                        { T::fromaltstack() }                    // {MODULUS} {r}
+                        { T::copy(0) }                        // {MODULUS} {r} {r}
+                        { T::lessthan(0, 2) } OP_VERIFY       // {r}
 
                         // Resize res back to N_BITS
                         { T::resize::<N_BITS>() } // {r}
@@ -702,13 +699,15 @@ mod test {
     fn test_hinted_mul() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
+        for i in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
 
             let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
-            println!("Fq::hinted_mul: {} bytes", hinted_mul.len());
+            if i == 0 {
+                println!("Fq::hinted_mul: {} bytes", hinted_mul.len());
+            }
 
             let script = script! {
                 for hint in hints {
@@ -728,13 +727,15 @@ mod test {
     fn test_hinted_mul_keep_element() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
+        for i in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
 
             let (hinted_mul_keep_element, hints) = Fq::hinted_mul_keep_element(1, a, 0, b);
-            println!("Fq::hinted_mul: {} bytes", hinted_mul_keep_element.len());
+            if i == 0 {
+                println!("Fq::hinted_mul: {} bytes", hinted_mul_keep_element.len());
+            }
 
             let script = script! {
                 for hint in hints {
@@ -758,16 +759,18 @@ mod test {
     fn test_hinted_mul_by_constant() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
+        for i in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
 
             let (hinted_mul_by_constant, hints) = Fq::hinted_mul_by_constant(a, &b);
-            println!(
-                "Fq::hinted_mul_by_constant: {} bytes",
-                hinted_mul_by_constant.len()
-            );
+            if i == 0 {
+                println!(
+                    "Fq::hinted_mul_by_constant: {} bytes",
+                    hinted_mul_by_constant.len()
+                );
+            }
 
             let script = script! {
                 for hint in hints {
@@ -786,7 +789,7 @@ mod test {
     fn test_hinted_mul_lc2() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
+        for i in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = ark_bn254::Fq::rand(&mut prng);
@@ -794,7 +797,9 @@ mod test {
             let e = a.mul(&c).add(b.mul(&d));
 
             let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2(3, a, 2, b, 1, c, 0, d);
-            println!("Fq::hinted_mul_lc2: {} bytes", hinted_mul_lc2.len());
+            if i == 0 {
+                println!("Fq::hinted_mul_lc2: {} bytes", hinted_mul_lc2.len());
+            }
 
             let script = script! {
                 for hint in hints {
@@ -816,7 +821,7 @@ mod test {
     fn test_hinted_mul_lc2_keep_elements() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
+        for i in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = ark_bn254::Fq::rand(&mut prng);
@@ -825,10 +830,12 @@ mod test {
 
             let (hinted_mul_lc2_keep_element, hints) =
                 Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
-            println!(
-                "Fq::hinted_mul_lc2_keep_element: {} bytes",
-                hinted_mul_lc2_keep_element.len()
-            );
+            if i == 0 {
+                println!(
+                    "Fq::hinted_mul_lc2_keep_element: {} bytes",
+                    hinted_mul_lc2_keep_element.len()
+                );
+            }
 
             let script = script! {
                 for hint in hints {
@@ -856,12 +863,14 @@ mod test {
     fn test_hinted_square() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
+        for i in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&a);
 
             let (hinted_square, hints) = Fq::hinted_square(a);
-            println!("Fq::hinted_square: {} bytes", hinted_square.len());
+            if i == 0 {
+                println!("Fq::hinted_square: {} bytes", hinted_square.len());
+            }
 
             let script = script! {
                 for hint in hints {
@@ -1094,5 +1103,53 @@ mod test {
         };
         let res = execute_script(script);
         assert!(res.success);
+    }
+
+    fp_lc_mul!(ZellicMulNegative, 3, 3, [false]);
+
+    #[test]
+    fn test_zellic_tmul_negative() {
+        type U = <Fq as Fp254ZellicMulNegative>::U;
+        type T = <Fq as Fp254ZellicMulNegative>::T;
+
+        let lcs = <Fq as Fp254ZellicMulNegative>::LCS;
+
+        let zero = &BigInt::ZERO;
+        let modulus = &Fq::modulus_as_bigint();
+
+        // With values for x and y so that x*y >= p, e.g. x = 2^200 and y=2^200, this works
+        // With other values it fails.
+        let xs = lcs.map(|_| BigInt::from(2).pow(1));
+        let ys = lcs.map(|_| BigInt::from(2).pow(1));
+
+        let mut c = zero.clone();
+        for i in 0..lcs.len() {
+            let xy = &xs[i] * &ys[i];
+            c += if lcs[i] { xy } else { -xy };
+        }
+        let r = &c % modulus;
+        let r = &(if r.is_negative() { modulus + r } else { r });
+
+        // correct quotient
+        let mut q = &c / modulus;
+        if c < BigInt::ZERO {
+            q = q - 1;
+        }
+
+        println!("x = {:?}", xs[0]);
+        println!("y = {:?}", ys[0]);
+        println!("c = {:?}", c);
+        println!("r = {:?}", r);
+        println!("q = {:?}", q);
+
+        let script = script! {
+            { T::push_u32_le(&bigint_to_u32_limbs(q.clone(), T::N_BITS)) }
+            { U::push_u32_le(&xs[0].clone().to_u32_digits().1) }
+            { U::push_u32_le(&ys[0].clone().to_u32_digits().1) }
+            { <Fq as Fp254ZellicMulNegative>::tmul() }
+            { U::push_u32_le(&bigint_to_u32_limbs(r.clone(), U::N_BITS)) }
+            { Fq::equal(0,1) }
+        };
+        run(script);
     }
 }
