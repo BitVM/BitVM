@@ -431,11 +431,11 @@ mod test {
     use ark_ff::Field;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul, Rem, Sub};
-    use std::str::FromStr;
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
     use num_traits::{Num, Signed};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+    use std::str::FromStr;
 
     fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
         res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
@@ -1048,8 +1048,14 @@ mod test {
         type U = <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::U;
         type T = <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::T;
 
-        println!("LCS = {:?}", <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LCS);
-        println!("LC_BITS = {}", <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LC_BITS);
+        println!(
+            "LCS = {:?}",
+            <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LCS
+        );
+        println!(
+            "LC_BITS = {}",
+            <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LC_BITS
+        );
         println!("T::N_BITS = {}", T::N_BITS);
 
         let lcs = <Fq as Fp254ZellicMulNonPowerTwoLCSLength>::LCS;
@@ -1088,6 +1094,5 @@ mod test {
         };
         let res = execute_script(script);
         assert!(res.success);
-
     }
 }
