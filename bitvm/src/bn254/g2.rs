@@ -90,11 +90,12 @@ impl G2Affine {
         let (y_sq, y_sq_hint) = Fq2::hinted_square(y);
 
         let mut hints = Vec::new();
+        hints.extend(y_sq_hint);
         hints.extend(x_sq_hint);
         hints.extend(x_cu_hint);
-        hints.extend(y_sq_hint);
 
         let scr = script! {
+            { y_sq }
             { Fq2::copy(2) }
             { x_sq }
             { Fq2::roll(4) }
@@ -102,8 +103,6 @@ impl G2Affine {
             { Fq::push_dec("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
             { Fq::push_dec("266929791119991161246907387137283842545076965332900288569378510910307636690") }
             { Fq2::add(2, 0) }
-            { Fq2::roll(2) }
-            { y_sq }
             { Fq2::equal() }
         };
         (scr, hints)
@@ -122,10 +121,13 @@ impl G2Affine {
         let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
+
+        let is_inf = (x == ark_bn254::Fq2::ZERO)&(y == ark_bn254::Fq2::ZERO);
+
         ark_bn254::G2Affine {
             x,
             y,
-            infinity: false,
+            infinity: is_inf,
         }
     }
 }
@@ -790,6 +792,7 @@ mod test {
     fn test_read_from_stack() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a = ark_bn254::G1Affine::rand(&mut prng);
+        //let a = ark_bn254::G1Affine::zero();
         let script = script! {
             {G1Affine::push(a)}
         };
