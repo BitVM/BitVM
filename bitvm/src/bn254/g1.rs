@@ -411,53 +411,6 @@ impl G1Affine {
 ///      tmul hints, p.y_inverse
 /// output on stack:
 ///      x' = -p.x / p.y
-pub fn hinted_x_from_eval_point(
-    p: ark_bn254::G1Affine,
-    py_inv: ark_bn254::Fq,
-) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-
-    let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
-    let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
-    let script = script! {   // Stack: [hints, pyd, px, py]
-        {Fq::copy(2)}                        // Stack: [hints, pyd, px, py, pyd]
-        {hinted_script1}
-        {Fq::push_one()}
-        {Fq::equalverify(1, 0)}              // Stack: [hints, pyd, px]
-        {Fq::neg(0)}                        // Stack: [hints, pyd, -px]
-        {hinted_script2}
-    };
-    hints.extend(hint1);
-    hints.extend(hint2);
-    (script, hints)
-}
-
-/// input of func (params):
-///      p.y
-/// Input Hints On Stack
-///      tmul hints, p.y_inverse
-/// output on stack:
-///      []
-pub fn hinted_y_from_eval_point(py: ark_bn254::Fq, py_inv: ark_bn254::Fq) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-
-    let (hinted_script1, hint1) = Fq::hinted_mul(1, py_inv, 0, py);
-    let script = script! {// [hints,..., pyd_calc, py]
-        {hinted_script1}
-        {Fq::push_one()}
-        {Fq::equalverify(1,0)}
-    };
-    hints.extend(hint1);
-
-    (script, hints)
-}
-
-/// input of func (params):
-///      p.x, p.y
-/// Input Hints On Stack
-///      tmul hints, p.y_inverse
-/// output on stack:
-///      x' = -p.x / p.y
 ///      y' = 1 / p.y
 pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
@@ -491,9 +444,6 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
     let py_inv = p.y().unwrap().inverse().unwrap();
-
-    //let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
-    //let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
 
     let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
     let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
@@ -533,7 +483,6 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     use crate::bn254::g1::G1Affine;
-    use crate::bn254::g2::G2Affine;
 
     use super::*;
     use crate::{treepp::*, ExecuteInfo};

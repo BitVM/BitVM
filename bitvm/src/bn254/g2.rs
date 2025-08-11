@@ -772,7 +772,7 @@ mod test {
     use super::*;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::g1::{hinted_from_eval_point, G1Affine};
+    use crate::bn254::g1::hinted_from_eval_point;
     use crate::bn254::g2::G2Affine;
     use crate::{treepp::*, ExecuteInfo};
     use ark_ff::AdditiveGroup;
