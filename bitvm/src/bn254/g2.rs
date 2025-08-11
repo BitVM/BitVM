@@ -791,19 +791,18 @@ mod test {
     #[test]
     fn test_read_from_stack() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let a = ark_bn254::G1Affine::rand(&mut prng);
-        //let a = ark_bn254::G1Affine::zero();
+        let a = ark_bn254::G2Affine::rand(&mut prng);
         let script = script! {
-            {G1Affine::push(a)}
+            {G2Affine::push(a)}
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
-        let recovered_a = G1Affine::read_from_stack(witness);
+        let recovered_a = G2Affine::read_from_stack(witness);
 
         assert_eq!(a, recovered_a);
 
-        let b = ark_bn254::G2Affine::rand(&mut prng);
+        let b = ark_bn254::G2Affine::identity();
         let script = script! {
             {G2Affine::push(b)}
         };
