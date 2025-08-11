@@ -144,7 +144,7 @@ impl G1Affine {
         let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
         let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
         let mut zero = Vec::new();
-        for _ in 0..8{
+        for _ in 0..8 {
             zero.push(0u32);
         }
         let is_inf = (x == zero) & (y == zero);

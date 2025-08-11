@@ -122,7 +122,7 @@ impl G2Affine {
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
 
-        let is_inf = (x == ark_bn254::Fq2::ZERO)&(y == ark_bn254::Fq2::ZERO);
+        let is_inf = (x == ark_bn254::Fq2::ZERO) & (y == ark_bn254::Fq2::ZERO);
 
         ark_bn254::G2Affine {
             x,
