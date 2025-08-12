@@ -35,9 +35,9 @@ impl Parameters {
             message_digit_len,
             log2_base,
             checksum_digit_len: log_base_ceil(
-                ((1 << log2_base) - 1) * message_digit_len,
+                ((1 << log2_base) - 1) * message_digit_len + 1,
                 1 << log2_base,
-            ) + 1,
+            ),
         }
     }
 
