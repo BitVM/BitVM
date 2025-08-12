@@ -14,16 +14,19 @@ pub enum Hint {
     U256(num_bigint::BigInt),
     BigIntegerTmulLC1(num_bigint::BigInt),
     BigIntegerTmulLC2(num_bigint::BigInt),
+    BigIntegerTmulLC2W4(num_bigint::BigInt),
     BigIntegerTmulLC4(num_bigint::BigInt),
 }
 
 impl Hint {
     pub fn push(&self) -> Script {
-        const K1: (u32, u32) = Fq::bigint_tmul_lc_1();
-        const K2: (u32, u32) = Fq::bigint_tmul_lc_2();
-        const K4: (u32, u32) = Fq::bigint_tmul_lc_4();
+        const K1: (u32, u32, u32) = Fq::bigint_tmul_lc_1();
+        const K2: (u32, u32, u32) = Fq::bigint_tmul_lc_2();
+        const K3: (u32, u32, u32) = Fq::bigint_tmul_lc_2_w4();
+        const K4: (u32, u32, u32) = Fq::bigint_tmul_lc_4();
         pub type T1 = BigIntImpl<{ K1.0 }, { K1.1 }>;
         pub type T2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
+        pub type T3 = BigIntImpl<{ K3.0 }, { K3.1 }>;
         pub type T4 = BigIntImpl<{ K4.0 }, { K4.1 }>;
         match self {
             Hint::Fq(fq) => script! {
@@ -45,6 +48,9 @@ impl Hint {
             },
             Hint::BigIntegerTmulLC2(a) => script! {
                 { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T2::N_BITS)) }
+            },
+            Hint::BigIntegerTmulLC2W4(a) => script! {
+                { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T3::N_BITS)) }
             },
             Hint::BigIntegerTmulLC4(a) => script! {
                 { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T4::N_BITS)) }

@@ -63,22 +63,32 @@ impl Fq {
         }
     }
 
-    pub const fn bigint_tmul_lc_1() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_1() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_2() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul2LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_4() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2_w4() -> (u32, u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LCW4>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LCW4>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LCW4>::T::N_LIMBS;
+        (X, Y, Z)
+    }
+
+    pub const fn bigint_tmul_lc_4() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul4LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul4LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul4LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul4LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
     #[inline]
@@ -359,12 +369,12 @@ macro_rules! fp_lc_mul {
                                         OP_SWAP
                                         OP_SUB
                                         if i + j == MAIN_LOOP_START && j == 0 {
-                                            for _ in 0..Self::N_LIMBS {
+                                            for _ in 0..T::N_LIMBS {
                                                 OP_NIP
                                             }
-                                            { NMUL(Self::N_LIMBS) }
+                                            { NMUL(T::N_LIMBS) }
                                             OP_DUP OP_PICK
-                                            for _ in 0..Self::N_LIMBS-1 {
+                                            for _ in 0..T::N_LIMBS-1 {
                                                 OP_SWAP
                                                 OP_DUP OP_PICK
                                             }
