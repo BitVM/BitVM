@@ -78,7 +78,21 @@ pub fn digit_signature(secret_key: &SecretKey, digit_index: u32, message_digit: 
 
 /// Returns the public key of a given digit, requires the digit index to modify the secret key for each digit
 fn public_key_for_digit(ps: &Parameters, secret_key: &SecretKey, digit_index: u32) -> HashOut {
-    digit_signature(secret_key, digit_index, ps.max_digit())
+    let mut secret_i = secret_key.clone();
+    secret_i.push(digit_index as u8);
+    let mut hash = hash160::Hash::hash(&secret_i);
+    let mut all_possible_digits = vec![hash];
+    for _ in 0..ps.max_digit() {
+        hash = hash160::Hash::hash(&hash[..]);
+        all_possible_digits.push(hash)
+    }
+    all_possible_digits.sort();
+    for i in 0..ps.max_digit() as usize {
+        if all_possible_digits[i] == all_possible_digits[i + 1] {
+            eprintln!("WARNING: Given secret key has repetitive hashes for digit {}, it won't work with brute force verifier", digit_index);
+        }
+    }
+    *hash.as_byte_array()
 }
 
 /// Returns the public key for the given secret key and the parameters
