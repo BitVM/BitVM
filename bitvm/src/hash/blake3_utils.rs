@@ -495,7 +495,7 @@ pub(crate) fn compress(
         let mut tmp = Vec::new();
 
         //iterate nibbles
-        for n in 0..8 {
+        for n in 0..final_rounds {
             let v2 = *state.get(&(i + 8)).unwrap();
             let v1 = state.get_mut(&i).unwrap();
             tmp.push(xor_2_nibbles(stack, v1, v2, 0, n, tables.use_full_tables));
@@ -506,7 +506,7 @@ pub(crate) fn compress(
             }
         }
         if !last_round {
-            for _ in 0..8 {
+            for _ in 0..final_rounds {
                 stack.to_altstack();
             }
         }

@@ -117,54 +117,6 @@ fn blake3(
             &format!("unpack msg{}p0", i),
         );
 
-        // handle padding if it is the last block
-        if i == (num_blocks - 1) && msg_len != 64 {
-            // due to LE representation, msg portion can be on top of padding.
-            let j = msg_len % 4;
-            let pad_bytes = 64 + j - msg_len - 4;
-
-            stack.custom(
-                script!(
-                    //Drop whatever padding has been added for packing to limbs and pad with zeros
-                    for _ in 0..pad_bytes {
-                        OP_2DROP
-                    }
-
-                    for _ in 0..(j*2) {
-                        OP_TOALTSTACK
-                    }
-
-                    for _ in 0..(4-j) {
-                        OP_2DROP
-                    }
-
-                    for j in 0..(4-j) * 2 {
-                        if j <= 1 {
-                            OP_0
-                        } else if j % 2 == 1 {
-                            OP_2DUP
-                        } // no else since loop is even
-                    }
-
-                    for _ in 0..(j*2){
-                        OP_FROMALTSTACK
-                    }
-
-                    for j in 0..(pad_bytes*2) {
-                        if j <= 1 {
-                            OP_0
-                        } else if j % 2 == 1 {
-                            OP_2DUP
-                        } // no else since loop is even
-                    }
-                ),
-                0,
-                false,
-                0,
-                "padding",
-            );
-        }
-
         //make a hashmap of msgs
         let mut original_message = Vec::new();
         for i in 0..16 {
