@@ -568,8 +568,6 @@ impl Fq6 {
         hints.extend(hint5);
 
         (script, hints)
-
-        
     }
 
     // input:
