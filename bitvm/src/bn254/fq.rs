@@ -334,7 +334,7 @@ macro_rules! fp_lc_mul {
                             { U::toaltstack() }                                            // {q} {x0} {x1} {y0} -> {y1}
                         }                                                                  // {q} -> {x0} {x1} {y0} {y1}
                         // ensure q is a valid bigint
-                        { T::copy(0) } { T::check_validity() }
+                        { T::copy(0) } { U::check_validity() }
                         // Pre-compute lookup tables
                         { T::neg() }                         // {-q} -> {x0} {x1} {y0} {y1}
                         { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
