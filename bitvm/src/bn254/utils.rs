@@ -24,10 +24,10 @@ impl Hint {
         const K2: (u32, u32, u32) = Fq::bigint_tmul_lc_2();
         const K3: (u32, u32, u32) = Fq::bigint_tmul_lc_2_w4();
         const K4: (u32, u32, u32) = Fq::bigint_tmul_lc_4();
-        pub type T1 = BigIntImpl<{ K1.0 }, { K1.1 }>;
-        pub type T2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
-        pub type T3 = BigIntImpl<{ K3.0 }, { K3.1 }>;
-        pub type T4 = BigIntImpl<{ K4.0 }, { K4.1 }>;
+        pub type W1 = BigIntImpl<{ K1.0 }, { K1.1 }>;
+        pub type W2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
+        pub type W3 = BigIntImpl<{ K3.0 }, { K3.1 }>;
+        pub type W4 = BigIntImpl<{ K4.0 }, { K4.1 }>;
         match self {
             Hint::Fq(fq) => script! {
                 { Fq::push(*fq) }
@@ -44,16 +44,16 @@ impl Hint {
                 { U256::push_u32_le(&bigint_to_u32_limbs(num.clone(), 256)) }
             },
             Hint::BigIntegerTmulLC1(a) => script! {
-                { T1::push_u32_le(&bigint_to_u32_limbs(a.clone(), T1::N_BITS)) }
+                { W1::push_u32_le(&bigint_to_u32_limbs(a.clone(), W1::N_BITS)) }
             },
             Hint::BigIntegerTmulLC2(a) => script! {
-                { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T2::N_BITS)) }
+                { W2::push_u32_le(&bigint_to_u32_limbs(a.clone(), W2::N_BITS)) }
             },
             Hint::BigIntegerTmulLC2W4(a) => script! {
-                { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T3::N_BITS)) }
+                { W2::push_u32_le(&bigint_to_u32_limbs(a.clone(), W3::N_BITS)) }
             },
             Hint::BigIntegerTmulLC4(a) => script! {
-                { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T4::N_BITS)) }
+                { W2::push_u32_le(&bigint_to_u32_limbs(a.clone(), W4::N_BITS)) }
             },
         }
     }
