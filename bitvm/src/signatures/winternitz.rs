@@ -150,7 +150,7 @@ pub trait Verifier {
             //        Maybe the script! macro removes the zeroes.
             //        There is a 1/256 chance that a signature contains a trailing zero.
             result.push(sig);
-            result.push(u32_to_le_bytes_minimal(digits[i as usize]));
+            result.push(bitcoin_representation(digits[i as usize]));
         }
         result
     }
