@@ -99,7 +99,7 @@ pub fn digits_to_number<const N_DIGITS: usize, const LOG2_BASE: usize>() -> Scri
 
 pub fn bitcoin_representation(x: u32) -> Vec<u8> {
     let mut buf = [0u8; 8];
-    let len =  bitcoin::script::write_scriptint(&mut buf, x as i64);
+    let len = bitcoin::script::write_scriptint(&mut buf, x as i64);
     return buf[0..len].to_vec();
 }
 
