@@ -159,6 +159,7 @@ impl G1Affine {
 
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
+        assert_ne!(t.x, q.x);
 
         let (alpha, bias) = if !t.is_zero() && !q.is_zero() {
             let alpha = (t.y - q.y) / (t.x - q.x);
