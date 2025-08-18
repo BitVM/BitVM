@@ -363,6 +363,11 @@ impl Verifier for ListpickVerifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_digit_len() {
+                //two OP_SWAP's are necessary since the signature hash is never on top of the stack. Order of them can be optimized in the future to negate one of the OP_SWAP's.
+                OP_SWAP
+                OP_SIZE
+                { 20 } OP_EQUALVERIFY
+                OP_SWAP
                 // See https://github.com/BitVM/BitVM/issues/35
                 { ps.max_digit() }
                 OP_MIN
@@ -460,6 +465,8 @@ impl Verifier for BruteforceVerifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_digit_len() {
+                OP_SIZE
+                { 20 } OP_EQUALVERIFY
                 { public_key[(ps.total_digit_len() - 1 - digit_index) as usize].to_vec() }
                 OP_SWAP
                 { -1 } OP_TOALTSTACK // To avoid illegal stack access, same -1 is checked later
@@ -517,6 +524,11 @@ impl Verifier for BinarysearchVerifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_digit_len() {
+                //two OP_SWAP's are necessary since the signature hash is never on top of the stack. Order of them can be optimized in the future to negate one of the OP_SWAP's.
+                OP_SWAP
+                OP_SIZE
+                { 20 } OP_EQUALVERIFY
+                OP_SWAP
                 //one can send digits out of the range, i.e. negative or bigger than D for it to act as in range, so inorder for checksum to not be decreased, a lower bound check is necessary and enough
                 OP_0
                 OP_MAX
