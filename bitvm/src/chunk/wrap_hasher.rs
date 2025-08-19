@@ -1,8 +1,6 @@
 use super::elements::ElementType;
 use crate::{
-    bn254::{fp254impl::Fp254Impl, fq::Fq},
-    hash::blake3::blake3_compute_script,
-    treepp::*,
+    bigint::U256, bn254::{fp254impl::Fp254Impl, fq::Fq}, hash::blake3::blake3_compute_script, treepp::*
 };
 use hash_utils::{
     hash_fp2, hash_fp6, hash_g2acc, hash_g2acc_with_hash_t, hash_g2acc_with_hashed_le,
@@ -39,9 +37,7 @@ pub(crate) mod hash_utils {
     use std::sync::LazyLock;
 
     use crate::{
-        bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2},
-        chunk::{helpers::pack_nibbles_to_limbs, wrap_hasher::hash_n_bytes},
-        treepp::Script,
+        bigint::U256, bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2}, chunk::{helpers::pack_nibbles_to_limbs, wrap_hasher::hash_n_bytes}, treepp::Script
     };
     use bitcoin_script::script;
 
@@ -116,9 +112,9 @@ pub(crate) mod hash_utils {
         static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
             script! {
                 // [t, Hash_partial_product]
-                {Fq::toaltstack()}
+                {U256::toaltstack()}
                 {hash_fp4()}
-                {Fq::fromaltstack()}
+                {U256::fromaltstack()}
                 // [Hash_t, Hash_partial_product]
                 {hash_fp2()}
                 // [ Hash(Hash_t|Hash_partial_product) ]
@@ -135,21 +131,21 @@ pub(crate) mod hash_utils {
             script! {
                 // [t, partial_product]
                 for _ in 0..14 {
-                    {Fq::toaltstack()}
+                    {U256::toaltstack()}
                 }
                 // [t] [partial_product]
                 {hash_fp4()}
                 // [Hash_t] [partial_product]
                 for _ in 0..14 {
-                    {Fq::fromaltstack()}
+                    {U256::fromaltstack()}
                 }
                 // [Hash_t partial_product]
-                {Fq::roll(14)} {Fq::toaltstack()}
+                {U256::roll(14)} {U256::toaltstack()}
                 // [partial_product] [Hash_t]
                 {hash_fp14()}
                 // [Hash_partial_product] [Hash_t]
-                {Fq::fromaltstack()}
-                {Fq::roll(1)}
+                {U256::fromaltstack()}
+                {U256::roll(1)}
                 // [ Hash_t, Hash_partial_product ]
                 {hash_fp2()}
                 // [ Hash(Hash_t|Hash_partial_priduct) ]
@@ -165,10 +161,10 @@ pub(crate) mod hash_utils {
         static SCRIPT: LazyLock<Script> = LazyLock::new(|| {
             script! {
                 // [partial_product, Hash_t]
-                {Fq::toaltstack()}
+                {U256::toaltstack()}
                 {hash_fp14()}
-                {Fq::fromaltstack()}
-                {Fq::roll(1)}
+                {U256::fromaltstack()}
+                {U256::roll(1)}
                 // [ Hash_t, Hash_partial_product ]
                 {hash_fp2()}
                 // [ Hash(Hash_t|Hash_partial_priduct) ]
@@ -204,7 +200,7 @@ pub fn hash_messages(elem_types: Vec<ElementType>) -> Script {
                 {from_altstack}
                 // bring "size" number of elements from altstack; where "size" is the number of limbs of elem_type
                 for _ in 0..elem_type.number_of_limbs_of_hashing_preimage() {
-                    {Fq::fromaltstack()}
+                    {U256::fromaltstack()}
                 }
             };
         }
@@ -214,7 +210,7 @@ pub fn hash_messages(elem_types: Vec<ElementType>) -> Script {
             to_altstack = script! {
                 {to_altstack}
                 for _ in 0..elem_type.number_of_limbs_of_hashing_preimage() {
-                    {Fq::toaltstack()}
+                    {U256::toaltstack()}
                 }
             };
         }
@@ -237,13 +233,13 @@ pub fn hash_messages(elem_types: Vec<ElementType>) -> Script {
 
         let verify_scr = script! {
             // bottom of the stack contains the calculated hash, bring it to the top
-            for _ in 0..Fq::N_LIMBS {
+            for _ in 0..U256::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL
             }
             // top of altstack contains the claimed hash for corresponding message
-            {Fq::fromaltstack()}
+            {U256::fromaltstack()}
             // compare hashes
-            {Fq::equal(1, 0)}
+            {U256::equal(1, 0)}
             if msg_index == elem_types.len()-1 { // if last message
                 // [should_do_output_validity_check_bit, output_is_equal] []
                 OP_TOALTSTACK // [should_do_output_validity_check_bit] [output_is_equal]
