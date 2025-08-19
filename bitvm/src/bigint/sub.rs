@@ -31,6 +31,32 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             }
         }
     }
+
+    pub fn neg() -> Script {
+        script! {                               // ... a_n
+            { (1 << LIMB_SIZE) - 1 }            // ... a_n x
+
+            for _ in 0..Self::N_LIMBS-2 {       // ... a_{i-1} a_i x
+                OP_TUCK                         // ... a_{i-1} x a_i x
+                OP_SWAP                         // ... a_{i-1} x x a_i
+                OP_SUB                          // ... a_{i-1} x x-a_i
+                OP_TOALTSTACK                   // ... a_{i-1} x
+            }
+                                                // a_0 a_1 x
+            OP_SWAP                             // a_0 x a_1
+            OP_SUB                              // a_0 x-a_1
+            OP_TOALTSTACK                       // a_0
+
+            { Self::HEAD_OFFSET-1 }
+            OP_SWAP
+            OP_SUB
+
+            for _ in 0..Self::N_LIMBS-1 {
+                OP_FROMALTSTACK
+            }
+            { Self::add1() }
+        }
+    }
 }
 
 /// Compute the difference of two limbs, including the carry bit
@@ -133,5 +159,24 @@ mod test {
             };
             run(script);
         }
+    }
+
+    #[test]
+    fn test_neg() {
+        println!("U254.neg: {} bytes", U254::neg().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let a: BigUint = prng.sample(RandomBits::new(254));
+
+        let script = script! {
+            { U254::push_zero() }
+            { U254::push_u32_le(&a.to_u32_digits()) }
+            { U254::sub(1, 0) }
+            { U254::push_u32_le(&a.to_u32_digits()) }
+            { U254::neg() }
+            { U254::equalverify(1, 0) }
+            OP_TRUE
+        };
+        run(script);
     }
 }

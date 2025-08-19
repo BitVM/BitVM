@@ -63,6 +63,34 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    /// add one
+    pub fn add1() -> Script {
+        script! {
+            OP_1ADD                             // a0 ... an
+            { 1 << LIMB_SIZE }                  // a0 ... an x
+            OP_SWAP                             // a0 ... x an
+            for _ in 0..Self::N_LIMBS-1 {       // ... x a
+                OP_2DUP                         // ... x a x a
+                OP_EQUAL                        // ... x a 0/1
+                OP_TUCK                         // ... x 0/1 a 0/1
+                OP_IF OP_NOT OP_ENDIF           // ... x 0/1 a/0
+                OP_TOALTSTACK                   // ... x 0/1
+                OP_ROT                          // .. x 0/1 a_{i-1}
+                OP_ADD                          // .. x a'
+            }
+                                                // x a0
+            OP_NIP                              // a0
+            { Self::HEAD_OFFSET }               // a0 y
+            OP_OVER                             // a0 y a0
+            OP_EQUAL                            // a0 0/1
+            OP_IF OP_NOT OP_ENDIF               // a/0
+
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
     /// Double the BigInt on top of the stack
     ///
     /// # Note
@@ -123,6 +151,32 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// doubling operation.
     pub fn double_prevent_overflow() -> Script {
         script! {
+            { 1 << LIMB_SIZE }
+
+            // Double the limb, take the result to the alt stack, and add initial carry
+            OP_SWAP limb_double_without_carry OP_TOALTSTACK
+
+
+            for _ in 0..Self::N_LIMBS - 2 {
+                OP_ROT limb_double_with_carry OP_TOALTSTACK
+            }
+
+            // When we got {limb} {base} {carry} on the stack, we drop the base
+            OP_NIP // {limb} {carry}
+            { limb_double_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
+
+            // Take all limbs from the alt stack to the main stack
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
+    pub fn double_prevent_overflow_keep_element(n: u32) -> Script {
+        script! {
+            for _ in 0..Self::N_LIMBS {
+                { n + Self::N_LIMBS - 1 } OP_PICK
+            }
             { 1 << LIMB_SIZE }
 
             // Double the limb, take the result to the alt stack, and add initial carry
@@ -531,6 +585,25 @@ mod test {
                 { U64::add(1, 0) }
                 { U64::push_u64_le(&[c]) }
                 { U64::equalverify(1, 0) }
+                OP_TRUE
+            };
+            run(script);
+        }
+    }
+
+    #[test]
+    fn test_add1() {
+        println!("U254.add1: {} bytes", U254::add1().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + BigUint::one()).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::add1() }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
                 OP_TRUE
             };
             run(script);
