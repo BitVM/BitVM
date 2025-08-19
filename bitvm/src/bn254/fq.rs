@@ -81,6 +81,12 @@ impl Fq {
         (X, Y)
     }
 
+    pub const fn bigint_tmul_lc_2_w4() -> (u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LCW4>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LCW4>::LIMB_SIZE;
+        (X, Y)
+    }
+
     #[inline]
     pub fn push(a: ark_bn254::Fq) -> Script {
         script! {

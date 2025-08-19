@@ -15,6 +15,7 @@ pub enum Hint {
     BigIntegerTmulLC1(num_bigint::BigInt),
     BigIntegerTmulLC2(num_bigint::BigInt),
     BigIntegerTmulLC4(num_bigint::BigInt),
+    BigIntegerTmul2LCW4(num_bigint::BigInt),
 }
 
 impl Hint {
@@ -22,9 +23,11 @@ impl Hint {
         const K1: (u32, u32) = Fq::bigint_tmul_lc_1();
         const K2: (u32, u32) = Fq::bigint_tmul_lc_2();
         const K4: (u32, u32) = Fq::bigint_tmul_lc_4();
+        const K6:  (u32, u32) = Fq::bigint_tmul_lc_2_w4();
         pub type T1 = BigIntImpl<{ K1.0 }, { K1.1 }>;
         pub type T2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
         pub type T4 = BigIntImpl<{ K4.0 }, { K4.1 }>;
+        pub type T6 = BigIntImpl<{ K6.0 }, { K6.1 }>;
         match self {
             Hint::Fq(fq) => script! {
                 { Fq::push(*fq) }
@@ -48,6 +51,9 @@ impl Hint {
             },
             Hint::BigIntegerTmulLC4(a) => script! {
                 { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T4::N_BITS)) }
+            },
+            Hint::BigIntegerTmul2LCW4(a) => script! {
+                { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T6::N_BITS)) }
             },
         }
     }

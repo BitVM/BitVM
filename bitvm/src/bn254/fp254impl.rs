@@ -724,7 +724,7 @@ pub trait Fp254Impl {
             { Fq::roll(d_depth + 4) }
             { Fq::tmul_lc2_w4() }
         };
-        hints.push(Hint::BigIntegerTmulLC2(q));
+        hints.push(Hint::BigIntegerTmul2LCW4(q));
 
         (script, hints)
     }
@@ -871,7 +871,7 @@ pub trait Fp254Impl {
             { Fq::copy(d_depth + 4) }
             { Fq::tmul_lc2_w4() }
         };
-        hints.push(Hint::BigIntegerTmulLC2(q));
+        hints.push(Hint::BigIntegerTmul2LCW4(q));
 
         (script, hints)
     }
