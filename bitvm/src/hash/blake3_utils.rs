@@ -454,8 +454,8 @@ fn init_state(
     for u32 in &IV[0..4] {
         state.push(stack.number_u32(*u32));
     }
-    state.push(stack.number_u32(0));
     state.push(stack.number_u32(counter));
+    state.push(stack.number_u32(0));
     state.push(stack.number_u32(block_len));
     state.push(stack.number_u32(flags));
 
