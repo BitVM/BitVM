@@ -151,7 +151,7 @@ pub trait Wots {
 
         for digit_signature in signature.as_ref().iter() {
             witness.push(&digit_signature[0..20]);
-            witness.push(bitcoin_representation(u32::from(digit_signature[20])));
+            witness.push(bitcoin_representation(i32::from(digit_signature[20])));
         }
 
         witness

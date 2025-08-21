@@ -156,7 +156,7 @@ pub trait Verifier {
             //        Maybe the script! macro removes the zeroes.
             //        There is a 1/256 chance that a signature contains a trailing zero.
             result.push(sig);
-            result.push(bitcoin_representation(digits[i as usize]));
+            result.push(bitcoin_representation(digits[i as usize] as i32));
         }
         result
     }
@@ -535,9 +535,13 @@ impl Verifier for BinarysearchVerifier {
                 OP_SIZE
                 { 20 } OP_EQUALVERIFY
                 OP_SWAP
-                //one can send digits out of the range, i.e. negative or bigger than D for it to act as in range, so inorder for checksum to not be decreased, a lower bound check is necessary and enough
-                OP_0
-                OP_MAX
+                // One can try send digits out of the range, i.e. negative or bigger than D for it to act as in range, but due to bitcoin consensus rules,
+                // OP_IF's fail to execute if their input is not 0 or 1, so OP_IF below marked with (*) does this check already
+                // Note that this behaviour might change in the future with bitcoin consensus rules, so the test [`test_if_binary_search_verifier_allows_out_of_range_digits`] is added to confirm that this works
+                // OP_0
+                // OP_MAX
+                // {ps.max_digit() }
+                // OP_MIN
                 OP_DUP
                 OP_TOALTSTACK
                 { ps.max_digit() } OP_SWAP OP_SUB
@@ -557,7 +561,7 @@ impl Verifier for BinarysearchVerifier {
                         OP_ENDIF
                         OP_DROP
                     } else {
-                        OP_IF
+                        OP_IF //(*)
                             OP_HASH160
                         OP_ENDIF
                     }
@@ -1024,5 +1028,84 @@ mod test {
                 false,
             );
         }
+    }
+
+    #[test]
+    fn test_if_binary_search_verifier_allows_out_of_range_digits() {
+        let secret_key = match Vec::<u8>::from_hex(SAMPLE_SECRET_KEY) {
+            Ok(bytes) => bytes,
+            Err(_) => panic!("Invalid hex string"),
+        };
+        let o = Winternitz::<BinarysearchVerifier, VoidConverter>::new();
+        let ps = Parameters::new_by_bit_length(8, 4); //changing log2_base will break this test
+        let public_key = generate_public_key(&ps, &secret_key);
+        assert_eq!(ps.checksum_digit_len, 2);
+
+        fn signed_checksum(ps: &Parameters, message_digits: &[i32]) -> u32 {
+            debug_assert_eq!(message_digits.len(), ps.message_digit_len as usize);
+
+            let sum: i32 = message_digits.iter().sum();
+            assert!(sum >= 0);
+            ps.max_digit() * ps.message_digit_len - sum as u32
+        }
+
+        fn add_message_signed_checksum(ps: &Parameters, mut message_digits: Vec<i32>) -> Vec<i32> {
+            debug_assert_eq!(message_digits.len(), ps.message_digit_len as usize);
+            let checksum_digits = checksum_to_digits(
+                signed_checksum(ps, &message_digits),
+                ps.max_digit() + 1,
+                ps.checksum_digit_len,
+            );
+            message_digits.extend(checksum_digits.iter().map(|&x| x as i32));
+            message_digits
+        }
+
+        fn sign_signed_digits(
+            ps: &Parameters,
+            secret_key: &SecretKey,
+            message_digits: Vec<i32>,
+        ) -> Witness {
+            let digits = add_message_signed_checksum(ps, message_digits);
+            let mut result = Witness::new();
+            for i in 0..ps.total_digit_len() {
+                let mut impersonator_digit = digits[i as usize];
+                impersonator_digit = impersonator_digit.max(0);
+                impersonator_digit = impersonator_digit.min(ps.max_digit() as i32);
+                let sig = digit_signature(secret_key, i, impersonator_digit as u32);
+                // FIXME: Do trailing zeroes violate Bitcoin Script's minimum data push requirement?
+                //        Maybe the script! macro removes the zeroes.
+                //        There is a 1/256 chance that a signature contains a trailing zero.
+                result.push(sig);
+                result.push(bitcoin_representation(digits[i as usize]));
+            }
+            result
+        }
+
+        assert!(
+            execute_script(script! {
+                { sign_signed_digits(&ps, &secret_key, vec![2, 3]) }
+                { o.checksig_verify_and_clear_stack(&ps, &public_key) }
+                OP_TRUE
+            })
+            .success
+        );
+
+        assert!(
+            !execute_script(script! {
+                { sign_signed_digits(&ps, &secret_key, vec![-1, 1]) }
+                { o.checksig_verify_and_clear_stack(&ps, &public_key) }
+                OP_TRUE
+            })
+            .success
+        );
+
+        assert!(
+            !execute_script(script! {
+                { sign_signed_digits(&ps, &secret_key, vec![20, 0]) }
+                { o.checksig_verify_and_clear_stack(&ps, &public_key) }
+                OP_TRUE
+            })
+            .success
+        );
     }
 }
