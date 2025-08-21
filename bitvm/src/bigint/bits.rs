@@ -188,8 +188,14 @@ pub fn limb_to_le_bits_toaltstack(num_bits: u32) -> Script {
                 OP_TOALTSTACK
             }
         }
+    } else if num_bits == 1 {
+        script! {
+            OP_TOALTSTACK
+        }
     } else {
-        script! {}
+        script! {
+            OP_DROP
+        }
     }
 }
 
