@@ -7,18 +7,15 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         script! {
             { Self::convert_to_be_bits_toaltstack() }
 
-            { push_to_stack(0,Self::N_LIMBS as usize) }
-
-
             OP_FROMALTSTACK
             OP_IF
-                { Self::copy(1) }
-                { Self::add(1, 0) }
+                { Self::copy(0) }
+            OP_ELSE
+                { push_to_stack(0, Self::N_LIMBS as usize)}
             OP_ENDIF
 
             for _ in 1..N_BITS - 1 {
-                { Self::roll(1) }
-                { Self::double(0) }
+                { Self::double(1) }
                 { Self::roll(1) }
                 OP_FROMALTSTACK
                 OP_IF
@@ -27,8 +24,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 OP_ENDIF
             }
 
-            { Self::roll(1) }
-            { Self::double(0) }
+            { Self::double(1) }
             OP_FROMALTSTACK
             OP_IF
                 { Self::add(1, 0) }
