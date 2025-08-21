@@ -24,6 +24,18 @@ struct TransformStep {
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn push_u32_le(v: &[u32]) -> Script {
+        if let Some((i, &word)) = v.iter().enumerate().rfind(|&(_, &w)| w != 0) {
+        // bit-length = number of *whole* lower words + position of MSB in this word
+        let msb_index = 31 - word.leading_zeros() as usize;
+        let bitlen = i * 32 + msb_index + 1;
+
+        assert!(
+            bitlen <= N_BITS as usize,
+            "input does not fit within N_BITS (needed {}, limit {})",
+            bitlen,
+            N_BITS
+        );
+    }
         let mut bits = vec![];
         for elem in v.iter() {
             for i in 0..32 {
