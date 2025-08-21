@@ -159,7 +159,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
-            if a < 134 {
+            if a < 128 {
                 for _ in 0..Self::N_LIMBS {
                     { a } OP_PICK
                 }
