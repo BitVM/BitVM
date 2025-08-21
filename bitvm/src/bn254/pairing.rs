@@ -48,6 +48,10 @@ impl Pairing {
         let mut f = c_inv;
         let mut t4 = q4;
 
+        let (hinted_script, hint) = Fq12::hinted_mul(12, c_inv, 0, c);
+        scripts.push(hinted_script);
+        hints.extend(hint);
+
         for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let fx = f.square();
             let (hinted_script, hint) = Fq12::hinted_square(f);
@@ -378,6 +382,12 @@ impl Pairing {
         let script = script! {
 
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4)]
+            // 0. check c * c_inv == 1
+            { Fq12::copy(16) }
+            { Fq12::copy(40) }
+            { scripts_iter.next().unwrap() }
+            { Fq12::push(ark_bn254::Fq12::ONE) }
+            { Fq12::equalverify() }
             // 1. f = c_inv
             { Fq12::copy(16) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
