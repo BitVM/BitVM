@@ -97,13 +97,10 @@ pub fn digits_to_number<const N_DIGITS: usize, const LOG2_BASE: usize>() -> Scri
     }
 }
 
-/// Converts number to vector of bytes and removes trailing zeroes
-pub fn u32_to_le_bytes_minimal(a: u32) -> Vec<u8> {
-    let mut a_bytes = a.to_le_bytes().to_vec();
-    while let Some(&0) = a_bytes.last() {
-        a_bytes.pop(); // Remove trailing zeros
-    }
-    a_bytes
+pub fn bitcoin_representation(x: i32) -> Vec<u8> {
+    let mut buf = [0u8; 8];
+    let len = bitcoin::script::write_scriptint(&mut buf, x as i64);
+    return buf[0..len].to_vec();
 }
 
 #[cfg(test)]
@@ -112,11 +109,14 @@ mod test {
     use crate::run;
 
     #[test]
-    fn test_u32_to_bytes_minimal() {
-        let a = 0xfe00u32;
-        let a_bytes = u32_to_le_bytes_minimal(a);
-
-        assert_eq!(a_bytes, vec![0x00u8, 0xfeu8]);
+    fn test_bitcoin_representation() {
+        for i in 0..256 {
+            run(script! {
+                { i }
+                { bitcoin_representation(i) }
+                OP_EQUAL
+            })
+        }
     }
 
     #[test]
