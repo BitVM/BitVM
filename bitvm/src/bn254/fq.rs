@@ -358,12 +358,12 @@ macro_rules! fp_lc_mul {
                                         OP_SWAP
                                         OP_SUB
                                         if i + j == MAIN_LOOP_START && j == 0 {
-                                            for _ in 0..Self::N_LIMBS {
+                                            for _ in 0..T::N_LIMBS {
                                                 OP_NIP
                                             }
-                                            { NMUL(Self::N_LIMBS) }
+                                            { NMUL(T::N_LIMBS) }
                                             OP_DUP OP_PICK
-                                            for _ in 0..Self::N_LIMBS-1 {
+                                            for _ in 0..T::N_LIMBS-1 {
                                                 OP_SWAP
                                                 OP_DUP OP_PICK
                                             }
