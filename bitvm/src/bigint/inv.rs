@@ -48,7 +48,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 pub fn limb_shr1_carry(num_bits: u32) -> Script {
     let powers_of_2_script = if num_bits < 7 {
         script! {
-            for i in 0..num_bits - 1 {
+            for i in 1..num_bits {
                 { 2_u32.pow(i) }
             }
         }
