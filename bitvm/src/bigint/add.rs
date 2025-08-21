@@ -106,7 +106,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
             // When we got {limb} {base} {carry} on the stack, we drop the base
             OP_NIP // {limb} {carry}
-            { n + 9 } OP_PICK { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) }
+            { n + Self::N_LIMBS } OP_PICK { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) }
 
             // Take all limbs from the alt stack to the main stack
             for _ in 0..Self::N_LIMBS - 1 {
