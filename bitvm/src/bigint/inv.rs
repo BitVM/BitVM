@@ -159,7 +159,11 @@ mod test {
     #[test]
     fn test_limb_shr1_carry() {
         for shift in 2..30 {
-            println!("limb_shr1_carry({:?}): {} bytes", shift, limb_shr1_carry(shift).len());
+            println!(
+                "limb_shr1_carry({:?}): {} bytes",
+                shift,
+                limb_shr1_carry(shift).len()
+            );
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 
             for _ in 0..100 {
