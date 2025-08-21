@@ -65,11 +65,19 @@ impl Parameters {
     }
 }
 
+/// Returns the secret key for given digit, appending the representation of it in bigger endian bytes to the message secret key
+pub fn secret_key_for_digit(secret_key: &SecretKey, mut digit_index: u32) -> hash160::Hash {
+    let mut secret_i = secret_key.clone();
+    while digit_index > 0 {
+        secret_i.push((digit_index & 255) as u8);
+        digit_index >>= 8;
+    }
+    hash160::Hash::hash(&secret_i)
+}
+
 /// Returns the signature of a given digit, requires the digit index to modify the secret key for each digit
 pub fn digit_signature(secret_key: &SecretKey, digit_index: u32, message_digit: u32) -> HashOut {
-    let mut secret_i = secret_key.clone();
-    secret_i.push(digit_index as u8);
-    let mut hash = hash160::Hash::hash(&secret_i);
+    let mut hash = secret_key_for_digit(secret_key, digit_index);
     for _ in 0..message_digit {
         hash = hash160::Hash::hash(&hash[..]);
     }
@@ -78,9 +86,7 @@ pub fn digit_signature(secret_key: &SecretKey, digit_index: u32, message_digit: 
 
 /// Returns the public key of a given digit, requires the digit index to modify the secret key for each digit
 fn public_key_for_digit(ps: &Parameters, secret_key: &SecretKey, digit_index: u32) -> HashOut {
-    let mut secret_i = secret_key.clone();
-    secret_i.push(digit_index as u8);
-    let mut hash = hash160::Hash::hash(&secret_i);
+    let mut hash = secret_key_for_digit(secret_key, digit_index);
     let mut all_possible_digits = vec![hash];
     for _ in 0..ps.max_digit() {
         hash = hash160::Hash::hash(&hash[..]);
