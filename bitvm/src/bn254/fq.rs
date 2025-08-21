@@ -177,7 +177,7 @@ macro_rules! fp_lc_mul {
                             for i in 2..=window {
                                 for j in 1 << (i - 1)..1 << i {
                                     if j % 2 == 0 {
-                                        { T::double_allow_overflow_keep_element( (j/2 - 1) * T::N_LIMBS ) }
+                                        { T::double_allow_overflow_keep_element(j/2 - 1) }
                                     } else {
                                         { T::add_ref_with_top(j - 2) }
                                     }

@@ -166,6 +166,7 @@ fn execute_script_buf_optional_stack_limit(
             break;
         }
     }
+
     let res = exec.result().unwrap();
     ExecuteInfo {
         success: res.success,

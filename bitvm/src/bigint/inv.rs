@@ -48,7 +48,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 pub fn limb_shr1_carry(num_bits: u32) -> Script {
     let powers_of_2_script = if num_bits < 7 {
         script! {
-            for i in 0..num_bits - 1 {
+            for i in 1..num_bits {
                 { 2_u32.pow(i) }
             }
         }
@@ -158,37 +158,43 @@ mod test {
 
     #[test]
     fn test_limb_shr1_carry() {
-        println!("limb_shr1_carry: {} bytes", limb_shr1_carry(29).len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for shift in 2..30 {
+            println!(
+                "limb_shr1_carry({:?}): {} bytes",
+                shift,
+                limb_shr1_carry(shift).len()
+            );
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
-            let mut a: u32 = prng.gen();
-            a %= 1 << 29;
+            for _ in 0..100 {
+                let mut a: u32 = prng.gen();
+                a %= 1 << shift;
 
-            let script = script! {
-                { a }
-                { 0 }
-                { limb_shr1_carry(29) }
-                { a & 1 } OP_EQUALVERIFY
-                { a >> 1 } OP_EQUAL
-            };
+                let script = script! {
+                    { a }
+                    { 0 }
+                    { limb_shr1_carry(shift) }
+                    { a & 1 } OP_EQUALVERIFY
+                    { a >> 1 } OP_EQUAL
+                };
 
-            run(script);
-        }
+                run(script);
+            }
 
-        for _ in 0..100 {
-            let mut a: u32 = prng.gen();
-            a %= 1 << 29;
+            for _ in 0..100 {
+                let mut a: u32 = prng.gen();
+                a %= 1 << shift;
 
-            let script = script! {
-                { a }
-                { 1 }
-                { limb_shr1_carry(29) }
-                { a & 1 } OP_EQUALVERIFY
-                { (1 << 28) | (a >> 1) } OP_EQUAL
-            };
+                let script = script! {
+                    { a }
+                    { 1 }
+                    { limb_shr1_carry(shift) }
+                    { a & 1 } OP_EQUALVERIFY
+                    { (1 << (shift - 1)) | (a >> 1) } OP_EQUAL
+                };
 
-            run(script);
+                run(script);
+            }
         }
     }
 

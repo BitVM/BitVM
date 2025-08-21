@@ -279,7 +279,7 @@ pub fn sha256(num_bytes: u32) -> Script {
     println!("{:?}", bytes_per_chunk);
     println!("{:?}", padding_scripts);
 
-    let add_size = 130;
+    let add_size = 128;
     let sched_size = 128;
     let rrot_size = 16 * 5;
     let half_logic_size = 136 + 16;
