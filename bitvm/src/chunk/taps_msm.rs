@@ -60,7 +60,9 @@ pub(crate) fn chunk_msm(
                     {1}
                 OP_ELSE
                     // [G1Acc, k]
-                    {Fr::drop()}
+                    for _ in 0..num_pubs {
+                        {Fr::drop()}
+                    }
                     {G1Affine::drop()}
                     // [] [G1AccDashHash]
                     {Fq::push(ark_bn254::Fq::ONE)}
