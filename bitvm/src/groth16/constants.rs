@@ -33,6 +33,7 @@ pub static K: LazyLock<BigUint> = LazyLock::new(|| (&*T + 1_u32) / 3_u32);
 pub static M: LazyLock<BigUint> = LazyLock::new(|| &*LAMBDA / &*R);
 pub const D: u32 = 3;
 pub static MM: LazyLock<BigUint> = LazyLock::new(|| &*M / D);
+pub static MM_INV: LazyLock<BigUint> = LazyLock::new(|| MM.modinv(&(&*R * &*H)).unwrap());
 pub static COFACTOR_CUBIC: LazyLock<BigUint> = LazyLock::new(|| 3_u32.pow(S - 1) * &*T);
 
 pub static W: LazyLock<ark_bn254::Fq12> = LazyLock::new(|| {
