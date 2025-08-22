@@ -87,7 +87,7 @@ pub(crate) fn dfs_with_constant_mul(
                 { G1Affine::push(p_mul[(mask + (1 << index)) as usize]) }
             OP_ELSE
                 if mask == 0 {
-                    { G1Affine::push_zero() }
+                    { G1Affine::identity() }
                 } else {
                     { G1Affine::push(p_mul[mask as usize]) }
                 }
