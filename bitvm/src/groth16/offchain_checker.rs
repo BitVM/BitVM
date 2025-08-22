@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use crate::groth16::constants::{COFACTOR_CUBIC, H, K, LAMBDA, MM, MM_INV, R, S, T, W};
-use ark_ff::{Field, One};
+use crate::groth16::constants::{COFACTOR_CUBIC, H, K, LAMBDA, MM_INV, R, S, T, W};
+use ark_ff::Field;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 
@@ -56,7 +56,6 @@ fn tonelli_shanks_cubic(
 ) -> ark_bn254::Fq12 {
     let mut r = a.pow(t.to_u64_digits());
     let e = 3_u32.pow(s - 1);
-    let exp = 3_u32.pow(s) * &t;
 
     // compute cubic root of (a^t)^-1, say h
     let (mut h, cc, mut c) = (
