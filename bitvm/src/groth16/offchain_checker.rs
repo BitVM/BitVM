@@ -64,13 +64,9 @@ fn tonelli_shanks_cubic(
         c.pow([e as u64]),
         c.inverse().unwrap(),
     );
-    for i in 1..(s as i32) {
-        let delta = (s as i32) - i - 1;
-        let d = if delta < 0 {
-            r.pow((&exp / 3_u32.pow((-delta) as u32)).to_u64_digits())
-        } else {
-            r.pow([3_u32.pow(delta as u32).to_u64().unwrap()])
-        };
+    for i in 1..s {
+        let delta = s - i - 1;
+        let d = r.pow([3_u32.pow(delta as u32).to_u64().unwrap()]);
         if d == cc {
             (h, r) = (h * c, r * c.pow([3_u64]));
         } else if d == cc.pow([2_u64]) {
