@@ -9,6 +9,7 @@ use crate::treepp::{script, Script};
 use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
+use num_traits::Zero;
 use std::str::FromStr;
 
 pub struct G2Affine;
@@ -122,7 +123,7 @@ impl G2Affine {
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
 
-        let is_inf = (x == ark_bn254::Fq2::ZERO) & (y == ark_bn254::Fq2::ZERO);
+        let is_inf = x.is_zero() & y.is_zero();
 
         ark_bn254::G2Affine {
             x,

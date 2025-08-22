@@ -1,3 +1,4 @@
+use super::fq2::Fq2;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::Hint;
@@ -5,8 +6,7 @@ use crate::treepp::{script, Script};
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
-
-use super::fq2::Fq2;
+use num_traits::Zero;
 
 pub struct G1Affine;
 
@@ -141,16 +141,16 @@ impl G1Affine {
 
     pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
-        let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
-        let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
-        let mut zero = Vec::new();
-        for _ in 0..8 {
-            zero.push(0u32);
-        }
-        let is_inf = (x == zero) & (y == zero);
+        let x: ark_bn254::Fq =
+            BigUint::from_slice(&Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec())).into();
+        let y: ark_bn254::Fq = BigUint::from_slice(&Fq::read_u32_le(
+            witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
+        ))
+        .into();
+        let is_inf = x.is_zero() & y.is_zero();
         ark_bn254::G1Affine {
-            x: BigUint::from_slice(&x).into(),
-            y: BigUint::from_slice(&y).into(),
+            x,
+            y,
             infinity: is_inf,
         }
     }
