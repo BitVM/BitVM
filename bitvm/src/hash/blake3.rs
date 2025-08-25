@@ -79,6 +79,17 @@ fn blake3(
         stack.to_altstack();
     }
 
+    stack.custom(
+        script!(
+            OP_DEPTH
+            { 0 } OP_EQUALVERIFY
+        ),
+        0,
+        false,
+        0,
+        "ensure that the stack is actually empty",
+    );
+
     //initialize the tables
     let tables = TablesVars::new(stack, use_full_tables);
 
