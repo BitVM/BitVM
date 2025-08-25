@@ -488,6 +488,81 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             )
         }
     }
+
+    /// Validate that the BigInt on stack has valid limb values
+    ///
+    /// This function checks that each limb in the BigInt representation
+    /// does not exceed the maximum value allowed for the given LIMB_SIZE
+    /// and ensures no limb is negative.
+    ///
+    /// ## Stack Effects:
+    /// - Input: BigInt limbs (MSB first, LSB on top)
+    /// - Output: Same BigInt limbs + validation result (1 if valid, 0 if invalid)
+    ///
+    /// ## Validation Rules:
+    /// - Each limb must be >= 0 (no negative values)
+    /// - Each limb must be < (1 << LIMB_SIZE)
+    /// - The head limb must be < (1 << HEAD_OFFSET) where HEAD_OFFSET is the remaining bits
+    ///
+    /// ## Note:
+    /// This function is expensive in terms of script size and should be used carefully
+    pub fn is_valid_bigint_with_limb_size(limb_size: u32) -> Script {
+        let n_limbs = N_BITS.div_ceil(limb_size);
+        let head = N_BITS - (n_limbs - 1) * limb_size;
+        script! {
+            // Start with validation result = 1 (valid)
+            1
+
+            // Validate each regular limb (except the head)
+            for i in 0..n_limbs - 1 {
+                // Pick the limb from stack (limbs are ordered MSB first, LSB on top)
+                { i + 1 } OP_PICK
+
+                // Check if limb >= 0 (not negative)
+                OP_DUP
+                0 OP_GREATERTHANOREQUAL
+
+                // Check if limb < (1 << LIMB_SIZE)
+                OP_SWAP
+                { 1 << limb_size }
+                OP_LESSTHAN
+
+                // AND the boolean results
+                OP_BOOLAND OP_BOOLAND
+            }
+
+            // Validate the head limb (MSB) separately as it may have fewer bits
+            { n_limbs } OP_PICK
+
+            // Check if head limb >= 0 (not negative)
+            OP_DUP
+            0 OP_GREATERTHANOREQUAL
+
+            // Check if head limb < (1 << HEAD)
+            OP_SWAP
+            { 1 << head }
+            OP_LESSTHAN
+
+            // AND the boolean results
+            OP_BOOLAND OP_BOOLAND
+        }
+    }
+
+    /// Validate BigInt and fail script if invalid
+    pub fn verify_bigint_on_stack_with_limb_size(limb_size: u32) -> Script {
+        script! {
+            { Self::is_valid_bigint_with_limb_size(limb_size) }
+            OP_VERIFY
+        }
+    }
+
+    pub fn verify_bigint_on_stack() -> Script {
+        Self::verify_bigint_on_stack_with_limb_size(Self::LIMB_SIZE)
+    }
+
+    pub fn is_valid_bigint() -> Script {
+        Self::is_valid_bigint_with_limb_size(Self::LIMB_SIZE)
+    }
 }
 
 /// Extracts a window of bits from a u32 limb on top of stack
@@ -538,12 +613,48 @@ pub fn extract_digits(start_index: u32, window: u32) -> Script {
 #[cfg(test)]
 mod test {
     use crate::bigint::std::extract_digits;
+    use crate::bigint::U256;
     use crate::bigint::{BigIntImpl, U254};
-    use crate::run;
+    use crate::{execute_script, run};
 
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_valid_bigint() {
+        let invalid_bigint = (
+            script! {
+                {0} {0} {0} {0} {0} {0} {0} {0} {-1}
+            },
+            false,
+        );
+
+        let invalid_bigint2 = (
+            script! {
+                {1 << U256::HEAD} {0} {0} {0} {0} {0} {0} {0} {0}
+            },
+            false,
+        );
+
+        let valid_bigint = (
+            script! {
+                {0x1234} {0x1234} {0x1234} {0x1234} {0x1234} {0x1234} {0x1234} {0x1234} {0x1234}
+            },
+            true,
+        );
+
+        for (bigint, expected) in [invalid_bigint, invalid_bigint2, valid_bigint] {
+            let res = execute_script(script! {
+                {bigint.clone()}
+                { U256::is_valid_bigint() }
+                OP_TOALTSTACK
+                for _ in 0..9 { OP_DROP }
+                OP_FROMALTSTACK
+            });
+            assert_eq!(res.success, expected);
+        }
+    }
 
     #[test]
     fn test_zip() {
