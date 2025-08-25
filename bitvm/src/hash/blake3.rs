@@ -613,7 +613,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hash_collision_on_invalid_input() {
+    fn test_failure_on_invalid_input() {
         let zero = script! {
             {0} {0} {0} {0} {0} {0} {0} {0} {0}
         };
@@ -627,15 +627,6 @@ mod tests {
                 OP_TOALTSTACK
             }
             {zero.clone()} {fake_zero.clone()} {blake3_compute_script(64)}
-            for i in 0..64 {
-                OP_FROMALTSTACK
-                {64-i} OP_ROLL
-                OP_EQUALVERIFY
-            }
-            // fake_zero + (1: Fq) = (0: Fq)
-            {Fq::push(1.into())} {fake_zero.clone()} {Fq::add(1, 0)}
-            {Fq::push(0.into())} {Fq::equalverify(1, 0)}
-            {1}
         });
         println! {"{:?} {:?} {:?} {:?}", res.success, res.final_stack, res.stats, res.last_opcode};
         assert_eq!(res.success, false);
