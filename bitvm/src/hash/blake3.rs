@@ -327,7 +327,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
 ///   if the `limb_len` is small or input stacks has other elements (in the altstack)
 /// - If `limb_len` is not in the range [4, 32)
 /// - If the input doesn't unpack to a multiple of 128 nibbles with the given limb length parameter.
-/// - If the stack contains elements other than the message.
+/// - If the stack contains elements other than the message, script fails to execute.
 ///
 /// ## Implementation
 ///
