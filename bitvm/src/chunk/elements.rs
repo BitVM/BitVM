@@ -7,7 +7,8 @@ use crate::{
         wrap_hasher::BLAKE3_HASH_LENGTH,
     },
 };
-use ark_ff::Field;
+use ark_ec::AffineRepr;
+use ark_ff::{AdditiveGroup as _, Field};
 use num_bigint::{BigInt, BigUint};
 use std::fmt::Debug;
 
@@ -207,7 +208,11 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
-                let hash = extern_hash_fps(vec![r.x, r.y]);
+                let hash = if r.is_zero() {
+                    extern_hash_fps(vec![ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO])
+                } else {
+                    extern_hash_fps(vec![r.x, r.y])
+                };
                 CompressedStateObject::Hash(hash)
             }
         }
@@ -289,8 +294,11 @@ fn as_hints_scalarelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
 }
 
 fn as_hints_g1type_g1data(r: ark_bn254::G1Affine) -> Vec<Hint> {
-    let hints = vec![Hint::Fq(r.x), Hint::Fq(r.y)];
-    hints
+    if r.is_zero() {
+        vec![Hint::Fq(ark_bn254::Fq::ZERO), Hint::Fq(ark_bn254::Fq::ZERO)]
+    } else {
+        vec![Hint::Fq(r.x), Hint::Fq(r.y)]
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
