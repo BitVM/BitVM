@@ -334,6 +334,8 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
             {Fq6::drop()}
             {Fq6::push(mock_value)}
             {0}
+            { Fq6::fromaltstack() }
+            { Fq6::drop() }
             // [a, mock_c, 0]
         OP_ELSE
             {Fq6::fromaltstack()}
