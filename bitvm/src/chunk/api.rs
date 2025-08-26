@@ -21,8 +21,8 @@ use super::wrap_hasher::BLAKE3_HASH_LENGTH;
 pub const NUM_PUBS: usize = 1;
 pub const NUM_U256: usize = 14;
 pub const NUM_HASH: usize = 363;
-const VALIDATING_TAPS: usize = 1;
-const HASHING_TAPS: usize = NUM_HASH;
+pub const VALIDATING_TAPS: usize = 1;
+pub const HASHING_TAPS: usize = NUM_HASH;
 pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS;
 
 pub type PublicInputs = [ark_bn254::Fr; NUM_PUBS];
