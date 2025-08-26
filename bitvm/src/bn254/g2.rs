@@ -318,7 +318,7 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
          // [f, slope, bias, x', y']
          {hinted_script_ell}
          // [f, c1', c2']
-         // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+         // compute the new f with c1'(c3) and c2'(c4), where c1 is trivial value 1
          {hinted_script5}
          // [f]
     };
@@ -719,7 +719,7 @@ pub fn hinted_check_line_through_point(
     (script, hints)
 }
 
-/// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
+/// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine coordinates)
 /// two aspects:
 ///     1. T.y - alpha * T.x - bias = 0
 ///     2. Q.y - alpha * Q.x - bias = 0, make sure the alpha/-bias are the right ONEs

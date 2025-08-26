@@ -66,7 +66,7 @@ Below is a list of the components and their purpose.
 
 ## BitVM1
 
-If you are looking for the deprectated BitVM1 implementation, please check out
+If you are looking for the deprecated BitVM1 implementation, please check out
 [BitVM1](https://github.com/BitVM/BitVM/tree/1dce989d1963b90c35391b77b451c6823302d503).
 
 
