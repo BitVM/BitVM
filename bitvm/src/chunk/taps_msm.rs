@@ -89,9 +89,7 @@ pub(crate) fn chunk_msm(
                     // [G1Acc, G1AccDash, 1] [G1AccDashHash, G1AccHash]
                 OP_ELSE
                     // [G1Acc, k]
-                    for _ in 0..num_pubs {
-                        {Fr::drop()}
-                    }
+                    {Fr::drop()}
                     {Fq::push(ark_bn254::Fq::ONE)}
                     {Fq::push(ark_bn254::Fq::ZERO)}
                     // [G1Acc, Mock_G1AccDash] [G1AccDashHash, G1AccHash]
@@ -141,7 +139,6 @@ pub(crate) fn chunk_hash_p(
     let q = ark_bn254::G1Affine::new_unchecked(qx, qy);
     let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
     let r = (t + q).into_affine();
-
     let ops_script = script! {
         // [t] [hash_r, hash_t]
         { Fq2::copy(0)}
