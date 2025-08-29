@@ -147,7 +147,7 @@ impl G1Affine {
             witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
         ))
         .into();
-        let is_inf = x.is_zero() & y.is_zero();
+        let is_inf = x.is_zero() && y.is_zero();
         ark_bn254::G1Affine {
             x,
             y,
