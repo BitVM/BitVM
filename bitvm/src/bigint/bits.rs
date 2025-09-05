@@ -138,7 +138,8 @@ pub fn limb_to_le_bits(num_bits: u32) -> Script {
         script! {
             { limb_to_le_bits_common(num_bits) }
         }
-    } else { // if num_bits == 1
+    } else {
+        // if num_bits == 1
         script! {}
     }
 }
@@ -152,7 +153,8 @@ pub fn limb_to_le_bits_toaltstack(num_bits: u32) -> Script {
                 OP_TOALTSTACK
             }
         }
-    } else { // if num_bits == 1
+    } else {
+        // if num_bits == 1
         script! {
             OP_TOALTSTACK
         }
@@ -168,7 +170,8 @@ pub fn limb_to_be_bits(num_bits: u32) -> Script {
                 OP_FROMALTSTACK
             }
         }
-    } else { // if num_bits == 1
+    } else {
+        // if num_bits == 1
         script! {}
     }
 }
@@ -181,7 +184,8 @@ pub fn limb_to_be_bits_toaltstack(num_bits: u32) -> Script {
             OP_TOALTSTACK
             OP_TOALTSTACK
         }
-    } else { // if num_bits == 1
+    } else {
+        // if num_bits == 1
         script! {
             OP_TOALTSTACK
         }
