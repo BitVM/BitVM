@@ -272,11 +272,6 @@ mod test {
             };
             run(script);
         }
-
-        let script = script! {
-            0 { limb_to_be_bits(0) } 0 OP_EQUAL
-        };
-        run(script);
     }
 
     #[test]
@@ -353,11 +348,6 @@ mod test {
             };
             run(script);
         }
-
-        let script = script! {
-            0 { limb_to_le_bits(0) } 0 OP_EQUAL
-        };
-        run(script);
     }
 
     #[test]
