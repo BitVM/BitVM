@@ -64,30 +64,30 @@ impl Fq {
     }
 
     pub const fn bigint_tmul_lc_1() -> (u32, u32, u32) {
-        const X: u32 = <Fq as Fp254Mul>::W::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul>::W::LIMB_SIZE;
-        const Z: u32 = <Fq as Fp254Mul>::W::N_LIMBS;
+        const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul>::T::N_LIMBS;
         (X, Y, Z)
     }
 
     pub const fn bigint_tmul_lc_2() -> (u32, u32, u32) {
-        const X: u32 = <Fq as Fp254Mul2LC>::W::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul2LC>::W::LIMB_SIZE;
-        const Z: u32 = <Fq as Fp254Mul2LC>::W::N_LIMBS;
+        const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LC>::T::N_LIMBS;
         (X, Y, Z)
     }
 
     pub const fn bigint_tmul_lc_2_w4() -> (u32, u32, u32) {
-        const X: u32 = <Fq as Fp254Mul2LCW4>::W::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul2LCW4>::W::LIMB_SIZE;
-        const Z: u32 = <Fq as Fp254Mul2LCW4>::W::N_LIMBS;
+        const X: u32 = <Fq as Fp254Mul2LCW4>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LCW4>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LCW4>::T::N_LIMBS;
         (X, Y, Z)
     }
 
     pub const fn bigint_tmul_lc_4() -> (u32, u32, u32) {
-        const X: u32 = <Fq as Fp254Mul4LC>::W::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul4LC>::W::LIMB_SIZE;
-        const Z: u32 = <Fq as Fp254Mul4LC>::W::N_LIMBS;
+        const X: u32 = <Fq as Fp254Mul4LC>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul4LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul4LC>::T::N_LIMBS;
         (X, Y, Z)
     }
 
@@ -124,7 +124,6 @@ macro_rules! fp_lc_mul {
                 const LCS: [bool; $LCS.len()] = $LCS;
                 const LC_BITS: u32 = usize::BITS - ($LCS.len() - 1).leading_zeros();
                 type U;
-                type W;
                 type T;
                 fn tmul() -> Script;
             }
@@ -132,7 +131,6 @@ macro_rules! fp_lc_mul {
             impl [<Fp254 $NAME>] for Fq {
 
                 type U = BigIntImpl<{ Self::N_BITS }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
-                type W = BigIntImpl<{ Self::N_BITS + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
                 type T = BigIntImpl<{ Self::N_BITS + $VAR_WIDTH + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
 
                 fn tmul() -> Script {
@@ -147,7 +145,6 @@ macro_rules! fp_lc_mul {
                     let lc_signs = <Fq as [<Fp254 $NAME>]>::LCS;
 
                     type U = <Fq as [<Fp254 $NAME>]>::U;
-                    type W = <Fq as [<Fp254 $NAME>]>::W;
                     type T = <Fq as [<Fp254 $NAME>]>::T;
 
                     // N_BITS for the extended number used during intermediate computation
@@ -337,9 +334,8 @@ macro_rules! fp_lc_mul {
                             { U::toaltstack() }                                            // {q} {x0} {x1} {y0} -> {y1}
                         }                                                                  // {q} -> {x0} {x1} {y0} {y1}
                         // ensure q is a valid bigint
-                        { W::copy(0) } { W::check_validity() }
-                        { W::resize::<{ T::N_BITS }>() }
-                        // Pre-compute lookup tables
+                        { T::copy(0) } { T::check_validity() }
+                        // Pre-compute lookup tables (q can not be 2^T::N_BITS-1 when tmul is correctly used, so neg() gives correct result)
                         { T::neg() }                         // {-q} -> {x0} {x1} {y0} {y1}
                         { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
                         for i in 0..N_LC {
