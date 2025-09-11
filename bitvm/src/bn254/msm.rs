@@ -230,7 +230,7 @@ fn accumulate_addition_chain_for_a_scalar_mul(
             );
 
             // accumulate value using hinted_check_add
-            let (add_scr, add_hints) = G1Affine::hinted_check_add(prev, row_g1);
+            let (add_scr, add_hints) = G1Affine::hinted_check_add_prevent_degenerate(prev, row_g1);
 
             prev = (prev + row_g1).into_affine(); // output of this chunk: t + q
             vec_row_g1_scr.push(row_g1_scr);

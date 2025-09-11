@@ -155,8 +155,13 @@ impl G1Affine {
         }
     }
 
-    pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+    pub fn hinted_check_add_prevent_degenerate(
+        t: ark_bn254::G1Affine,
+        q: ark_bn254::G1Affine,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
+        assert_ne!(t, q);
+        assert_ne!(t, -q);
 
         let (alpha, bias) = if !t.is_zero() && !q.is_zero() {
             let alpha = (t.y - q.y) / (t.x - q.x);
@@ -203,6 +208,102 @@ impl G1Affine {
         };
 
         if !t.is_zero() && !q.is_zero() {
+            hints.push(Hint::Fq(alpha));
+            hints.push(Hint::Fq(-bias));
+            hints.extend(hint1);
+            hints.extend(hint2);
+        }
+
+        (script, hints)
+    }
+
+    pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+        let mut hints = vec![];
+
+        let (alpha, bias) = if t == q {
+            let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
+            let bias = t.y - alpha * t.x;
+            (alpha, bias)
+        } else if t == -q {
+            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+        } else if !t.is_zero() && !q.is_zero() {
+            let alpha = (t.y - q.y) / (t.x - q.x);
+            let bias = t.y - alpha * t.x;
+            (alpha, bias)
+        } else {
+            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+        };
+
+        let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, alpha);
+        let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, alpha);
+        let (hinted_script3, hint3) = Self::hinted_check_tangent_line(t, alpha);
+        let (hinted_script4, hint4) = Self::hinted_double(t, alpha);
+
+        let script = script! {           // tx ty qx qy
+            { G1Affine::is_zero_keep_element() }
+            OP_IF
+                { G1Affine::drop() }
+            OP_ELSE
+                { G1Affine::roll(1) }
+                { G1Affine::is_zero_keep_element() }
+                OP_IF
+                    { G1Affine::drop() }
+                OP_ELSE                                    // qx qy tx ty
+                    { Fq::equal_keep_elements(3, 1) }      // t == q or t == -q
+                    OP_IF
+                        { Fq::equal_keep_elements(2, 0) }  // case: t == q
+                        OP_IF
+                            { G1Affine::drop() }           // q
+                            for _ in 0..Fq::N_LIMBS {
+                                OP_DEPTH OP_1SUB OP_ROLL
+                            }
+                            for _ in 0..Fq::N_LIMBS {
+                                OP_DEPTH OP_1SUB OP_ROLL
+                            }                              // qx qy c3 c4
+                            { Fq::copy(1) }                // qx qy c3 c4 c3
+                            { Fq::copy(1) }                // qx qy c3 c4 c3 c4
+                            { Fq::copy(5) }                // qx qy c3 c4 c3 c4 qx
+                            { Fq::roll(5) }                // qx c3 c4 c3 c4 qx qy
+                            { hinted_script3 }             // qx c3 c4 is_tangent_line_correct
+                            OP_VERIFY                      // qx c3 c4
+                            { Fq::roll(2) }                // c3 c4 qx
+                            { hinted_script4 }             // x', y'
+                        OP_ELSE                            // case: t == -q
+                            { G1Affine::drop() }
+                            { G1Affine::drop() }
+                            { G1Affine::push_zero() }
+                        OP_ENDIF
+                    OP_ELSE
+                        for _ in 0..Fq::N_LIMBS {
+                            OP_DEPTH OP_1SUB OP_ROLL
+                        }
+                        for _ in 0..Fq::N_LIMBS {
+                            OP_DEPTH OP_1SUB OP_ROLL
+                        }                                  // qx qy tx ty c3 c4
+                        { Fq::copy(1) }
+                        { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
+                        { Fq::copy(5) }
+                        { Fq::roll(5) }                    // qx qy tx c3 c4 c3 c4 tx ty
+                        { Fq::copy(8) }
+                        { Fq::roll(8) }                    // qx tx c3 c4 c3 c4 tx ty qx qy
+                        { hinted_script1 }                 // qx tx c3 c4 0/1
+                        OP_VERIFY
+                        { Fq::roll(2) }
+                        { Fq::roll(3) }                    // c3 c4 tx qx
+                        { hinted_script2 }                 // x' y'
+                    OP_ENDIF
+                OP_ENDIF
+            OP_ENDIF
+        };
+
+        if t == q {
+            hints.push(Hint::Fq(alpha));
+            hints.push(Hint::Fq(-bias));
+            hints.extend(hint3);
+            hints.extend(hint4);
+        } else if t == -q {
+            // no hint
+        } else if !t.is_zero() && !q.is_zero() {
             hints.push(Hint::Fq(alpha));
             hints.push(Hint::Fq(-bias));
             hints.extend(hint1);
@@ -659,48 +760,66 @@ mod test {
     }
 
     #[test]
-    fn test_g1_affine_hinted_check_add() {
-        //println!("G1.hinted_add: {} bytes", G1Affine::check_add().len());
+    fn test_g1_affine_hinted_check_add_prevent_degenerate() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let t = ark_bn254::G1Affine::rand(&mut prng);
         let q = ark_bn254::G1Affine::rand(&mut prng);
-        let alpha = (t.y - q.y) / (t.x - q.x);
-        // -bias
-        let bias_minus = alpha * t.x - t.y;
+        let r = (t + q).into_affine();
 
-        let x = alpha.square() - t.x - q.x;
-        let y = bias_minus - alpha * x;
-
-        let (hinted_check_add, hints) = G1Affine::hinted_check_add(t, q);
+        let (hinted_check_add, hints) = G1Affine::hinted_check_add_prevent_degenerate(t, q);
 
         let script = script! {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push(t.x) }
-            { Fq::push(t.y) }
-            { Fq::push(q.x) }
-            { Fq::push(q.y) }
+            { G1Affine::push(t) }
+            { G1Affine::push(q) }
             { hinted_check_add.clone() }
-            // [x']
-            { Fq::push(y) }
-            // [x', y', y]
-            { Fq::equalverify(1,0) }
-            // [x']
-            { Fq::push(x) }
-            // [x', x]
-            { Fq::equalverify(1,0) }
-            // []
+            { G1Affine::push(r) }
+            { G1Affine::equalverify() }
             OP_TRUE
-            // [OP_TRUE]
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
         println!(
-            "hinted_check_add: {} @ {} stack",
+            "hinted_check_add_prevent_degenerate: {} @ {} stack",
             hinted_check_add.len(),
             exec_result.stats.max_nb_stack_items
         );
+    }
+
+    #[test]
+    fn test_g1_affine_hinted_check_add() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G1Affine::rand(&mut prng);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let r = (t + q).into_affine();
+        let tt = (t + t).into_affine();
+        let negt = -t;
+        let z = ark_bn254::G1Affine::zero();
+
+        for (t, q, r) in [(t, q, r), (t, t, tt), (t, negt, z)] {
+            let (hinted_check_add, hints) = G1Affine::hinted_check_add(t, q);
+
+            let script = script! {
+                for hint in hints {
+                    { hint.push() }
+                }
+                { G1Affine::push(t) }
+                { G1Affine::push(q) }
+                { hinted_check_add.clone() }
+                { G1Affine::push(r) }
+                { G1Affine::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+            println!(
+                "hinted_check_add: {} @ {} stack",
+                hinted_check_add.len(),
+                exec_result.stats.max_nb_stack_items
+            );
+        }
     }
 
     #[test]
