@@ -132,7 +132,7 @@ macro_rules! fp_lc_mul {
             impl [<Fp254 $NAME>] for Fq {
 
                 type U = BigIntImpl<{ Self::N_BITS }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
-                type W = BigIntImpl<{ Self::N_BITS + $VAR_WIDTH}, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
+                type W = BigIntImpl<{ Self::N_BITS + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
                 type T = BigIntImpl<{ Self::N_BITS + $VAR_WIDTH + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
 
                 fn tmul() -> Script {
