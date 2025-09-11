@@ -338,6 +338,7 @@ macro_rules! fp_lc_mul {
                         }                                                                  // {q} -> {x0} {x1} {y0} {y1}
                         // ensure q is a valid bigint
                         { W::copy(0) } { W::check_validity() }
+                        { W::resize::<{ T::N_BITS }>() }
                         // Pre-compute lookup tables
                         { T::neg() }                         // {-q} -> {x0} {x1} {y0} {y1}
                         { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
