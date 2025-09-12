@@ -169,8 +169,8 @@ macro_rules! fp_lc_mul {
                     // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
-                            (1..=6).contains(&window),
-                            "expected 1<=window<=6; got window={}",
+                            (2..=6).contains(&window),
+                            "expected 2<=window<=6; got window={}",
                             window
                         );
                         script! {
