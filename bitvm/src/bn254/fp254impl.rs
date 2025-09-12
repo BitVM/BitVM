@@ -164,8 +164,15 @@ pub trait Fp254Impl {
         }
     }
 
+    /// check that Self::N_LIMBS elements on stack form a valid FpImpl element
     fn check_validity() -> Script {
-        U254::check_validity()
+        script! {
+            { U254::copy(0) }
+            { U254::check_validity() }
+            { Self::push_modulus() }
+            { U254::lessthan(1, 0) }
+            OP_VERIFY
+        }
     }
 
     #[inline]
