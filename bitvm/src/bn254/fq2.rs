@@ -156,6 +156,13 @@ impl Fq2 {
         }
     }
 
+    pub fn check_validity() -> Script {
+        script! {
+            { Fq::check_validity() }
+            { Fq::check_validity() }
+        }
+    }
+
     pub fn hinted_mul(
         mut a_depth: u32,
         mut a: ark_bn254::Fq2,

@@ -176,9 +176,11 @@ fn utils_point_double_eval(
             for _ in 0..Fq::N_LIMBS * 2 {
                 OP_DEPTH OP_1SUB OP_ROLL
             }                                        // -bias, ...,  x, y, alpha
+            { Fq2::copy(0) } { Fq2::check_validity() }
             for _ in 0..Fq::N_LIMBS * 2 {
                 OP_DEPTH OP_1SUB OP_ROLL
             }
+            { Fq2::copy(0) } { Fq2::check_validity() }
             // [tx ty a b]
             {Fq2::roll(6)} {Fq2::roll(6)}          // alpha, -bias, x, y
             // [a b tx ty]

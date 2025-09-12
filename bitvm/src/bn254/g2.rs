@@ -303,11 +303,12 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     let (hinted_script5, hint5) = Fq12::hinted_mul_by_34(f, c1, c2);
 
     let hinted_script_constant = script! {
-       for _ in 0..4 {
-           for _ in 0..Fq::N_LIMBS {
-               OP_DEPTH OP_1SUB OP_ROLL
-           }
-       }
+        for _ in 0..4 {
+            for _ in 0..Fq::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL
+            }
+            { Fq::copy(0) } { Fq::check_validity() }
+        }
     };
     let script = script! {
         {hinted_script_constant}

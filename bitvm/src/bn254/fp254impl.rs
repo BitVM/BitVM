@@ -164,6 +164,10 @@ pub trait Fp254Impl {
         }
     }
 
+    fn check_validity() -> Script {
+        U254::check_validity()
+    }
+
     #[inline]
     fn convert_to_le_bits_toaltstack() -> Script {
         U254::convert_to_le_bits_toaltstack()
@@ -916,7 +920,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hint, y
             }
-            { U254::copy(0) } { U254::check_validity() }
+            { Fq::copy(0) } { Fq::check_validity() }
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hint, q
             }
