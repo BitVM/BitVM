@@ -126,6 +126,16 @@ pub trait Fp254Impl {
         }
     }
 
+    fn is_one_verify() -> Script {
+        script! {
+            OP_1
+            OP_EQUALVERIFY
+            for _ in 0..Self::N_LIMBS-1 {
+                OP_NOT OP_VERIFY
+            }
+        }
+    }
+
     fn is_one_keep_element(a: u32) -> Script {
         script! {
             { Self::copy(a) }
@@ -904,10 +914,11 @@ pub trait Fp254Impl {
         let q = (x * y) / modulus;
         let script = script! {
             for _ in 0..Self::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints
+                OP_DEPTH OP_1SUB OP_ROLL // hint, y
             }
+            { U254::copy(0) } { U254::check_validity() }
             for _ in 0..Self::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints
+                OP_DEPTH OP_1SUB OP_ROLL // hint, q
             }
             // { Fq::push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -917,8 +928,7 @@ pub trait Fp254Impl {
             // y, q, x, y
             { Fq::tmul() }
             // y, 1
-            { Fq::push_one() }
-            { Fq::equalverify(1, 0) }
+            { Fq::is_one_verify() }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));
         hints.push(Hint::BigIntegerTmulLC1(q));
