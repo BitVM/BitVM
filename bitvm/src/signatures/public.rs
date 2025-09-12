@@ -1,4 +1,5 @@
 use bitcoin::hex::DisplayHex;
+use bitcoin::script::read_scriptint;
 use bitcoin_script::Script;
 
 use crate::signatures::utils::bitcoin_representation;
@@ -124,17 +125,17 @@ pub trait Wots {
                 "the digit signature should be constant 20 bytes"
             );
             assert!(
-                witness[i + 1].len() <= 1,
-                "the digit should be a compressed byte, which is the empty vector for digit = 0"
+                witness[i + 1].len() <= 2,
+                "the digit should be in compressed bytes, which is equal the empty vector for digit = 0"
             );
-
+            let digit_value = read_scriptint(&witness[i + 1]).unwrap();
+            assert!(
+                (0..(1 << LOG2_BASE)).contains(&digit_value),
+                "the digit should be in the valid range"
+            );
             let mut digit_signature: [u8; 21] = [0; 21];
             digit_signature[0..20].copy_from_slice(&witness[i]);
-            if witness[i + 1].is_empty() {
-                digit_signature[20] = 0;
-            } else {
-                digit_signature[20..21].copy_from_slice(&witness[i + 1]);
-            }
+            digit_signature[20] = digit_value as u8;
             digit_signatures.push(digit_signature);
         }
 
