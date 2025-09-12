@@ -323,9 +323,8 @@ macro_rules! fp_lc_mul {
                             { U::lessthan(1, 0) } OP_VERIFY                                // {q} {x0} {x1} {y0} {y1}
                             { U::toaltstack() }                                            // {q} {x0} {x1} {y0} -> {y1}
                         }                                                                  // {q} -> {x0} {x1} {y0} {y1}
-                        // Pre-compute lookup tables
-                        { T::push_zero() }                   // {q} {0} -> {x0} {x1} {y0} {y1}
-                        { T::sub(0, 1) }                     // {-q} -> {x0} {x1} {y0} {y1}
+                        // Pre-compute lookup tables (q can not be 2^T::N_BITS-1 when tmul is correctly used, so neg() gives correct result)
+                        { T::neg() }                         // {-q} -> {x0} {x1} {y0} {y1}
                         { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
                         for i in 0..N_LC {
                             { U::fromaltstack() }            // {-q_table} {x0} -> {x1} {y0} {y1}
