@@ -307,6 +307,21 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    pub fn check_validity() -> Script {
+        script! {                            // a0 a1 ... an
+            { 1 << LIMB_SIZE }               // a0 a1 ... an x
+            for _ in 0..Self::N_LIMBS-2 {    // a x
+                OP_TUCK                      // x a x
+                0 OP_SWAP                    // x a 0 x
+                OP_WITHIN OP_VERIFY          // x
+            }                                // a0 a1 x
+            0 OP_SWAP                        // a0 a1 0 x
+            OP_WITHIN OP_VERIFY              // a0
+            0 { Self::HEAD_OFFSET }          // a0 0 y
+            OP_WITHIN OP_VERIFY
+        }
+    }
+
     /// Resize positive numbers
     ///
     /// # Note
