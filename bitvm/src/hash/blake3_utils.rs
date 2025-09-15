@@ -483,6 +483,9 @@ pub(crate) fn compress(
     //chaining value needs to be copied for multiple blocks
     //every time that is provided
 
+    // final_rounds must be 8, if you need more than 32 output bytes, you need to change this
+    assert_eq!(final_rounds, 8);
+
     let mut state = init_state(stack, chaining, counter, block_len, flags);
 
     for _ in 0..6 {
