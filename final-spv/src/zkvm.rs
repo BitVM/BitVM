@@ -45,10 +45,15 @@ impl ZkvmGuest for Risc0Guest {
         // use risc0_zkvm::guest::env::Write as _;
         let buf = borsh::to_vec(item).expect("Serialization to vec is infallible");
         let mut journal = env::journal();
-        journal.write_all(&buf).unwrap();
+        journal
+            .write_all(&buf)
+            .expect("Failed to write to zkVM journal");
     }
 
     fn verify<T: borsh::BorshSerialize>(&self, method_id: [u32; 8], output: &T) {
-        env::verify(method_id, &borsh::to_vec(output).unwrap()).unwrap();
+        let encoded_output =
+            borsh::to_vec(output).expect("Failed to serialize output for verification");
+        env::verify(method_id, &encoded_output)
+            .expect("zkVM verification failed: env::verify returned error");
     }
 }
