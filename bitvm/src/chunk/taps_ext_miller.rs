@@ -1,4 +1,3 @@
-use crate::bigint::U254;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
@@ -68,20 +67,14 @@ pub(crate) fn chunk_precompute_p(
         // [hints] [pdhash, py, px]
         {Fq2::fromaltstack()}
 
-        // Validity checks
-        { Fq::check_validity() } { Fq::check_validity() }
-        { Fq::fromaltstack() }   { Fq::fromaltstack() }
-
         // [hints, px, py] [pdhash]
         // {is_field_element}
         // [hints, px, py, px, py]
         {Fq2::copy(0)}
 
-        { Fq::push_hex(Fq::MODULUS) }
-        { U254::lessthan(1, 0) } // py < p
+        { Fq::is_valid() }
         OP_TOALTSTACK
-        { Fq::push_hex(Fq::MODULUS) }
-        { U254::lessthan(1, 0) } // px < p
+        { Fq::is_valid() }
         OP_FROMALTSTACK
         OP_BOOLAND
         OP_IF // IS_VALID_FIELD_ELEM
@@ -214,7 +207,7 @@ pub(crate) fn chunk_frob_fp12(
 
     let ops_scr = script! {
         // [f]
-        
+
         // Validity checks
         { Fq6::check_validity() }
         { Fq6::fromaltstack() }
@@ -269,8 +262,7 @@ pub(crate) fn chunk_hash_c(
         // [fqs, fqs] [fhash]
         {Fq6::copy(0)}
         for _ in 0..6 {
-            { Fq::push_hex(Fq::MODULUS) }
-            { U254::lessthan(1, 0) } // a < p
+            { Fq::is_valid() }
             OP_TOALTSTACK
         }
         {1}
@@ -339,8 +331,7 @@ pub(crate) fn chunk_hash_c_inv(
         {Fq6::copy(0)}
         // [fqs, fqs] [fneghash]
         for _ in 0..6 {
-            { Fq::push_hex(Fq::MODULUS) }
-            { U254::lessthan(1, 0) } // a < p
+            { Fq::is_valid() }
             OP_TOALTSTACK
         }
         {1}
@@ -409,8 +400,15 @@ pub(crate) fn chunk_final_verify(
 
     let ops_scr = script! {
         // [f, {t4, ht4_le}] [in_t4hash, in_fhash, q4]
-        {Fq::toaltstack()}
-        {G2Affine::toaltstack()}
+
+        // Validity checks f is Fq6, t4 is G2Affine, ht4_le is a hash and q4 is G2Affine
+        { G2Affine::fromaltstack() }
+        { Fq2::check_validity() } { Fq2::check_validity() } // q4
+        { Fq::toaltstack() } //ht4_le
+        { Fq2::check_validity() } { Fq2::check_validity() } //t4
+        { Fq6::check_validity() } { Fq6::fromaltstack() } //f, moved back to the top of the stack
+
+
         // [f] [in_t4hash, in_fhash, q4, ht4le, t4]
         {Fq6::copy(0)}
         {fp12_is_unity_scr}
