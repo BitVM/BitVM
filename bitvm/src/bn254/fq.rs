@@ -1124,4 +1124,70 @@ mod test {
             )
         }
     }
+
+    #[test]
+    fn test_is_valid() {
+        let mut prng = ChaCha20Rng::seed_from_u64(37);
+        let x = Fq::modulus_as_bigint().to_biguint().unwrap();
+        let verification_script = Fq::is_valid();
+
+        // -1
+        {
+            run(script! {
+                { U254::push_biguint(x.clone() - 1u32) }
+                { verification_script.clone() }
+            })
+        }
+
+        // equal
+        {
+            run(script! {
+                { U254::push_biguint(x.clone()) }
+                { verification_script.clone() }
+                OP_NOT
+            })
+        }
+
+        // +1
+        {
+            run(script! {
+                { U254::push_biguint(x.clone() + 1u32) }
+                { verification_script.clone() }
+                OP_NOT
+            })
+        }
+
+        // random less than
+        for _ in 0..100 {
+            let n = prng.gen_biguint_range(&BigUint::from(0u32), &x);
+            run(script! {
+                { U254::push_biguint(n.clone()) }
+                { verification_script.clone() }
+            })
+        }
+
+        // random geq
+        for _ in 0..100 {
+            let n = prng.gen_biguint_range(&x, &BigUint::from(2u32).pow(254));
+            run(script! {
+                { U254::push_biguint(n.clone()) }
+                { verification_script.clone() }
+                OP_NOT
+            });
+        }
+
+        //corrupted data with negative
+        {
+            let limbs = U254::biguint_to_limbs(x.clone());
+            run(script! {
+                for i in (1..U254::N_LIMBS as usize).rev() {
+                    { limbs[i] }
+                }
+                { -1 }
+
+                { verification_script.clone() }
+                OP_NOT
+            })
+        }
+    }
 }

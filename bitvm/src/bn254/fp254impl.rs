@@ -959,4 +959,40 @@ pub trait Fp254Impl {
             }
         }
     }
+
+    // finds if the element at the top of the stack is less than the modulo and valid (limbs are in range)
+    // consumes the element, leaves the result at the topstack
+    fn is_valid() -> Script {
+        let limbs_of_c = U254::biguint_to_limbs(Self::modulus_as_bigint().to_biguint().unwrap());
+        script! {
+            // (Assuming limbs are numbered big endian)
+            // Number A is greater than number B <=> there exists a limb i, s.t. (A_i > B_i OR (A_i >= B_i and i is the first limb)) and there's no limb j > i satisfying A_i < B_i
+            // Script below maintains if such state exists for each i behind the foremost limb, combining the results and negating them if there is such j
+            for i in 0..(Self::N_LIMBS as usize) {
+                OP_DUP
+                { 0 } { 1 << U254::LIMB_SIZE } OP_WITHIN
+                if i == 0 {
+                    OP_TOALTSTACK //u254 validity check
+
+                    { limbs_of_c[i] }
+                    OP_GREATERTHANOREQUAL
+                } else {
+                    OP_FROMALTSTACK OP_BOOLAND OP_TOALTSTACK //u254 validity check
+
+                    { limbs_of_c[i] } OP_2DUP
+                    OP_GREATERTHAN OP_TOALTSTACK
+                    OP_GREATERTHANOREQUAL
+                    OP_BOOLAND
+                    OP_FROMALTSTACK OP_BOOLOR
+                }
+                if i == (Self::N_LIMBS as usize) - 1 {
+                    OP_NOT //This OP_NOT can be negated, but it probably isn't necessary
+                    OP_FROMALTSTACK
+                    OP_BOOLAND
+                } else {
+                    OP_SWAP
+                }
+            }
+        }
+    }
 }
