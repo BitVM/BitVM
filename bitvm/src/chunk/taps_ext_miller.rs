@@ -160,10 +160,21 @@ pub(crate) fn chunk_precompute_p_from_hash(
         // [hints, px, py] [pdhash, phash]
 
         // Validity checks
-        { Fq::check_validity() } { Fq::check_validity() }
-        { Fq::fromaltstack() }   { Fq::fromaltstack() }
-
+        { Fq::copy(0) }
+        { Fq::is_valid() } OP_TOALTSTACK
+        { Fq::copy(1) }
+        { Fq::is_valid() } OP_TOALTSTACK
         {Fq::is_zero_keep_element(0)}
+
+        // [hints, px, py, 0/1 (is zero py)] [pdhash, phash, 0/1 (is_valid px), 0/1 (is valid py)]
+
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_BOOLAND
+        OP_NOT OP_BOOLOR
+
+        // [hints, px, py, 0/1 (is the input invalid)]
+
         OP_IF // PY = 0
             {drop_and_return_scr.clone()}
         OP_ELSE // PY != 0
@@ -401,13 +412,12 @@ pub(crate) fn chunk_final_verify(
     let ops_scr = script! {
         // [f, {t4, ht4_le}] [in_t4hash, in_fhash, q4]
 
-        // Validity checks f is Fq6, t4 is G2Affine, ht4_le is a hash and q4 is G2Affine
+        // Validity checks: f is Fq6, t4 is G2Affine, ht4_le is a hash and q4 is G2Affine
         { G2Affine::fromaltstack() }
         { Fq2::check_validity() } { Fq2::check_validity() } // q4
         { Fq::toaltstack() } //ht4_le
         { Fq2::check_validity() } { Fq2::check_validity() } //t4
         { Fq6::check_validity() } { Fq6::fromaltstack() } //f, moved back to the top of the stack
-
 
         // [f] [in_t4hash, in_fhash, q4, ht4le, t4]
         {Fq6::copy(0)}

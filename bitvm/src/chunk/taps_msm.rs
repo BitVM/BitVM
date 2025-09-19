@@ -1,4 +1,3 @@
-use crate::bigint::U254;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::bn254::g1::G1Affine;
@@ -75,7 +74,7 @@ pub(crate) fn chunk_msm(
                 {Fr::fromaltstack()}
 
                 {Fr::copy(0)}
-                { Fq::is_valid() }
+                { Fr::is_valid() }
 
                 // [hints, G1Acc, k, 0/1] [G1AccDashHash, G1AccHash]
                 OP_IF
@@ -143,7 +142,7 @@ pub(crate) fn chunk_hash_p(
     let ops_script = script! {
         // [t] [hash_r, hash_t]
 
-        //Validity checks 
+        //Validity checks
         { Fq2::check_validity() } { Fq2::fromaltstack() }
 
         { Fq2::copy(0)}

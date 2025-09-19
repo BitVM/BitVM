@@ -285,7 +285,7 @@ impl Fq12 {
 
     pub fn check_validity() -> Script {
         script! {
-            for _ in 0..2 { 
+            for _ in 0..2 {
                 { Fq6::check_validity() }
             }
         }
