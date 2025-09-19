@@ -350,6 +350,14 @@ impl Fq2 {
                 [i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()],
         )
     }
+
+    pub fn check_validity() -> Script {
+        script! {
+            for _ in 0..2 { 
+                { Fq::check_validity() }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

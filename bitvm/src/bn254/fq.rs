@@ -1,6 +1,6 @@
 #![allow(clippy::reversed_empty_ranges)]
 use num_bigint::{BigInt, BigUint};
-use num_traits::{FromPrimitive, Num, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
 
 use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
@@ -31,10 +31,6 @@ impl Fp254Impl for Fq {
 }
 
 impl Fq {
-    pub fn modulus_as_bigint() -> BigInt {
-        BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
-    }
-
     pub fn tmul() -> Script {
         script! {
             { <Fq as Fp254Mul>::tmul() }
@@ -424,6 +420,7 @@ fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::bigint::U254;
     use crate::bn254::fq::Fq;
     use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
     use ark_ff::AdditiveGroup;
@@ -1037,5 +1034,94 @@ mod test {
             <Fq as Fp254Mul2LC>::tmul().len(),
             max_stack
         );
+    }
+
+    #[test]
+    fn test_check_validity() {
+        let mut prng = ChaCha20Rng::seed_from_u64(37);
+        let x = Fq::modulus_as_bigint().to_biguint().unwrap();
+        let verification_script = Fq::check_validity();
+        let clearing_script = script! {
+            for _ in 0..U254::N_LIMBS { OP_FROMALTSTACK }
+            { U254::equalverify(0, 1) }
+            OP_TRUE
+        };
+
+        // -1
+        {
+            run(script! {
+                { U254::push_biguint(x.clone() - 1u32) }
+                { verification_script.clone() }
+                { U254::push_biguint(x.clone() - 1u32) }  { clearing_script.clone() }
+            })
+        }
+
+        // equal
+        {
+            assert!(
+                execute_script(script! {
+                    { U254::push_biguint(x.clone()) }
+                    { verification_script.clone() }
+                    { U254::push_biguint(x.clone()) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            )
+        }
+
+        // +1
+        {
+            assert!(
+                execute_script(script! {
+                    { U254::push_biguint(x.clone() + 1u32) }
+                    { verification_script.clone() }
+                    { U254::push_biguint(x.clone() + 1u32) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            )
+        }
+
+        // random less than
+        for _ in 0..100 {
+            let n = prng.gen_biguint_range(&BigUint::from(0u32), &x);
+            run(script! {
+                { U254::push_biguint(n.clone()) }
+                { verification_script.clone() }
+                { U254::push_biguint(n) }  { clearing_script.clone() }
+            })
+        }
+
+        // random geq
+        for _ in 0..100 {
+            let n = prng.gen_biguint_range(&x, &BigUint::from(2u32).pow(254));
+            assert!(
+                execute_script(script! {
+                    { U254::push_biguint(n.clone()) }
+                    { verification_script.clone() }
+                    { U254::push_biguint(n) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            );
+        }
+
+        //corrupted data with negative
+        {
+            let limbs = U254::biguint_to_limbs(x.clone());
+            assert!(
+                execute_script(script! {
+                    for i in (1..U254::N_LIMBS as usize).rev() {
+                        { limbs[i] }
+                    }
+                    { -1 }
+
+                    { verification_script.clone() }
+                    { U254::push_biguint(x.clone()) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            )
+        }
     }
 }
