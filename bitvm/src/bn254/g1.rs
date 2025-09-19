@@ -237,7 +237,6 @@ impl G1Affine {
         let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, alpha);
         let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, alpha);
         let (hinted_script3, hint3) = Self::hinted_check_tangent_line(t, alpha);
-        let (hinted_script4, hint4) = Self::hinted_double(t, alpha);
 
         let script = script! {           // tx ty qx qy
             { G1Affine::is_zero_keep_element() }
@@ -250,45 +249,44 @@ impl G1Affine {
                     { G1Affine::drop() }
                 OP_ELSE                                    // qx qy tx ty
                     { Fq::equal_keep_elements(3, 1) }      // t == q or t == -q
-                    OP_IF
-                        { Fq::equal_keep_elements(2, 0) }  // case: t == q
-                        OP_IF
-                            { G1Affine::drop() }           // q
-                            for _ in 0..Fq::N_LIMBS {
-                                OP_DEPTH OP_1SUB OP_ROLL
-                            }
-                            for _ in 0..Fq::N_LIMBS {
-                                OP_DEPTH OP_1SUB OP_ROLL
-                            }                              // qx qy c3 c4
-                            { Fq::copy(1) }                // qx qy c3 c4 c3
-                            { Fq::copy(1) }                // qx qy c3 c4 c3 c4
-                            { Fq::copy(5) }                // qx qy c3 c4 c3 c4 qx
-                            { Fq::roll(5) }                // qx c3 c4 c3 c4 qx qy
-                            { hinted_script3 }             // qx c3 c4 is_tangent_line_correct
-                            OP_VERIFY                      // qx c3 c4
-                            { Fq::roll(2) }                // c3 c4 qx
-                            { hinted_script4 }             // x', y'
-                        OP_ELSE                            // case: t == -q
-                            { G1Affine::drop() }
-                            { G1Affine::drop() }
-                            { G1Affine::push_zero() }
-                        OP_ENDIF
-                    OP_ELSE
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_TOALTSTACK
+                    { Fq::equal_keep_elements(2, 0) }
+                    OP_NOT
+                    OP_FROMALTSTACK
+                    OP_BOOLAND
+                    OP_IF                                  // case: t == -q
+                        OP_FROMALTSTACK OP_DROP
+                        { G1Affine::drop() }
+                        { G1Affine::drop() }
+                        { G1Affine::push_zero() }
+                    OP_ELSE                                // case: t != -q
                         for _ in 0..Fq::N_LIMBS {
                             OP_DEPTH OP_1SUB OP_ROLL
                         }
+                        // TODO: uncomment out this line after 3.4 { Fq::copy(0) } { Fq::check_validity() }
                         for _ in 0..Fq::N_LIMBS {
                             OP_DEPTH OP_1SUB OP_ROLL
                         }                                  // qx qy tx ty c3 c4
-                        { Fq::copy(1) }
+                        // TODO: uncomment out this line after 3.4 { Fq::copy(0) } { Fq::check_validity() }
+                        { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3
                         { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
-                        { Fq::copy(5) }
+                        { Fq::copy(5) }                    // qx qy tx ty c3 c4 c3 c4 tx
                         { Fq::roll(5) }                    // qx qy tx c3 c4 c3 c4 tx ty
-                        { Fq::copy(8) }
-                        { Fq::roll(8) }                    // qx tx c3 c4 c3 c4 tx ty qx qy
-                        { hinted_script1 }                 // qx tx c3 c4 0/1
-                        OP_VERIFY
-                        { Fq::roll(2) }
+                        OP_FROMALTSTACK
+                        OP_IF                              // case: t == q
+                            { hinted_script3 }             // qx qy tx c3 c4 is_tangent_line_correct
+                            OP_VERIFY                      // qx qy tx c3 c4
+                            { Fq::roll(3) }                // qx tx c3 c4 qy
+                            { Fq::drop() }                 // qx tx c3 c4
+                        OP_ELSE                            // case: general case
+                            { Fq::copy(8) }                // qx qy tx c3 c4 c3 c4 tx ty qx
+                            { Fq::roll(8) }                // qx tx c3 c4 c3 c4 tx ty qx qy
+                            { hinted_script1 }             // qx tx c3 c4 0/1
+                            OP_VERIFY                      // qx tx c3 c4
+                        OP_ENDIF
+                        { Fq::roll(2) }                    // qx c3 c4 tx
                         { Fq::roll(3) }                    // c3 c4 tx qx
                         { hinted_script2 }                 // x' y'
                     OP_ENDIF
@@ -300,7 +298,7 @@ impl G1Affine {
             hints.push(Hint::Fq(alpha));
             hints.push(Hint::Fq(-bias));
             hints.extend(hint3);
-            hints.extend(hint4);
+            hints.extend(hint2);
         } else if t == -q {
             // no hint
         } else if !t.is_zero() && !q.is_zero() {
