@@ -847,8 +847,7 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
 
         {Fq2::copy(2)} {Fq2::copy(2)}
         for _ in 0..4 {
-            { Fq::push_hex(Fq::MODULUS) }
-            { U256::lessthan(1, 0) } // a < p
+            { Fq::is_valid() }
             OP_TOALTSTACK
         }
         {1}
