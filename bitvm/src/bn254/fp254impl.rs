@@ -28,6 +28,10 @@ pub trait Fp254Impl {
 
     type ConstantType: PrimeField;
 
+    fn modulus_as_bigint() -> BigInt {
+        BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
+    }
+
     #[inline]
     fn copy(a: u32) -> Script {
         U254::copy(a)
@@ -945,5 +949,35 @@ pub trait Fp254Impl {
         hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
+    }
+
+    // verifies that the element at the top of the stack is less than the modulo and valid (limbs are in range)
+    // doesn't consume the element, instead sends it to the altstack
+    fn check_validity() -> Script {
+        let limbs_of_c = U254::biguint_to_limbs(Self::modulus_as_bigint().to_biguint().unwrap());
+        script! {
+            // (Assuming limbs are numbered big endian)
+            // Number A is greater than number B <=> there exists a limb i, s.t. (A_i > B_i OR (A_i >= B_i and i is the first limb)) and there's no limb j > i satisfying A_i < B_i
+            // Script below maintains if such state exists for each i behind the foremost limb, combining the results and negating them if there is such j
+            for i in 0..(Self::N_LIMBS as usize) {
+                OP_DUP OP_DUP OP_TOALTSTACK
+                { 0 } { 1 << U254::LIMB_SIZE } OP_WITHIN OP_VERIFY
+                if i == 0 {
+                    { limbs_of_c[i] }
+                    OP_GREATERTHANOREQUAL
+                } else {
+                    { limbs_of_c[i] } OP_2DUP
+                    OP_GREATERTHAN OP_TOALTSTACK
+                    OP_GREATERTHANOREQUAL
+                    OP_BOOLAND
+                    OP_FROMALTSTACK OP_BOOLOR
+                }
+                if i == (Self::N_LIMBS as usize) - 1 {
+                    OP_NOT OP_VERIFY //This OP_NOT can be negated, but it probably isn't necessary
+                } else {
+                    OP_SWAP
+                }
+            }
+        }
     }
 }
