@@ -67,6 +67,11 @@ pub(crate) fn chunk_precompute_p(
     let scr = script! {
         // [hints] [pdhash, py, px]
         {Fq2::fromaltstack()}
+
+        // Validity checks
+        { Fq::check_validity() } { Fq::check_validity() }
+        { Fq::fromaltstack() }   { Fq::fromaltstack() }
+
         // [hints, px, py] [pdhash]
         // {is_field_element}
         // [hints, px, py, px, py]
@@ -160,6 +165,11 @@ pub(crate) fn chunk_precompute_p_from_hash(
     };
     let scr = script! {
         // [hints, px, py] [pdhash, phash]
+
+        // Validity checks
+        { Fq::check_validity() } { Fq::check_validity() }
+        { Fq::fromaltstack() }   { Fq::fromaltstack() }
+
         {Fq::is_zero_keep_element(0)}
         OP_IF // PY = 0
             {drop_and_return_scr.clone()}
@@ -204,6 +214,11 @@ pub(crate) fn chunk_frob_fp12(
 
     let ops_scr = script! {
         // [f]
+        
+        // Validity checks
+        { Fq6::check_validity() }
+        { Fq6::fromaltstack() }
+
         {Fq6::push(ark_bn254::Fq6::ONE)}
         {Fq6::copy(6)}
         // [f, (1, f)]
