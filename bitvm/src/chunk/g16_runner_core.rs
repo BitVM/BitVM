@@ -596,7 +596,7 @@ mod test {
         let mut ts = qs.clone();
         let ps: Vec<ark_bn254::G1Affine> = ps
             .iter()
-            .map(|p1| ark_bn254::G1Affine::new_unchecked(-p1.x / p1.y, p1.y.inverse().unwrap()))
+            .map(|p1| ark_bn254::G1Affine::new(-p1.x / p1.y, p1.y.inverse().unwrap()))
             .collect();
         let num_pairings = ps.len();
         for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
@@ -792,7 +792,7 @@ mod test {
         let mut ts = qs.clone();
         let ps: Vec<ark_bn254::G1Affine> = ps
             .iter()
-            .map(|p1| ark_bn254::G1Affine::new_unchecked(-p1.x / p1.y, p1.y.inverse().unwrap()))
+            .map(|p1| ark_bn254::G1Affine::new(-p1.x / p1.y, p1.y.inverse().unwrap()))
             .collect();
         let num_pairings = ps.len();
 
