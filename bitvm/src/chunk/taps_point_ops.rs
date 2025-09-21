@@ -273,6 +273,12 @@ fn utils_point_add_eval(
     let (hinted_script2, hint2) = hinted_affine_add_line(t.x, qq.x, alpha, -bias);
     let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y, alpha, -bias);
 
+    // check t and qq are in the same subgroup 
+    assert!(t.is_on_curve());
+    assert!(t.is_in_correct_subgroup_assuming_on_curve());
+    assert!(qq.is_on_curve());
+    assert!(qq.is_in_correct_subgroup_assuming_on_curve());
+
     // if it's valid input, you can compute result, else degenerate values
     let result = if is_valid_input {
         let mut add_le0 = alpha;
