@@ -39,11 +39,11 @@ pub(crate) fn chunk_precompute_p(
         hints.extend_from_slice(&on_curve_hint);
     }
 
-    let p = ark_bn254::G1Affine::new(px, py);
+    let p = ark_bn254::G1Affine::new_unchecked(px, py);
     let (eval_xy, eval_hints) = hinted_from_eval_points(p);
 
     let valid_point = are_valid_field_elems && py != ark_bn254::Fq::ZERO && p.is_on_curve();
-    let mock_pd = ark_bn254::G1Affine::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
+    let mock_pd = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
@@ -51,7 +51,7 @@ pub(crate) fn chunk_precompute_p(
         let pdy = py.inverse().unwrap();
         let pdx = -px * pdy;
 
-        ark_bn254::G1Affine::new(pdx, pdy)
+        ark_bn254::G1Affine::new_unchecked(pdx, pdy)
     } else {
         mock_pd
     };
@@ -135,11 +135,11 @@ pub(crate) fn chunk_precompute_p_from_hash(
         hints.extend_from_slice(&on_curve_hint);
     }
 
-    let p = ark_bn254::G1Affine::new(px, py);
+    let p = ark_bn254::G1Affine::new_unchecked(px, py);
     let (eval_xy, eval_hints) = hinted_from_eval_points(p);
 
     let valid_point = py_is_not_zero && p.is_on_curve();
-    let mock_pd = ark_bn254::G1Affine::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
+    let mock_pd = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
@@ -147,7 +147,7 @@ pub(crate) fn chunk_precompute_p_from_hash(
         let pdy = p.y.inverse().unwrap();
         let pdx = -p.x * pdy;
 
-        ark_bn254::G1Affine::new(pdx, pdy)
+        ark_bn254::G1Affine::new_unchecked(pdx, pdy)
     } else {
         mock_pd
     };
