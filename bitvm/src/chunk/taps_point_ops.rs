@@ -835,6 +835,7 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
             ark_bn254::Fq2::new(ts[0].into(), ts[1].into()),
             ark_bn254::Fq2::new(ts[2].into(), ts[3].into()),
         );
+        G2Affine::check(&t4.t);
     }
 
     let (on_curve_scr, on_curve_hints) = G2Affine::hinted_is_on_curve(t4.t.x, t4.t.y);
@@ -1111,8 +1112,8 @@ mod test {
         ];
         let q4 = [
             ark_ff::BigInt::<4>::one(),
-            ark_ff::BigInt::<4>::one(),
             ark_ff::BigInt::<4>::zero(),
+            ark_ff::BigInt::<4>::one(),
             ark_ff::BigInt::<4>::zero(),
         ];
 
@@ -1286,7 +1287,7 @@ mod test {
 
         let t3 = t4; // ark_bn254::G2Affine::rand(&mut prng);
         let q3 = q4; //ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::new_unchecked(-p4.x, -p4.y); //ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = ark_bn254::G1Affine::new_unchecked(p4.x, -p4.y); //ark_bn254::G1Affine::rand(&mut prng);
 
         let t2 = ark_bn254::G2Affine::rand(&mut prng);
         let q2 = ark_bn254::G2Affine::rand(&mut prng);

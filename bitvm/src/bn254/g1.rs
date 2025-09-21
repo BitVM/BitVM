@@ -139,7 +139,16 @@ impl G1Affine {
         }
     }
 
+    pub fn check(element: &ark_bn254::G1Affine) {
+        assert!(
+            (element.is_on_curve() && element.is_in_correct_subgroup_assuming_on_curve())
+            || (element.x == ark_bn254::Fq::ZERO && element.y == ark_bn254::Fq::ZERO)
+            || (element.x == ark_bn254::Fq::ONE && element.y == ark_bn254::Fq::ONE)
+        )
+    }
+
     pub fn push(element: ark_bn254::G1Affine) -> Script {
+        Self::check(&element);
         script! {
             { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
@@ -150,11 +159,13 @@ impl G1Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
         let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
         let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
-        ark_bn254::G1Affine {
+        let element = ark_bn254::G1Affine {
             x: BigUint::from_slice(&x).into(),
             y: BigUint::from_slice(&y).into(),
             infinity: false,
-        }
+        };
+        Self::check(&element);
+        element
     }
 
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {

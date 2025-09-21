@@ -109,7 +109,16 @@ impl G2Affine {
         (scr, hints)
     }
 
+    pub fn check(element: &ark_bn254::G2Affine) {
+        assert!(
+            (element.is_on_curve() && element.is_in_correct_subgroup_assuming_on_curve())
+            || (element.x == ark_bn254::Fq2::ZERO && element.y == ark_bn254::Fq2::ZERO)
+            || (element.x == ark_bn254::Fq2::ONE && element.y == ark_bn254::Fq2::ONE)
+        )
+    }
+
     pub fn push(element: ark_bn254::G2Affine) -> Script {
+        Self::check(&element);
         script! {
             { Fq2::push(element.x) }
             { Fq2::push(element.y) }
@@ -122,11 +131,13 @@ impl G2Affine {
         let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
-        ark_bn254::G2Affine {
+        let element = ark_bn254::G2Affine {
             x,
             y,
             infinity: false,
-        }
+        };
+        Self::check(&element);
+        element
     }
 }
 
