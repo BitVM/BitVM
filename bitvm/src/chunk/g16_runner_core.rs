@@ -444,7 +444,7 @@ fn raw_input_proof_to_segments(
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::AffinePairing;
+    use crate::{bn254::ell_coeffs::AffinePairing, chunk::elements::NormG1Affine};
     use ark_bn254::Bn254;
     use ark_ec::{bn::BnConfig, AffineRepr, CurveGroup};
     use ark_ff::{AdditiveGroup, Field};
@@ -594,9 +594,9 @@ mod test {
         let mut f = cinv;
 
         let mut ts = qs.clone();
-        let ps: Vec<ark_bn254::G1Affine> = ps
+        let ps: Vec<NormG1Affine> = ps
             .iter()
-            .map(|p1| ark_bn254::G1Affine::new_unchecked(-p1.x / p1.y, p1.y.inverse().unwrap()))
+            .map(|p1| NormG1Affine::from(*p1))
             .collect();
         let num_pairings = ps.len();
         for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
@@ -612,9 +612,9 @@ mod test {
                 let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
                 let neg_bias = alpha * t.x - t.y;
                 let mut le0 = alpha;
-                le0.mul_assign_by_fp(&p.x);
+                le0.mul_assign_by_fp(&p.x());
                 let mut le1 = neg_bias;
-                le1.mul_assign_by_fp(&p.y);
+                le1.mul_assign_by_fp(&p.y());
                 let mut le = ark_bn254::Fq12::ZERO;
                 le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                 le.c1.c0 = le0;
@@ -643,9 +643,9 @@ mod test {
                     let neg_bias = alpha * t.x - t.y;
 
                     let mut le0 = alpha;
-                    le0.mul_assign_by_fp(&p.x);
+                    le0.mul_assign_by_fp(&p.x());
                     let mut le1 = neg_bias;
-                    le1.mul_assign_by_fp(&p.y);
+                    le1.mul_assign_by_fp(&p.y());
                     let mut le = ark_bn254::Fq12::ZERO;
                     le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                     le.c1.c0 = le0;
@@ -678,9 +678,9 @@ mod test {
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -703,9 +703,9 @@ mod test {
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -790,9 +790,9 @@ mod test {
         let mut g = cinv.c1;
 
         let mut ts = qs.clone();
-        let ps: Vec<ark_bn254::G1Affine> = ps
+        let ps: Vec<NormG1Affine> = ps
             .iter()
-            .map(|p1| ark_bn254::G1Affine::new_unchecked(-p1.x / p1.y, p1.y.inverse().unwrap()))
+            .map(|p1| NormG1Affine::from(*p1))
             .collect();
         let num_pairings = ps.len();
 
@@ -828,9 +828,9 @@ mod test {
                 let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
                 let neg_bias = alpha * t.x - t.y;
                 let mut le0 = alpha;
-                le0.mul_assign_by_fp(&p.x);
+                le0.mul_assign_by_fp(&p.x());
                 let mut le1 = neg_bias;
-                le1.mul_assign_by_fp(&p.y);
+                le1.mul_assign_by_fp(&p.y());
                 let mut le = ark_bn254::Fq12::ZERO;
                 le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                 le.c1.c0 = le0;
@@ -842,7 +842,7 @@ mod test {
                 ts[i] = (t + t).into_affine();
             }
             (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
-                true, None, None, t4, ps[2], None, ps[1], t3, None, ps[0], t2, None,
+                true, None, None, t4, ps[2].inner(), None, ps[1].inner(), t3, None, ps[0].inner(), t2, None,
             );
             total_script_size += temp_scr.len();
 
@@ -876,9 +876,9 @@ mod test {
                     let neg_bias = alpha * t.x - t.y;
 
                     let mut le0 = alpha;
-                    le0.mul_assign_by_fp(&p.x);
+                    le0.mul_assign_by_fp(&p.x());
                     let mut le1 = neg_bias;
-                    le1.mul_assign_by_fp(&p.y);
+                    le1.mul_assign_by_fp(&p.y());
                     let mut le = ark_bn254::Fq12::ZERO;
                     le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                     le.c1.c0 = le0;
@@ -896,12 +896,12 @@ mod test {
                     Some(false),
                     Some(ate_bit),
                     t4,
-                    ps[2],
+                    ps[2].inner(),
                     Some(qs[2]),
-                    ps[1],
+                    ps[1].inner(),
                     t3,
                     Some(qs[1]),
-                    ps[0],
+                    ps[0].inner(),
                     t2,
                     Some(qs[0]),
                 );
@@ -958,9 +958,9 @@ mod test {
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -976,12 +976,12 @@ mod test {
             Some(true),
             Some(1),
             t4,
-            ps[2],
+            ps[2].inner(),
             Some(qs[2]),
-            ps[1],
+            ps[1].inner(),
             t3,
             Some(qs[1]),
-            ps[0],
+            ps[0].inner(),
             t2,
             Some(qs[0]),
         );
@@ -1009,9 +1009,9 @@ mod test {
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -1027,12 +1027,12 @@ mod test {
             Some(true),
             Some(-1),
             t4,
-            ps[2],
+            ps[2].inner(),
             Some(qs[2]),
-            ps[1],
+            ps[1].inner(),
             t3,
             Some(qs[1]),
-            ps[0],
+            ps[0].inner(),
             t2,
             Some(qs[0]),
         );

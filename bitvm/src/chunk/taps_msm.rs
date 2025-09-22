@@ -348,8 +348,8 @@ mod test {
             let (hint_out, input_is_valid, op_scr, mut hint_script) = chunk_hash_p(t, q);
             assert!(input_is_valid);
             assert_eq!(r, hint_out);
-            let t = DataType::G1Data(t);
-            let hint_out = DataType::G1Data(hint_out);
+            let t = DataType::G1Data(t.into());
+            let hint_out = DataType::G1Data(hint_out.into());
             hint_script.extend_from_slice(&t.to_witness(ElementType::G1));
 
             let mut output_hash = hint_out.to_hash();
@@ -412,11 +412,11 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index - 1].0)
+                DataType::G1Data(hints_msm[msm_chunk_index - 1].0.into())
             } else {
-                DataType::G1Data(ark_bn254::G1Affine::identity())
+                DataType::G1Data(ark_bn254::G1Affine::identity().into())
             };
-            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
+            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0.into());
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
@@ -487,11 +487,11 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(!input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index - 1].0)
+                DataType::G1Data(hints_msm[msm_chunk_index - 1].0.into())
             } else {
-                DataType::G1Data(ark_bn254::G1Affine::identity())
+                DataType::G1Data(ark_bn254::G1Affine::identity().into())
             };
-            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
+            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0.into());
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

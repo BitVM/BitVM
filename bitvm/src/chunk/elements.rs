@@ -7,7 +7,7 @@ use crate::{
         wrap_hasher::BLAKE3_HASH_LENGTH,
     },
 };
-use ark_ff::Field;
+use ark_ff::{AdditiveGroup, Field};
 use num_bigint::{BigInt, BigUint};
 use std::fmt::Debug;
 
@@ -25,10 +25,90 @@ pub enum DataType {
     G2EvalData(ElemG2Eval),
 
     /// G1Affine points
-    G1Data(ark_bn254::G1Affine),
+    //G1Data(ark_bn254::G1Affine),
+    G1Data(NormG1Affine),
 
     /// BigIntegers - Field & Scalar elements
     U256Data(ark_ff::BigInt<4>),
+}
+
+// Represent point by (1, c0/c1 * u) and avoid any point computation, see more: https://github.com/BitVM/BitVM/issues/213
+#[derive(Debug, Clone, Copy)]
+pub struct NormG1Affine {
+    pub inner: ark_bn254::G1Affine,
+    pub zero: bool, // if it's (0, 0u) or (1, 1u)
+}
+
+impl NormG1Affine {
+    pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
+        let inner = ark_bn254::G1Affine::new_unchecked(x, y);
+        if y == ark_bn254::Fq::ZERO {
+            return Self {
+                inner,
+                zero: true,
+            }
+        } 
+
+        let ny = y.inverse().expect("y must be nonzero for normalization");
+        let nx = -(x * y);
+        let np = ark_bn254::G1Affine::new(nx, ny);
+
+        assert!(np.is_on_curve(), "Normalized point not on curve");
+        assert!(
+            np.is_in_correct_subgroup_assuming_on_curve(),
+            "Normalized point not in subgroup"
+        );
+
+        Self {
+            inner: np,
+            zero: false,
+        }
+    }
+
+    pub fn x(&self) -> ark_bn254::Fq {
+        self.inner.x
+    }
+
+    pub fn y(&self) -> ark_bn254::Fq {
+        self.inner.y
+    }
+
+    pub fn inner(&self) -> ark_bn254::G1Affine {
+        self.inner
+    }
+}
+
+impl From<ark_bn254::G1Affine> for NormG1Affine {
+    fn from(p: ark_bn254::G1Affine) -> Self {
+        if p.y == ark_bn254::Fq::ZERO {
+            return Self {
+                inner: p,
+                zero: true,
+            };
+        }
+        let (x, y) = (p.x, p.y);
+        let ny = y.inverse().expect("y must be nonzero for normalization");
+        let nx = -(x * ny);
+        let np = ark_bn254::G1Affine::new_unchecked(nx, ny);
+        Self {
+            inner: np,
+            zero: false,
+        }
+    }
+}
+
+impl From<NormG1Affine> for ark_bn254::G1Affine {
+    fn from(norm: NormG1Affine) -> Self {
+        if norm.zero {
+            return norm.inner;
+        }
+
+        let (nx, ny) = (norm.inner.x, norm.inner.y);
+        let y = ny.inverse().expect("ny must be nonzero for denormalization");
+        let x = -nx * y; // equivalent to -nx / ny⁻¹
+
+        ark_bn254::G1Affine::new_unchecked(x, y)
+    }
 }
 
 /// Helper macro to reduce repetitive code for `TryFrom<Element>`.
@@ -55,7 +135,7 @@ macro_rules! impl_try_from_element {
 
 impl_try_from_element!(ark_bn254::Fq6, { Fp6Data });
 impl_try_from_element!(ark_ff::BigInt<4>, { U256Data });
-impl_try_from_element!(ark_bn254::G1Affine, { G1Data });
+impl_try_from_element!(NormG1Affine, { G1Data });
 impl_try_from_element!(ElemG2Eval, { G2EvalData });
 
 /// Abstraction over DataType that specifies how the
@@ -207,6 +287,7 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
+                let r: ark_bn254::G1Affine = r.into();
                 let hash = extern_hash_fps(vec![r.x, r.y]);
                 CompressedStateObject::Hash(hash)
             }
@@ -228,7 +309,7 @@ impl DataType {
                 as_hints_g2evalmultype_g2evaldata(*g)
             }
             (ElementType::Fp6, DataType::Fp6Data(r)) => as_hints_fq6type_fq6data(*r),
-            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data(*r),
+            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data((*r).into()),
             (ElementType::FieldElem, DataType::U256Data(r)) => as_hints_fieldelemtype_u256data(*r),
             (ElementType::ScalarElem, DataType::U256Data(r)) => {
                 as_hints_scalarelemtype_u256data(*r)
@@ -386,12 +467,13 @@ impl ElemG2Eval {
 mod test {
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq},
-        chunk::{elements::ElementType, wrap_hasher::hash_messages},
+        chunk::{elements::{ElementType, NormG1Affine}, wrap_hasher::hash_messages},
         execute_script,
     };
+    use ark_ec::AffineRepr;
     use ark_ff::UniformRand;
     use bitcoin_script::script;
-    use rand::SeedableRng;
+    use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
     #[test]
@@ -413,5 +495,23 @@ mod test {
         };
         let res = execute_script(scr);
         assert!(!res.success && res.final_stack.len() == 1);
+    }
+
+    #[test]
+    fn test_norm_g1affine() {
+        let zero = ark_bn254::G1Affine::zero();
+        assert_eq!(
+            zero,
+            <NormG1Affine as Into<ark_bn254::G1Affine>>::into(NormG1Affine::from(zero))
+        );
+
+        let mut rng = thread_rng();
+        (0..100).into_iter().for_each(|_| {
+            let random = ark_bn254::G1Affine::rand(&mut rng);
+            assert_eq!(
+                random,
+                <NormG1Affine as Into<ark_bn254::G1Affine>>::into(NormG1Affine::from(random))
+            );
+        });
     }
 }

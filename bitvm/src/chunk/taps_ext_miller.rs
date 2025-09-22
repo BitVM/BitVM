@@ -5,7 +5,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::g2::{hinted_mul_by_char_on_phi_sq_q, G2Affine};
 use crate::bn254::utils::*;
-use crate::chunk::elements::ElementType;
+use crate::chunk::elements::{ElementType, NormG1Affine};
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -47,11 +47,7 @@ pub(crate) fn chunk_precompute_p(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-
-        let pdy = py.inverse().unwrap();
-        let pdx = -px * pdy;
-
-        ark_bn254::G1Affine::new_unchecked(pdx, pdy)
+        NormG1Affine::from(p).inner()
     } else {
         mock_pd
     };
@@ -143,11 +139,7 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-
-        let pdy = p.y.inverse().unwrap();
-        let pdx = -p.x * pdy;
-
-        ark_bn254::G1Affine::new_unchecked(pdx, pdy)
+        NormG1Affine::from(p).inner()
     } else {
         mock_pd
     };
@@ -649,7 +641,7 @@ mod test {
         for (p, disprovable) in dataset {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p(p[1], p[0]);
             assert_eq!(input_is_valid, !disprovable);
-            let hint_out = DataType::G1Data(hint_out);
+            let hint_out = DataType::G1Data(hint_out.into());
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}
@@ -699,8 +691,8 @@ mod test {
         for (p, disprovable) in dataset {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
-            let hint_out = DataType::G1Data(hint_out);
-            let p = DataType::G1Data(p);
+            let hint_out = DataType::G1Data(hint_out.into());
+            let p = DataType::G1Data(p.into());
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

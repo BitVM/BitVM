@@ -5,7 +5,7 @@ use crate::{
         msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM},
         utils::Hint,
     },
-    chunk::taps_msm::chunk_msm,
+    chunk::{elements::NormG1Affine, taps_msm::chunk_msm},
 };
 
 use super::{
@@ -218,9 +218,12 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     ];
 
     let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
-    let p4: ark_bn254::G1Affine = in_p4.result.0.try_into().unwrap();
-    let p3: ark_bn254::G1Affine = in_p3.result.0.try_into().unwrap();
-    let p2: ark_bn254::G1Affine = in_p2.result.0.try_into().unwrap();
+    let p4: NormG1Affine = in_p4.result.0.try_into().unwrap();
+    let p3: NormG1Affine = in_p3.result.0.try_into().unwrap();
+    let p2: NormG1Affine = in_p2.result.0.try_into().unwrap();
+    let p4 = p4.into();
+    let p3 = p3.into();
+    let p2 = p2.into();
     let mut q4: Option<ark_bn254::G2Affine> = None;
 
     if !is_dbl {
@@ -320,7 +323,7 @@ pub(crate) fn wrap_hint_msm(
                 id: (segment_id + msm_chunk_index) as u32,
                 is_valid_input,
                 parameter_ids: input_segment_info,
-                result: (DataType::G1Data(hout_msm), ElementType::G1),
+                result: (DataType::G1Data(hout_msm.into()), ElementType::G1),
                 hints: op_hints,
                 scr_type: ScriptType::MSM(msm_chunk_index as u32),
                 scr: scr.compile(),
@@ -341,7 +344,7 @@ pub(crate) fn wrap_hint_msm(
                 id: (segment_id as u32 + msm_chunk_index),
                 is_valid_input: true,
                 parameter_ids: input_segment_info,
-                result: (DataType::G1Data(hout_msm), ElementType::G1),
+                result: (DataType::G1Data(hout_msm.into()), ElementType::G1),
                 hints: vec![],
                 scr_type: ScriptType::MSM(msm_chunk_index),
                 scr: ScriptBuf::new(),
@@ -359,7 +362,8 @@ pub(crate) fn wrap_hint_hash_p(
 ) -> Segment {
     let input_segment_info = vec![(in_t.id, ElementType::G1)];
 
-    let t = in_t.result.0.try_into().unwrap();
+    let t: NormG1Affine = in_t.result.0.try_into().unwrap();
+    let t = t.into();
     let (mut p3, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
     if !skip {
@@ -370,7 +374,7 @@ pub(crate) fn wrap_hint_hash_p(
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3), ElementType::G1),
+        result: (DataType::G1Data(p3.into()), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashP,
         scr: scr.compile(),
@@ -401,7 +405,7 @@ pub(crate) fn wrap_hints_precompute_p(
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3d), ElementType::G1),
+        result: (DataType::G1Data(p3d.into()), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputeP,
         scr: scr.compile(),
@@ -418,15 +422,15 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
     if !skip {
-        let in_p = in_p.result.0.try_into().unwrap();
-        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p);
+        let in_p: NormG1Affine = in_p.result.0.try_into().unwrap();
+        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
     }
 
     Segment {
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3d), ElementType::G1),
+        result: (DataType::G1Data(p3d.into()), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputePFromHash,
         scr: scr.compile(),

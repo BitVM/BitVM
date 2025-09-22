@@ -1743,9 +1743,9 @@ mod test {
 
         let t4 = DataType::G2EvalData(t4);
         let hint_out = DataType::G2EvalData(hint_out);
-        let p4 = DataType::G1Data(p4);
-        let p3 = DataType::G1Data(p3);
-        let p2 = DataType::G1Data(p2);
+        let p4 = DataType::G1Data(p4.into());
+        let p3 = DataType::G1Data(p3.into());
+        let p2 = DataType::G1Data(p2.into());
 
         let mut preimage_hints = vec![];
         preimage_hints.extend_from_slice(&t4.to_witness(ElementType::G2EvalPoint));
