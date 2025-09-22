@@ -594,10 +594,7 @@ mod test {
         let mut f = cinv;
 
         let mut ts = qs.clone();
-        let ps: Vec<NormG1Affine> = ps
-            .iter()
-            .map(|p1| NormG1Affine::from(*p1))
-            .collect();
+        let ps: Vec<NormG1Affine> = ps.iter().map(|p1| NormG1Affine::from(*p1)).collect();
         let num_pairings = ps.len();
         for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let ate_bit = ark_bn254::Config::ATE_LOOP_COUNT[itr - 1];
@@ -790,10 +787,7 @@ mod test {
         let mut g = cinv.c1;
 
         let mut ts = qs.clone();
-        let ps: Vec<NormG1Affine> = ps
-            .iter()
-            .map(|p1| NormG1Affine::from(*p1))
-            .collect();
+        let ps: Vec<NormG1Affine> = ps.iter().map(|p1| NormG1Affine::from(*p1)).collect();
         let num_pairings = ps.len();
 
         let mut total_script_size = 0;
@@ -842,7 +836,18 @@ mod test {
                 ts[i] = (t + t).into_affine();
             }
             (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
-                true, None, None, t4, ps[2].inner(), None, ps[1].inner(), t3, None, ps[0].inner(), t2, None,
+                true,
+                None,
+                None,
+                t4,
+                ps[2].inner(),
+                None,
+                ps[1].inner(),
+                t3,
+                None,
+                ps[0].inner(),
+                t2,
+                None,
             );
             total_script_size += temp_scr.len();
 

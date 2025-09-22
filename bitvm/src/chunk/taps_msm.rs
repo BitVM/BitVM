@@ -42,7 +42,7 @@ pub(crate) fn chunk_msm(
     for (msm_tap_index, chunk) in chunks.iter().enumerate() {
         let ops_script = if msm_tap_index == 0 {
             script! {
-                { G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
+                { G1Affine::push( G1Affine::zero_in_script() )}
                 { Fr::fromaltstack()}
 
                 { Fr::copy(0)}
@@ -137,7 +137,7 @@ pub(crate) fn chunk_hash_p(
 ) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
     // r (gp3) = t(msm) + q(vk0)
     let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
-    // Assume that the hint_in_t and hint_in_t are valid points, and there is no case that public inputs are zero scalars. 
+    // Assume that the hint_in_t and hint_in_t are valid points, and there is no case that public inputs are zero scalars.
     let t = ark_bn254::G1Affine::new(tx, ty);
     let q = ark_bn254::G1Affine::new(qx, qy);
     let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);

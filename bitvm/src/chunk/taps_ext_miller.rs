@@ -43,7 +43,7 @@ pub(crate) fn chunk_precompute_p(
     let (eval_xy, eval_hints) = hinted_from_eval_points(p);
 
     let valid_point = are_valid_field_elems && py != ark_bn254::Fq::ZERO && p.is_on_curve();
-    let mock_pd = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
+    let mock_pd = G1Affine::one_in_script();
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
@@ -135,7 +135,7 @@ pub(crate) fn chunk_precompute_p_from_hash(
     let (eval_xy, eval_hints) = hinted_from_eval_points(p);
 
     let valid_point = py_is_not_zero && p.is_on_curve();
-    let mock_pd = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
+    let mock_pd = G1Affine::one_in_script();
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);

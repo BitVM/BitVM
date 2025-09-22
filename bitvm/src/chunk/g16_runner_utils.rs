@@ -2,6 +2,7 @@ use crate::{
     bn254::{
         fp254impl::Fp254Impl,
         fr::Fr,
+        g2::G2Affine,
         msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM},
         utils::Hint,
     },
@@ -240,6 +241,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
             ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
             ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
         ));
+        G2Affine::check(&q4.unwrap());
     }
 
     let (mut dbladd, mut is_valid_input, mut scr, mut op_hints) =
@@ -514,10 +516,12 @@ pub(crate) fn wrap_chunk_final_verify(
     let q4xc1: ark_ff::BigInt<4> = in_q4[1].result.0.try_into().unwrap();
     let q4yc0: ark_ff::BigInt<4> = in_q4[2].result.0.try_into().unwrap();
     let q4yc1: ark_ff::BigInt<4> = in_q4[3].result.0.try_into().unwrap();
+    // We will do on_curve and in_subgroup check before point operation
     let q4 = ark_bn254::G2Affine::new_unchecked(
         ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
         ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
     );
+    G2Affine::check(&q4);
 
     let (mut is_valid, mut scr, mut op_hints) = (true, script! {}, vec![]);
     if !skip {

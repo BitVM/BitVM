@@ -142,9 +142,17 @@ impl G1Affine {
     pub fn check(element: &ark_bn254::G1Affine) {
         assert!(
             (element.is_on_curve() && element.is_in_correct_subgroup_assuming_on_curve())
-            || (element.x == ark_bn254::Fq::ZERO && element.y == ark_bn254::Fq::ZERO)
-            || (element.x == ark_bn254::Fq::ONE && element.y == ark_bn254::Fq::ONE)
+                || element == &Self::zero_in_script()
+                || element == &Self::one_in_script()
         )
+    }
+
+    pub fn one_in_script() -> ark_bn254::G1Affine {
+        ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
+    }
+
+    pub fn zero_in_script() -> ark_bn254::G1Affine {
+        ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
     }
 
     pub fn push(element: ark_bn254::G1Affine) -> Script {

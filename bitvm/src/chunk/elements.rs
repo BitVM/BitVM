@@ -43,11 +43,8 @@ impl NormG1Affine {
     pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
         let inner = ark_bn254::G1Affine::new_unchecked(x, y);
         if y == ark_bn254::Fq::ZERO {
-            return Self {
-                inner,
-                zero: true,
-            }
-        } 
+            return Self { inner, zero: true };
+        }
 
         let ny = y.inverse().expect("y must be nonzero for normalization");
         let nx = -(x * y);
@@ -73,6 +70,7 @@ impl NormG1Affine {
         self.inner.y
     }
 
+    /// The inner point should never be used for point operations.
     pub fn inner(&self) -> ark_bn254::G1Affine {
         self.inner
     }
@@ -104,7 +102,9 @@ impl From<NormG1Affine> for ark_bn254::G1Affine {
         }
 
         let (nx, ny) = (norm.inner.x, norm.inner.y);
-        let y = ny.inverse().expect("ny must be nonzero for denormalization");
+        let y = ny
+            .inverse()
+            .expect("ny must be nonzero for denormalization");
         let x = -nx * y; // equivalent to -nx / ny⁻¹
 
         ark_bn254::G1Affine::new_unchecked(x, y)
@@ -467,7 +467,10 @@ impl ElemG2Eval {
 mod test {
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq},
-        chunk::{elements::{ElementType, NormG1Affine}, wrap_hasher::hash_messages},
+        chunk::{
+            elements::{ElementType, NormG1Affine},
+            wrap_hasher::hash_messages,
+        },
         execute_script,
     };
     use ark_ec::AffineRepr;

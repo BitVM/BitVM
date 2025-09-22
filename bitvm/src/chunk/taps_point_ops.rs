@@ -120,8 +120,7 @@ fn utils_point_double_eval(
 ) {
     let mut hints = vec![];
 
-    let t_is_zero = t.is_zero()
-        || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
+    let t_is_zero = t.is_zero() || (t == G2Affine::zero_in_script()); // t is none or Some(0)
     let is_valid_input = !t_is_zero;
     let (alpha, bias) = if is_valid_input {
         let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
@@ -142,8 +141,7 @@ fn utils_point_double_eval(
         dbl_le1.mul_assign_by_fp(&p.y);
         ((t + t).into_affine(), (dbl_le0, dbl_le1))
     } else {
-        let zero_pt =
-            ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO);
+        let zero_pt = G2Affine::zero_in_script();
         (zero_pt, (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO))
     };
 
@@ -247,10 +245,8 @@ fn utils_point_add_eval(
     hints.extend(precomp_q_hint);
 
     // Point Add
-    let t_is_zero = t.is_zero()
-        || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
-    let q_is_zero = qq.is_zero()
-        || (qq == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // q is none or Some(0)
+    let t_is_zero = t.is_zero() || (t == G2Affine::zero_in_script()); // t is none or Some(0)
+    let q_is_zero = qq.is_zero() || (qq == G2Affine::zero_in_script()); // q is none or Some(0)
     let is_valid_input = !t_is_zero && !q_is_zero && t != -qq;
 
     // if it's valid input, you can compute line coefficients, else hardcode degenerate values
@@ -273,11 +269,13 @@ fn utils_point_add_eval(
     let (hinted_script2, hint2) = hinted_affine_add_line(t.x, qq.x, alpha, -bias);
     let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y, alpha, -bias);
 
-    // check t and qq are in the same subgroup 
-    assert!(t.is_on_curve());
-    assert!(t.is_in_correct_subgroup_assuming_on_curve());
-    assert!(qq.is_on_curve());
-    assert!(qq.is_in_correct_subgroup_assuming_on_curve());
+    // check t and qq are in the same subgroup
+    assert!(
+        t.is_on_curve()
+            && t.is_in_correct_subgroup_assuming_on_curve()
+            && qq.is_on_curve()
+            && qq.is_in_correct_subgroup_assuming_on_curve()
+    );
 
     // if it's valid input, you can compute result, else degenerate values
     let result = if is_valid_input {
@@ -287,8 +285,7 @@ fn utils_point_add_eval(
         add_le1.mul_assign_by_fp(&p.y);
         ((t + qq).into_affine(), (add_le0, add_le1))
     } else {
-        let zero_pt =
-            ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO);
+        let zero_pt = G2Affine::zero_in_script();
         (zero_pt, (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO))
     };
 
@@ -609,9 +606,7 @@ fn point_ops_and_multiply_line_evals_step_1(
     };
 
     let input_is_valid = one_plus_fg_j_sq != ark_bn254::Fq6::ZERO
-        && (nt != ark_bn254::G2Affine::zero()
-            && nt
-                != ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO));
+        && (nt != ark_bn254::G2Affine::zero() && nt != G2Affine::zero_in_script());
 
     (hout, input_is_valid, scr, hints)
 }
@@ -820,8 +815,7 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
 pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
-    let mock_t = ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE);
-
+    let mock_t = G2Affine::one_in_script();
     let are_valid_fps = ts.iter().filter(|f| **f < ark_bn254::Fq::MODULUS).count() == ts.len();
 
     let mut t4: ElemG2Eval = ElemG2Eval {
