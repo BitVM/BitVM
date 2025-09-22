@@ -156,7 +156,11 @@ impl G1Affine {
     }
 
     pub fn push(element: ark_bn254::G1Affine) -> Script {
+        let mut element = element;
         Self::check(&element);
+        if element == Self::zero_in_script() {
+            element = ark_bn254::G1Affine::zero();
+        }
         script! {
             { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
@@ -167,11 +171,14 @@ impl G1Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
         let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
         let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
-        let element = ark_bn254::G1Affine {
+        let mut element = ark_bn254::G1Affine {
             x: BigUint::from_slice(&x).into(),
             y: BigUint::from_slice(&y).into(),
             infinity: false,
         };
+        if element == Self::zero_in_script() {
+            element = ark_bn254::G1Affine::zero();
+        }
         Self::check(&element);
         element
     }
@@ -569,27 +576,39 @@ mod test {
     #[test]
     fn test_read_from_stack() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let a = ark_bn254::G1Affine::rand(&mut prng);
-        let script = script! {
-            {G1Affine::push(a)}
-        };
+        [
+            ark_bn254::G1Affine::zero(),
+            ark_bn254::G1Affine::rand(&mut prng),
+        ]
+        .into_iter()
+        .for_each(|a| {
+            let script = script! {
+                {G1Affine::push(a)}
+            };
 
-        let res = execute_script(script);
-        let witness = extract_witness_from_stack(res);
-        let recovered_a = G1Affine::read_from_stack(witness);
+            let res = execute_script(script);
+            let witness = extract_witness_from_stack(res);
+            let recovered_a = G1Affine::read_from_stack(witness);
 
-        assert_eq!(a, recovered_a);
+            assert_eq!(a, recovered_a);
+        });
 
-        let b = ark_bn254::G2Affine::rand(&mut prng);
-        let script = script! {
-            {G2Affine::push(b)}
-        };
+        [
+            ark_bn254::G2Affine::zero(),
+            ark_bn254::G2Affine::rand(&mut prng),
+        ]
+        .into_iter()
+        .for_each(|b| {
+            let script = script! {
+                {G2Affine::push(b)}
+            };
 
-        let res = execute_script(script);
-        let witness = extract_witness_from_stack(res);
-        let recovered_b = G2Affine::read_from_stack(witness);
+            let res = execute_script(script);
+            let witness = extract_witness_from_stack(res);
+            let recovered_b = G2Affine::read_from_stack(witness);
 
-        assert_eq!(b, recovered_b);
+            assert_eq!(b, recovered_b);
+        });
     }
 
     #[test]

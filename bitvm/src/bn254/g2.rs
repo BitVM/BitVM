@@ -7,6 +7,7 @@ use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{script, Script};
 use ark_ec::bn::BnConfig;
+use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
 use std::str::FromStr;
@@ -139,11 +140,14 @@ impl G2Affine {
         let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
-        let element = ark_bn254::G2Affine {
+        let mut element = ark_bn254::G2Affine {
             x,
             y,
             infinity: false,
         };
+        if element == Self::zero_in_script() {
+            element = ark_bn254::G2Affine::zero();
+        }
         Self::check(&element);
         element
     }
