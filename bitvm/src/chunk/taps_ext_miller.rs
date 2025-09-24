@@ -19,7 +19,7 @@ use super::wrap_hasher::hash_utils::{hash_fp6, hash_g2acc_with_hashed_le};
 pub(crate) fn chunk_precompute_p(
     hint_in_py: ark_ff::BigInt<4>,
     hint_in_px: ark_ff::BigInt<4>,
-) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
+) -> (G1AffineIsomorphic, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
     // is py and px less than f_p i.e. are they field elements
@@ -47,9 +47,9 @@ pub(crate) fn chunk_precompute_p(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        G1AffineIsomorphic::from(p).inner()
+        G1AffineIsomorphic::new(p.x, p.y)
     } else {
-        mock_pd
+        mock_pd.into()
     };
 
     let drop_and_return_scr = script! {
@@ -114,7 +114,7 @@ pub(crate) fn chunk_precompute_p(
 // precompute P
 pub(crate) fn chunk_precompute_p_from_hash(
     hint_in_p: ark_bn254::G1Affine,
-) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
+) -> (G1AffineIsomorphic, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
     let mut px: ark_bn254::Fq = ark_bn254::Fq::ONE;
@@ -139,9 +139,9 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        G1AffineIsomorphic::from(p).inner()
+        G1AffineIsomorphic::new(p.x, p.y)
     } else {
-        mock_pd
+        mock_pd.into()
     };
 
     let drop_and_return_scr = script! {
@@ -641,7 +641,7 @@ mod test {
         for (p, disprovable) in dataset {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p(p[1], p[0]);
             assert_eq!(input_is_valid, !disprovable);
-            let hint_out = DataType::G1Data(hint_out.into());
+            let hint_out = DataType::G1Data(hint_out);
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}
@@ -691,7 +691,7 @@ mod test {
         for (p, disprovable) in dataset {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
-            let hint_out = DataType::G1Data(hint_out.into());
+            let hint_out = DataType::G1Data(hint_out);
             let p = DataType::G1Data(p.into());
 
             let bitcom_scr = script! {

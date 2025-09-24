@@ -40,24 +40,9 @@ pub struct G1AffineIsomorphic {
 
 impl G1AffineIsomorphic {
     pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
-        let inner = ark_bn254::G1Affine::new_unchecked(x, y);
-        if y == ark_bn254::Fq::ZERO {
-            return Self { inner, zero: true };
-        }
-
-        let ny = y.inverse().expect("y must be nonzero for normalization");
-        let nx = -(x * y);
-        let np = ark_bn254::G1Affine::new(nx, ny);
-
-        assert!(np.is_on_curve(), "Normalized point not on curve");
-        assert!(
-            np.is_in_correct_subgroup_assuming_on_curve(),
-            "Normalized point not in subgroup"
-        );
-
         Self {
-            inner: np,
-            zero: false,
+            inner: ark_bn254::G1Affine::new_unchecked(x, y),
+            zero: y == ark_bn254::Fq::ZERO,
         }
     }
 

@@ -394,8 +394,12 @@ pub(crate) fn wrap_hints_precompute_p(
         (in_px.id, ElementType::FieldElem),
     ];
 
-    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
-        (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (
+        ark_bn254::G1Affine::identity().into(),
+        true,
+        script! {},
+        vec![],
+    );
     // let mut tap_prex = script! {};
     if !skip {
         let in_py = in_py.result.0.try_into().unwrap();
@@ -407,7 +411,7 @@ pub(crate) fn wrap_hints_precompute_p(
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3d.into()), ElementType::G1),
+        result: (DataType::G1Data(p3d), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputeP,
         scr: scr.compile(),
@@ -421,8 +425,12 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
 ) -> Segment {
     let input_segment_info = vec![(in_p.id, ElementType::G1)];
 
-    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
-        (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (
+        ark_bn254::G1Affine::identity().into(),
+        true,
+        script! {},
+        vec![],
+    );
     if !skip {
         let in_p: G1AffineIsomorphic = in_p.result.0.try_into().unwrap();
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
