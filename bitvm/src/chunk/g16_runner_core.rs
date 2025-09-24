@@ -444,7 +444,7 @@ fn raw_input_proof_to_segments(
 
 #[cfg(test)]
 mod test {
-    use crate::{bn254::ell_coeffs::AffinePairing, chunk::elements::NormG1Affine};
+    use crate::{bn254::ell_coeffs::AffinePairing, chunk::elements::G1AffineIsomorphic};
     use ark_bn254::Bn254;
     use ark_ec::{bn::BnConfig, AffineRepr, CurveGroup};
     use ark_ff::{AdditiveGroup, Field};
@@ -594,7 +594,8 @@ mod test {
         let mut f = cinv;
 
         let mut ts = qs.clone();
-        let ps: Vec<NormG1Affine> = ps.iter().map(|p1| NormG1Affine::from(*p1)).collect();
+        let ps: Vec<G1AffineIsomorphic> =
+            ps.iter().map(|p1| G1AffineIsomorphic::from(*p1)).collect();
         let num_pairings = ps.len();
         for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let ate_bit = ark_bn254::Config::ATE_LOOP_COUNT[itr - 1];
@@ -787,7 +788,8 @@ mod test {
         let mut g = cinv.c1;
 
         let mut ts = qs.clone();
-        let ps: Vec<NormG1Affine> = ps.iter().map(|p1| NormG1Affine::from(*p1)).collect();
+        let ps: Vec<G1AffineIsomorphic> =
+            ps.iter().map(|p1| G1AffineIsomorphic::from(*p1)).collect();
         let num_pairings = ps.len();
 
         let mut total_script_size = 0;

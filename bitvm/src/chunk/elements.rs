@@ -25,21 +25,20 @@ pub enum DataType {
     G2EvalData(ElemG2Eval),
 
     /// G1Affine points
-    //G1Data(ark_bn254::G1Affine),
-    G1Data(NormG1Affine),
+    G1Data(G1AffineIsomorphic),
 
     /// BigIntegers - Field & Scalar elements
     U256Data(ark_ff::BigInt<4>),
 }
 
-// Represent point by (1, c0/c1 * u) and avoid any point computation, see more: https://github.com/BitVM/BitVM/issues/213
+// Represent point by (-x/y, 1/y) and avoid any point computation, see more: https://github.com/BitVM/BitVM/issues/213
 #[derive(Debug, Clone, Copy)]
-pub struct NormG1Affine {
+pub struct G1AffineIsomorphic {
     pub inner: ark_bn254::G1Affine,
-    pub zero: bool, // if it's (0, 0u) or (1, 1u)
+    pub zero: bool, // true if y is zero
 }
 
-impl NormG1Affine {
+impl G1AffineIsomorphic {
     pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
         let inner = ark_bn254::G1Affine::new_unchecked(x, y);
         if y == ark_bn254::Fq::ZERO {
@@ -76,7 +75,7 @@ impl NormG1Affine {
     }
 }
 
-impl From<ark_bn254::G1Affine> for NormG1Affine {
+impl From<ark_bn254::G1Affine> for G1AffineIsomorphic {
     fn from(p: ark_bn254::G1Affine) -> Self {
         if p.y == ark_bn254::Fq::ZERO {
             return Self {
@@ -95,8 +94,8 @@ impl From<ark_bn254::G1Affine> for NormG1Affine {
     }
 }
 
-impl From<NormG1Affine> for ark_bn254::G1Affine {
-    fn from(norm: NormG1Affine) -> Self {
+impl From<G1AffineIsomorphic> for ark_bn254::G1Affine {
+    fn from(norm: G1AffineIsomorphic) -> Self {
         if norm.zero {
             return norm.inner;
         }
@@ -135,7 +134,7 @@ macro_rules! impl_try_from_element {
 
 impl_try_from_element!(ark_bn254::Fq6, { Fp6Data });
 impl_try_from_element!(ark_ff::BigInt<4>, { U256Data });
-impl_try_from_element!(NormG1Affine, { G1Data });
+impl_try_from_element!(G1AffineIsomorphic, { G1Data });
 impl_try_from_element!(ElemG2Eval, { G2EvalData });
 
 /// Abstraction over DataType that specifies how the
@@ -468,7 +467,7 @@ mod test {
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq},
         chunk::{
-            elements::{ElementType, NormG1Affine},
+            elements::{ElementType, G1AffineIsomorphic},
             wrap_hasher::hash_messages,
         },
         execute_script,
@@ -505,7 +504,7 @@ mod test {
         let zero = ark_bn254::G1Affine::zero();
         assert_eq!(
             zero,
-            <NormG1Affine as Into<ark_bn254::G1Affine>>::into(NormG1Affine::from(zero))
+            <G1AffineIsomorphic as Into<ark_bn254::G1Affine>>::into(G1AffineIsomorphic::from(zero))
         );
 
         let mut rng = thread_rng();
@@ -513,7 +512,9 @@ mod test {
             let random = ark_bn254::G1Affine::rand(&mut rng);
             assert_eq!(
                 random,
-                <NormG1Affine as Into<ark_bn254::G1Affine>>::into(NormG1Affine::from(random))
+                <G1AffineIsomorphic as Into<ark_bn254::G1Affine>>::into(G1AffineIsomorphic::from(
+                    random
+                ))
             );
         });
     }

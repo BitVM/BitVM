@@ -6,7 +6,7 @@ use crate::{
         msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM},
         utils::Hint,
     },
-    chunk::{elements::NormG1Affine, taps_msm::chunk_msm},
+    chunk::{elements::G1AffineIsomorphic, taps_msm::chunk_msm},
 };
 
 use super::{
@@ -219,9 +219,9 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     ];
 
     let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
-    let p4: NormG1Affine = in_p4.result.0.try_into().unwrap();
-    let p3: NormG1Affine = in_p3.result.0.try_into().unwrap();
-    let p2: NormG1Affine = in_p2.result.0.try_into().unwrap();
+    let p4: G1AffineIsomorphic = in_p4.result.0.try_into().unwrap();
+    let p3: G1AffineIsomorphic = in_p3.result.0.try_into().unwrap();
+    let p2: G1AffineIsomorphic = in_p2.result.0.try_into().unwrap();
     let p4 = p4.into();
     let p3 = p3.into();
     let p2 = p2.into();
@@ -364,7 +364,7 @@ pub(crate) fn wrap_hint_hash_p(
 ) -> Segment {
     let input_segment_info = vec![(in_t.id, ElementType::G1)];
 
-    let t: NormG1Affine = in_t.result.0.try_into().unwrap();
+    let t: G1AffineIsomorphic = in_t.result.0.try_into().unwrap();
     let t = t.into();
     let (mut p3, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
@@ -424,7 +424,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
     if !skip {
-        let in_p: NormG1Affine = in_p.result.0.try_into().unwrap();
+        let in_p: G1AffineIsomorphic = in_p.result.0.try_into().unwrap();
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
     }
 

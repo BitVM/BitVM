@@ -5,7 +5,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::g2::{hinted_mul_by_char_on_phi_sq_q, G2Affine};
 use crate::bn254::utils::*;
-use crate::chunk::elements::{ElementType, NormG1Affine};
+use crate::chunk::elements::{ElementType, G1AffineIsomorphic};
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -47,7 +47,7 @@ pub(crate) fn chunk_precompute_p(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        NormG1Affine::from(p).inner()
+        G1AffineIsomorphic::from(p).inner()
     } else {
         mock_pd
     };
@@ -139,7 +139,7 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        NormG1Affine::from(p).inner()
+        G1AffineIsomorphic::from(p).inner()
     } else {
         mock_pd
     };
