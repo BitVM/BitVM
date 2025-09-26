@@ -351,9 +351,11 @@ fn utils_point_add_eval(
                     for _ in 0..Fq::N_LIMBS * 2 {
                         OP_DEPTH OP_1SUB OP_ROLL
                     }
+                    { Fq2::copy(0) } { Fq2::check_validity() }
                     for _ in 0..Fq::N_LIMBS * 2 {
                         OP_DEPTH OP_1SUB OP_ROLL
                     }
+                    { Fq2::copy(0) } { Fq2::check_validity() }
                     // [qx, qy, tx, ty, c3, c4]
                     {Fq2::roll(6)} {Fq2::roll(6)}
                     // [qx, qy, c3, c4, tx, ty]
