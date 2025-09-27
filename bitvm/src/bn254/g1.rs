@@ -184,11 +184,11 @@ impl G1Affine {
                     for _ in 0..Fq::N_LIMBS {
                         OP_DEPTH OP_1SUB OP_ROLL
                     }
-                    { Fq::copy(0) } { Fq::check_validity() }
+                    { Fq::copy(0) } { Fq::check_validity_and_consume() }
                     for _ in 0..Fq::N_LIMBS {
                         OP_DEPTH OP_1SUB OP_ROLL
                     }                                  // qx qy tx ty c3 c4
-                    { Fq::copy(0) } { Fq::check_validity() }
+                    { Fq::copy(0) } { Fq::check_validity_and_consume() }
                     { Fq::copy(1) }
                     { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
                     { Fq::copy(5) }
@@ -319,11 +319,11 @@ impl G1Affine {
                 for _ in 0..Fq::N_LIMBS {
                     OP_DEPTH OP_1SUB OP_ROLL
                 }                                        // -bias, ...,  x, y, alpha
-                { Fq::copy(0) } { Fq::check_validity() }
+                { Fq::copy(0) } { Fq::check_validity_and_consume() }
                 for _ in 0..Fq::N_LIMBS {
                     OP_DEPTH OP_1SUB OP_ROLL
                 }                                        // x, y, alpha, -bias
-                { Fq::copy(0) } { Fq::check_validity() }
+                { Fq::copy(0) } { Fq::check_validity_and_consume() }
                 { Fq::copy(1) }                          // x, y, alpha, -bias, alpha
                 { Fq::copy(1) }                          // x, y, alpha, -bias, alpha, -bias
                 { Fq::copy(5) }                          // x, y, alpha, -bias, alpha, -bias, x
@@ -507,7 +507,7 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         for _ in 0..Fq::N_LIMBS {
             OP_DEPTH OP_1SUB OP_ROLL
         }
-        { Fq::copy(0) } { Fq::check_validity() }
+        { Fq::copy(0) } { Fq::check_validity_and_consume() }
         {Fq2::fromaltstack()}
         // [hints, yinv, x, y]
         {Fq::copy(2)}

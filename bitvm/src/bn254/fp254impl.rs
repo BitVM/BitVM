@@ -165,7 +165,7 @@ pub trait Fp254Impl {
     }
 
     /// check that Self::N_LIMBS elements on stack form a valid FpImpl element
-    fn check_validity() -> Script {
+    fn check_validity_and_consume() -> Script {
         script! {
             { U254::copy(0) }
             { U254::check_validity() }
@@ -927,7 +927,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hint, y
             }
-            { Fq::copy(0) } { Fq::check_validity() }
+            { Fq::copy(0) } { Fq::check_validity_and_consume() }
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hint, q
             }

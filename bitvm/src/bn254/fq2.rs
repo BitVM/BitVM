@@ -156,10 +156,10 @@ impl Fq2 {
         }
     }
 
-    pub fn check_validity() -> Script {
+    pub fn check_validity_and_consume() -> Script {
         script! {
-            { Fq::check_validity() }
-            { Fq::check_validity() }
+            { Fq::check_validity_and_consume() }
+            { Fq::check_validity_and_consume() }
         }
     }
 
