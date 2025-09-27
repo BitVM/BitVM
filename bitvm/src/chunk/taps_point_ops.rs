@@ -1255,6 +1255,7 @@ mod test {
             for h in &preimage_hints {
                 {h.push()}
             }
+            { Fq2::toaltstack() }
             {ops_scr}
             OP_VERIFY // valid input
              // [t4, p4, p3, p2, nt4, gpf, fg, p2le]
@@ -1369,6 +1370,7 @@ mod test {
             for h in &preimage_hints {
                 {h.push()}
             }
+            { Fq2::toaltstack() }
             {ops_scr}
             OP_VERIFY // valid input
              // [t4, p4, p3, p2, nt4, gpf, fg, p2le]
