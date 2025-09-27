@@ -5,6 +5,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::utils::Hint;
 use crate::treepp::*;
 use ark_ff::PrimeField;
+use bitcoin::opcodes::all::{OP_2DROP, OP_DROP, OP_FROMALTSTACK};
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
 use num_traits::Num;
@@ -165,17 +166,6 @@ pub trait Fp254Impl {
             { U254::lessthan(1, 0) }
 
             OP_FROMALTSTACK OP_BOOLAND
-        }
-    }
-
-    /// check that Self::N_LIMBS elements on stack form a valid FpImpl element
-    fn check_validity_and_consume() -> Script {
-        script! {
-            { U254::copy(0) }
-            { U254::check_validity() }
-            { Self::push_modulus() }
-            { U254::lessthan(1, 0) }
-            OP_VERIFY
         }
     }
 
@@ -977,6 +967,28 @@ pub trait Fp254Impl {
                 } else {
                     OP_SWAP
                 }
+            }
+        }
+    }
+
+    fn check_validity_and_keep_element() -> Script {
+        script !{
+            { Self::check_validity() }
+            for _ in 0..Self::N_LIMBS {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
+    /// check that Self::N_LIMBS elements on stack form a valid FpImpl element
+    fn check_validity_and_consume() -> Script {
+        script! {
+            { Self::check_validity_and_keep_element() }
+            for _ in 0..(Self::N_LIMBS / 2) {
+                OP_2DROP
+            }
+            if Self::N_LIMBS % 2 == 1 {
+                OP_DROP
             }
         }
     }
