@@ -307,7 +307,7 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
             for _ in 0..Fq::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL
             }
-            { Fq::copy(0) } { Fq::check_validity_and_consume() }
+            { Fq::check_validity_and_keep_element() }
         }
     };
     let script = script! {

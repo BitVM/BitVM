@@ -156,10 +156,13 @@ impl Fq2 {
         }
     }
 
-    pub fn check_validity_and_consume() -> Script {
+    pub fn check_validity_and_keep_element() -> Script {
         script! {
-            { Fq::check_validity_and_consume() }
-            { Fq::check_validity_and_consume() }
+            { Fq::check_validity() }
+            { Fq::check_validity_and_keep_element() }
+            for _ in 0..Fq::N_LIMBS {
+                OP_FROMALTSTACK
+            }
         }
     }
 
@@ -360,7 +363,7 @@ impl Fq2 {
 
     pub fn check_validity() -> Script {
         script! {
-            for _ in 0..2 { 
+            for _ in 0..2 {
                 { Fq::check_validity() }
             }
         }
