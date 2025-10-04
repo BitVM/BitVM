@@ -270,7 +270,6 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
-                //let r: ark_bn254::G1Affine = r.into();
                 let hash = extern_hash_fps(vec![r.x(), r.y()]);
                 CompressedStateObject::Hash(hash)
             }

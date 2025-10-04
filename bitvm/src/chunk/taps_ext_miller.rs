@@ -691,6 +691,7 @@ mod test {
         let dataset = vec![(p1, false), (p2, true), (p3, true), (p4, true)];
 
         for (p, disprovable) in dataset {
+            println!("p: {:?}, disprovable: {:?} ", p, disprovable);
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
             let hint_out = DataType::G1Data(hint_out);

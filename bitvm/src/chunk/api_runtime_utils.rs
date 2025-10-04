@@ -685,6 +685,7 @@ mod test {
         let assts = get_assertion_from_segments(&segments);
         println!("execute_script_from_assertion");
         let res = execute_script_from_assertion(&segments, assts);
+        println!("res: {:?}", res);
         assert!(res.is_none());
 
         println!("get_segments_from_assertion");
@@ -725,5 +726,50 @@ mod test {
         let res = execute_script_from_signature(&segments, signed_assts, &disprove_scripts);
         assert!(res.is_none());
         println!("finished test");
+    }
+
+    #[test]
+    fn zellic_test_public_input_zero() {
+        use ark_bn254::{G1Affine, G2Affine};
+        println!("Preparing Input");
+        let public_input_int: u64 = 0;
+        let public_input: ark_bn254::Fr = ark_bn254::Fr::from(public_input_int);
+        let vk: ark_groth16::VerifyingKey<Bn254> = ark_groth16::VerifyingKey {
+            alpha_g1: G1Affine::generator(),
+            beta_g2: G2Affine::generator(),
+            gamma_g2: G2Affine::generator(),
+            delta_g2: G2Affine::generator(),
+            gamma_abc_g1: vec![G1Affine::generator(), G1Affine::generator()],
+        };
+        let proof: ark_groth16::Proof<Bn254> = ark_groth16::Proof {
+            a: G1Affine::generator()
+                .mul_bigint([1 * 1 + 1 * 1 + public_input_int * 1 + 1 * 1])
+                .into_affine(),
+            b: G2Affine::generator(),
+            c: G1Affine::generator(),
+        };
+        let scalars = [public_input];
+        println!("public input: {:?}", public_input);
+
+        // verify proof
+        let pvk = ark_groth16::prepare_verifying_key(&vk);
+        let res = ark_groth16::Groth16::<ark_bn254::Bn254>::verify_proof(&pvk, &proof, &scalars);
+        println!("verify proof: {:?}", res);
+        assert!(res.is_ok() && res.unwrap());
+
+        // generate segments
+        println!("get_segments_from_groth16_proof");
+        let (success, segments) = get_segments_from_groth16_proof(proof, scalars.to_vec(), &vk);
+        println!("Finished generating segments, success={}", success);
+        assert!(success);
+        // segments to assertion
+        println!("get_assertion_from_segments");
+        let assts = get_assertion_from_segments(&segments);
+        println!("execute_script_from_assertion");
+        let res = execute_script_from_assertion(&segments, assts);
+        println!("Result is none: {}", res.is_none());
+        if res.is_some() {
+            println!("Result id: {}", res.unwrap().0);
+        }
     }
 }

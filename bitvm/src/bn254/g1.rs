@@ -186,7 +186,8 @@ impl G1Affine {
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
 
-        let (alpha, bias) = if !t.is_zero() && !q.is_zero() {
+        println!("calcating alpha and bias, {:?} {:?}", t, q);
+        let (alpha, bias) = if !t.is_zero() && !q.is_zero() && t != q {
             let alpha = (t.y - q.y) / (t.x - q.x);
             let bias = t.y - alpha * t.x;
             (alpha, bias)
@@ -194,7 +195,9 @@ impl G1Affine {
             (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
         };
 
+        println!("calcating hinted chord_line");
         let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, alpha);
+        //        println!("calcating hinted add: {:?}, {:?}", hinted_script1, hint1);
         let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, alpha);
 
         let script = script! {        // tx ty qx qy
