@@ -138,12 +138,6 @@ pub(crate) fn chunk_hash_p(
     use ark_ec::AffineRepr;
     // r (gp3) = t(msm) + q(vk0)
     let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
-    println!(
-        "t: {:?}, q: {:?}, t+q: {:?}",
-        hint_in_t,
-        hint_in_q,
-        hint_in_t + hint_in_q
-    );
     let t = if hint_in_t.is_zero() {
         ark_bn254::G1Affine::zero()
     } else {
