@@ -423,9 +423,6 @@ fn point_ops_and_multiply_line_evals_step_1(
     q2: Option<ark_bn254::G2Affine>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     // a, b, tx, ty, px, py
-    let p3 = p3.inner();
-    let p2 = p2.inner();
-
     let ((nt, (le4_0, le4_1)), nt_scr, nt_hints) = if is_dbl {
         //[a, b, tx, ty, px, py]
         utils_point_double_eval(t4, p4)
@@ -491,16 +488,16 @@ fn point_ops_and_multiply_line_evals_step_1(
     let fpg = le4 + g;
 
     let (hinted_ell_t2, hints_ell_t2) =
-        hinted_ell_by_constant_affine(p2.x, p2.y, alpha_t2, neg_bias_t2);
+        hinted_ell_by_constant_affine(p2.x(), p2.y(), alpha_t2, neg_bias_t2);
     let mut t2le_a = alpha_t2;
-    t2le_a.mul_assign_by_fp(&p2.x);
+    t2le_a.mul_assign_by_fp(&p2.x());
     let mut t2le_b = neg_bias_t2;
-    t2le_b.mul_assign_by_fp(&p2.y);
+    t2le_b.mul_assign_by_fp(&p2.y());
 
     let mut t3le_a = alpha_t3;
-    t3le_a.mul_assign_by_fp(&p3.x);
+    t3le_a.mul_assign_by_fp(&p3.x());
     let mut t3le_b = neg_bias_t3;
-    t3le_b.mul_assign_by_fp(&p3.y);
+    t3le_b.mul_assign_by_fp(&p3.y());
 
     let mut hints = vec![];
     hints.extend_from_slice(&nt_hints);

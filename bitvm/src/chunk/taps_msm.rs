@@ -413,21 +413,17 @@ mod test {
             assert!(input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
                 //DataType::G1Data(hints_msm[msm_chunk_index - 1].0.into())
-                DataType::G1Data(G1AffineIsomorphic {
-                    inner: hints_msm[msm_chunk_index - 1].0,
-                    zero: false,
-                })
+                DataType::G1Data(G1AffineIsomorphic::new(
+                    hints_msm[msm_chunk_index - 1].0.x,
+                    hints_msm[msm_chunk_index - 1].0.y,
+                ))
             } else {
-                //DataType::G1Data(ark_bn254::G1Affine::identity().into())
-                DataType::G1Data(G1AffineIsomorphic {
-                    inner: ark_bn254::G1Affine::identity(),
-                    zero: true,
-                })
+                DataType::G1Data(ark_bn254::G1Affine::identity().into())
             };
-            let hint_out = DataType::G1Data(G1AffineIsomorphic {
-                inner: hints_msm[msm_chunk_index].0,
-                zero: false,
-            });
+            let hint_out = DataType::G1Data(G1AffineIsomorphic::new(
+                hints_msm[msm_chunk_index].0.x,
+                hints_msm[msm_chunk_index].0.y,
+            ));
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

@@ -7,6 +7,7 @@ use crate::{
         wrap_hasher::BLAKE3_HASH_LENGTH,
     },
 };
+use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::{BigInt, BigUint};
 use std::fmt::Debug;
@@ -34,28 +35,26 @@ pub enum DataType {
 // Represent point by (-x/y, 1/y) and avoid any point computation, see more: https://github.com/BitVM/BitVM/issues/213
 #[derive(Debug, Clone, Copy)]
 pub struct G1AffineIsomorphic {
-    pub inner: ark_bn254::G1Affine,
-    pub zero: bool, // true if y is zero
+    x: ark_bn254::Fq, // -x/y
+    y: ark_bn254::Fq, // 1/y
+    pub zero: bool,   // true if y is zero
 }
 
 impl G1AffineIsomorphic {
     pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
         Self {
-            inner: ark_bn254::G1Affine::new_unchecked(x, y),
+            x,
+            y,
             zero: y == ark_bn254::Fq::ZERO,
         }
     }
 
     pub fn x(&self) -> ark_bn254::Fq {
-        self.inner.x
+        self.x
     }
 
     pub fn y(&self) -> ark_bn254::Fq {
-        self.inner.y
-    }
-
-    pub fn inner(&self) -> ark_bn254::G1Affine {
-        self.inner
+        self.y
     }
 }
 
@@ -63,28 +62,29 @@ impl From<ark_bn254::G1Affine> for G1AffineIsomorphic {
     fn from(p: ark_bn254::G1Affine) -> Self {
         if p.y == ark_bn254::Fq::ZERO {
             return Self {
-                inner: p,
+                x: p.x,
+                y: p.y,
                 zero: true,
             };
         }
         let (x, y) = (p.x, p.y);
         let ny = y.inverse().expect("y must be nonzero for normalization");
         let nx = -(x * ny);
-        let np = ark_bn254::G1Affine::new_unchecked(nx, ny);
         Self {
-            inner: np,
+            x: nx,
+            y: ny,
             zero: false,
         }
     }
 }
 
 impl From<G1AffineIsomorphic> for ark_bn254::G1Affine {
-    fn from(norm: G1AffineIsomorphic) -> Self {
-        if norm.zero {
-            return norm.inner;
+    fn from(p: G1AffineIsomorphic) -> Self {
+        if p.zero && p.x() == ark_bn254::Fq::ZERO {
+            return ark_bn254::G1Affine::zero();
         }
 
-        let (nx, ny) = (norm.inner.x, norm.inner.y);
+        let (nx, ny) = (p.x, p.y);
         let y = ny
             .inverse()
             .expect("ny must be nonzero for denormalization");
@@ -484,7 +484,7 @@ mod test {
     }
 
     #[test]
-    fn test_norm_g1affine() {
+    fn test_g1affine_isomorphic() {
         let zero = ark_bn254::G1Affine::zero();
         assert_eq!(
             zero,

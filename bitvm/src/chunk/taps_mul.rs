@@ -2,6 +2,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::g2::hinted_ell_by_constant_affine;
 use crate::bn254::utils::Hint;
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
+use crate::chunk::elements::G1AffineIsomorphic;
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::treepp::*;
 use ark_ff::{AdditiveGroup, Field};
@@ -152,17 +153,17 @@ pub(crate) fn utils_multiply_by_line_eval(
     f: ark_bn254::Fq6,
     alpha_t3: ark_bn254::Fq2,
     neg_bias_t3: ark_bn254::Fq2,
-    p3: ark_bn254::G1Affine,
+    p3: G1AffineIsomorphic,
 ) -> (ark_bn254::Fq6, Script, Vec<Hint>) {
     assert_eq!(f.c2, ark_bn254::Fq2::ZERO);
 
     let mut l0_t3 = alpha_t3;
-    l0_t3.mul_assign_by_fp(&p3.x);
+    l0_t3.mul_assign_by_fp(&p3.x());
     let mut l1_t3 = neg_bias_t3;
-    l1_t3.mul_assign_by_fp(&p3.y);
+    l1_t3.mul_assign_by_fp(&p3.y());
 
     let (hinted_ell_t3, hints_ell_t3) =
-        hinted_ell_by_constant_affine(p3.x, p3.y, alpha_t3, neg_bias_t3);
+        hinted_ell_by_constant_affine(p3.x(), p3.y(), alpha_t3, neg_bias_t3);
 
     let g = ark_bn254::Fq6::new(l0_t3, l1_t3, ark_bn254::Fq2::ZERO);
     let (_, fg_scr, fg_hints) = utils_fq6_ss_mul(g, f);
