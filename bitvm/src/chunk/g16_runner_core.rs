@@ -838,18 +838,7 @@ mod test {
                 ts[i] = (t + t).into_affine();
             }
             (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
-                true,
-                None,
-                None,
-                t4,
-                ps[2].inner(),
-                None,
-                ps[1].inner(),
-                t3,
-                None,
-                ps[0].inner(),
-                t2,
-                None,
+                true, None, None, t4, ps[2], None, ps[1], t3, None, ps[0], t2, None,
             );
             total_script_size += temp_scr.len();
 
@@ -903,12 +892,12 @@ mod test {
                     Some(false),
                     Some(ate_bit),
                     t4,
-                    ps[2].inner(),
+                    ps[2],
                     Some(qs[2]),
-                    ps[1].inner(),
+                    ps[1],
                     t3,
                     Some(qs[1]),
-                    ps[0].inner(),
+                    ps[0],
                     t2,
                     Some(qs[0]),
                 );
@@ -983,12 +972,12 @@ mod test {
             Some(true),
             Some(1),
             t4,
-            ps[2].inner(),
+            ps[2],
             Some(qs[2]),
-            ps[1].inner(),
+            ps[1],
             t3,
             Some(qs[1]),
-            ps[0].inner(),
+            ps[0],
             t2,
             Some(qs[0]),
         );
@@ -1034,12 +1023,12 @@ mod test {
             Some(true),
             Some(-1),
             t4,
-            ps[2].inner(),
+            ps[2],
             Some(qs[2]),
-            ps[1].inner(),
+            ps[1],
             t3,
             Some(qs[1]),
-            ps[0].inner(),
+            ps[0],
             t2,
             Some(qs[0]),
         );

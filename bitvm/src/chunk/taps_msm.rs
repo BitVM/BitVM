@@ -178,7 +178,7 @@ mod test {
     use crate::{
         bn254::{fq::Fq, fq2::Fq2, msm::dfs_with_constant_mul},
         chunk::{
-            elements::{CompressedStateObject, DataType},
+            elements::{CompressedStateObject, DataType, G1AffineIsomorphic},
             helpers::extern_hash_nibbles,
         },
     };
@@ -348,8 +348,8 @@ mod test {
             let (hint_out, input_is_valid, op_scr, mut hint_script) = chunk_hash_p(t, q);
             assert!(input_is_valid);
             assert_eq!(r, hint_out);
-            let t = DataType::G1Data(t.into());
-            let hint_out = DataType::G1Data(hint_out.into());
+            let t = DataType::G1Data(G1AffineIsomorphic::new(t.x, t.y));
+            let hint_out = DataType::G1Data(G1AffineIsomorphic::new(hint_out.x, hint_out.y));
             hint_script.extend_from_slice(&t.to_witness(ElementType::G1));
 
             let mut output_hash = hint_out.to_hash();
@@ -412,11 +412,22 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index - 1].0.into())
+                //DataType::G1Data(hints_msm[msm_chunk_index - 1].0.into())
+                DataType::G1Data(G1AffineIsomorphic {
+                    inner: hints_msm[msm_chunk_index - 1].0,
+                    zero: false,
+                })
             } else {
-                DataType::G1Data(ark_bn254::G1Affine::identity().into())
+                //DataType::G1Data(ark_bn254::G1Affine::identity().into())
+                DataType::G1Data(G1AffineIsomorphic {
+                    inner: ark_bn254::G1Affine::identity(),
+                    zero: true,
+                })
             };
-            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0.into());
+            let hint_out = DataType::G1Data(G1AffineIsomorphic {
+                inner: hints_msm[msm_chunk_index].0,
+                zero: false,
+            });
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

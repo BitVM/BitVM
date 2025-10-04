@@ -47,9 +47,10 @@ pub(crate) fn chunk_precompute_p(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        G1AffineIsomorphic::new(p.x, p.y)
+        G1AffineIsomorphic::from(p)
     } else {
-        mock_pd.into()
+        //mock_pd.into()
+        G1AffineIsomorphic::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
     };
 
     let drop_and_return_scr = script! {
@@ -139,9 +140,10 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        G1AffineIsomorphic::new(p.x, p.y)
+        G1AffineIsomorphic::from(p)
     } else {
-        mock_pd.into()
+        //mock_pd.into()
+        G1AffineIsomorphic::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
     };
 
     let drop_and_return_scr = script! {
@@ -692,7 +694,7 @@ mod test {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
             let hint_out = DataType::G1Data(hint_out);
-            let p = DataType::G1Data(p.into());
+            let p = DataType::G1Data(G1AffineIsomorphic::new(p.x, p.y));
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

@@ -54,7 +54,6 @@ impl G1AffineIsomorphic {
         self.inner.y
     }
 
-    /// The inner point should never be used for point operations.
     pub fn inner(&self) -> ark_bn254::G1Affine {
         self.inner
     }
@@ -271,8 +270,8 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
-                let r: ark_bn254::G1Affine = r.into();
-                let hash = extern_hash_fps(vec![r.x, r.y]);
+                //let r: ark_bn254::G1Affine = r.into();
+                let hash = extern_hash_fps(vec![r.x(), r.y()]);
                 CompressedStateObject::Hash(hash)
             }
         }
@@ -293,7 +292,7 @@ impl DataType {
                 as_hints_g2evalmultype_g2evaldata(*g)
             }
             (ElementType::Fp6, DataType::Fp6Data(r)) => as_hints_fq6type_fq6data(*r),
-            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data((*r).into()),
+            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data(r),
             (ElementType::FieldElem, DataType::U256Data(r)) => as_hints_fieldelemtype_u256data(*r),
             (ElementType::ScalarElem, DataType::U256Data(r)) => {
                 as_hints_scalarelemtype_u256data(*r)
@@ -353,8 +352,8 @@ fn as_hints_scalarelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
     hints
 }
 
-fn as_hints_g1type_g1data(r: ark_bn254::G1Affine) -> Vec<Hint> {
-    let hints = vec![Hint::Fq(r.x), Hint::Fq(r.y)];
+fn as_hints_g1type_g1data(r: &G1AffineIsomorphic) -> Vec<Hint> {
+    let hints = vec![Hint::Fq(r.x()), Hint::Fq(r.y())];
     hints
 }
 

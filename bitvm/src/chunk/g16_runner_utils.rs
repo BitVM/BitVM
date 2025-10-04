@@ -222,9 +222,16 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     let p4: G1AffineIsomorphic = in_p4.result.0.try_into().unwrap();
     let p3: G1AffineIsomorphic = in_p3.result.0.try_into().unwrap();
     let p2: G1AffineIsomorphic = in_p2.result.0.try_into().unwrap();
-    let p4 = p4.into();
-    let p3 = p3.into();
-    let p2 = p2.into();
+
+    //let p4: ark_bn254::G1Affine = p4.into();
+    //let p4 = G1AffineIsomorphic::new(p4.x, p4.y);
+
+    //let p3: ark_bn254::G1Affine = p3.into();
+    //let p3 = G1AffineIsomorphic::new(p3.x, p3.y);
+
+    //let p2: ark_bn254::G1Affine = p2.into();
+    //let p2 = G1AffineIsomorphic::new(p2.x, p2.y);
+
     let mut q4: Option<ark_bn254::G2Affine> = None;
 
     if !is_dbl {
