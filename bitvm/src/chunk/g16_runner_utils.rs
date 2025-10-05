@@ -19,6 +19,7 @@ use super::{
         chunk_point_ops_and_multiply_line_evals_step_2,
     },
 };
+use ark_ec::AffineRepr;
 use ark_ff::Field;
 use bitcoin::ScriptBuf;
 use bitcoin_script::script;
@@ -390,6 +391,7 @@ pub(crate) fn wrap_hints_precompute_p(
         (in_py.id, ElementType::FieldElem),
         (in_px.id, ElementType::FieldElem),
     ];
+    println!("input_segment_info: {:?}", input_segment_info);
 
     let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (
         ark_bn254::G1Affine::identity().into(),
@@ -398,11 +400,21 @@ pub(crate) fn wrap_hints_precompute_p(
         vec![],
     );
     // let mut tap_prex = script! {};
+    println!("segment id: {segment_id}, skip: {skip}");
     if !skip {
         let in_py = in_py.result.0.try_into().unwrap();
         let in_px = in_px.result.0.try_into().unwrap();
+        println!("in px: {:?}, in py: {:?} ", in_px, in_py);
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p(in_py, in_px);
     }
+    println!(
+        "ONE: {:?}, p3d: {:?}",
+        G1AffineIsomorphic::from(ark_bn254::G1Affine::new_unchecked(
+            ark_bn254::Fq::ONE,
+            ark_bn254::Fq::ONE
+        )),
+        p3d
+    );
 
     Segment {
         id: segment_id as u32,
@@ -428,16 +440,28 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
         script! {},
         vec![],
     );
+    println!("segment id: {segment_id}, skip: {skip}");
     if !skip {
         let in_p: G1AffineIsomorphic = in_p.result.0.try_into().unwrap();
+
+        let ttt: ark_bn254::G1Affine = in_p.into();
+        println!("in_p: {:?}, ttt: {:?}", in_p, ttt);
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
     }
+    println!(
+        "ONE: {:?}, p3d: {:?}",
+        G1AffineIsomorphic::from(ark_bn254::G1Affine::new_unchecked(
+            ark_bn254::Fq::ONE,
+            ark_bn254::Fq::ONE
+        )),
+        p3d
+    );
 
     Segment {
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3d.into()), ElementType::G1),
+        result: (DataType::G1Data(p3d), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputePFromHash,
         scr: scr.compile(),

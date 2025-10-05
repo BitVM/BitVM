@@ -138,11 +138,13 @@ pub(crate) fn chunk_hash_p(
     use ark_ec::AffineRepr;
     // r (gp3) = t(msm) + q(vk0)
     let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
+    println!("tx: {:?}, ty: {:?} ", tx, ty);
     let t = if hint_in_t.is_zero() {
         ark_bn254::G1Affine::zero()
     } else {
-        ark_bn254::G1Affine::new(tx, ty)
+        ark_bn254::G1Affine::new_unchecked(tx, ty)
     };
+    println!("qx: {:?}, qy: {:?} ", qx, qy);
     let q = ark_bn254::G1Affine::new(qx, qy);
     let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
     let r = (hint_in_t + hint_in_q).into_affine();

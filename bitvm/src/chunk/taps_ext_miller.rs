@@ -49,7 +49,6 @@ pub(crate) fn chunk_precompute_p(
         hints.extend_from_slice(&eval_hints);
         G1AffineIsomorphic::from(p)
     } else {
-        //mock_pd.into()
         G1AffineIsomorphic::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
     };
 
@@ -687,11 +686,19 @@ mod test {
         let p1 = ark_bn254::G1Affine::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ZERO);
         let p3 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
-        let p4 = ark_bn254::G1Affine::new_unchecked(p1.x, p1.x);
-        let dataset = vec![(p1, false), (p2, true), (p3, true), (p4, true)];
+        let p4 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ONE);
+        let p5 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
+        let p6 = ark_bn254::G1Affine::new_unchecked(p1.x, p1.x);
+        let dataset = vec![
+            (p1, false),
+            (p2, true),
+            (p3, true),
+            (p4, true),
+            (p5, true),
+            (p6, true),
+        ];
 
         for (p, disprovable) in dataset {
-            println!("p: {:?}, disprovable: {:?} ", p, disprovable);
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
             let hint_out = DataType::G1Data(hint_out);

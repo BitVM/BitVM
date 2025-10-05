@@ -598,7 +598,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn full_e2e_exec_invalid_proof() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let proof_bytes: Vec<u8> = crate::chunk::api_runtime_utils::test::PROOF_BYTES.to_vec();
@@ -686,7 +685,6 @@ mod test {
 
     // Step 1: Anyone can Generate Operation (mul & hash) part of tapscript: same for all vks
     #[test]
-    #[ignore]
     fn test_fn_compile() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let mock_vk: ark_groth16::VerifyingKey<Bn254> =
@@ -707,7 +705,6 @@ mod test {
     // Step 2: Operator Generates keypairs and broadcasts pubkeys for a Bitvm setup;
     // Anyone can create Bitcomm part of tapscript; yields complete tapscript
     #[test]
-    #[ignore]
     fn test_fn_generate_tapscripts() {
         println!("start");
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
@@ -749,7 +746,6 @@ mod test {
     // Step 3: Operator Generates Assertions, Signs it and submit on chain
 
     #[test]
-    #[ignore]
     fn test_fn_generate_assertions() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let proof_bytes: Vec<u8> = crate::chunk::api_runtime_utils::test::PROOF_BYTES.to_vec();
@@ -763,7 +759,6 @@ mod test {
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
         let proof_asserts = generate_assertions(proof, public_inputs.to_vec(), &mock_vk).unwrap();
-        println!("signed_asserts {:?}", proof_asserts);
 
         std::fs::create_dir_all("bridge_data/chunker_data")
             .expect("Failed to create directory structure");
@@ -774,7 +769,6 @@ mod test {
 
     // Step 3: Operator Generates Assertions, Signs it and submit on chain
     #[test]
-    #[ignore]
     fn test_fn_generate_signatures() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let proof_bytes: Vec<u8> = crate::chunk::api_runtime_utils::test::PROOF_BYTES.to_vec();
@@ -802,7 +796,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_fn_validate_assertions() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let proof_bytes: Vec<u8> = crate::chunk::api_runtime_utils::test::PROOF_BYTES.to_vec();
@@ -848,7 +841,6 @@ mod test {
 
     // Step 4: Challenger finds fault given signatures
     #[test]
-    #[ignore]
     fn test_fn_disprove_invalid_assertions() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let proof_bytes: Vec<u8> = crate::chunk::api_runtime_utils::test::PROOF_BYTES.to_vec();

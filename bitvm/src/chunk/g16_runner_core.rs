@@ -98,16 +98,19 @@ pub(crate) fn groth16_generate_segments(
             if $seg.scr_type.is_final_script() {
                 if let DataType::U256Data(felem) = $seg.result.0 {
                     if felem != ark_ff::BigInt::<4>::one() {
+                        println!("Final validity check failed: {:?}", felem);
                         return false;
                     }
                 } else {
                     unreachable!();
                 }
             } else if $seg.is_valid_input == false {
+                println!("Input validity check failed at segment id: {:?}", $seg.id);
                 return false;
             } else {
                 let matches = compare(&$seg.result.0, claimed_assertions);
                 if matches.is_some() && matches.unwrap() == false {
+                    println!("Output validity check failed at segment id: {:?}", $seg.id);
                     return false;
                 }
             }
@@ -129,12 +132,15 @@ pub(crate) fn groth16_generate_segments(
 
     let pub_scalars = pub_scalars.to_vec();
 
+    println!("wrap_hints_precompute_p for p4");
     let p4 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp4y, &gp4x);
     push_compare_or_return!(p4);
 
+    println!("wrap_hints_precompute_p for p2");
     let p2 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp2y, &gp2x);
     push_compare_or_return!(p2);
 
+    println!("wrapping msm");
     let msms = wrap_hint_msm(
         skip_evaluation,
         all_output_hints.len(),
@@ -145,6 +151,7 @@ pub(crate) fn groth16_generate_segments(
         push_compare_or_return!(msm);
     }
 
+    println!("wrapping p_vk0");
     let p_vk0 = wrap_hint_hash_p(
         skip_evaluation,
         all_output_hints.len(),
@@ -153,15 +160,18 @@ pub(crate) fn groth16_generate_segments(
     );
     push_compare_or_return!(p_vk0);
 
+    println!("wrapping p3");
     let p3 = wrap_hints_precompute_p_from_hash(skip_evaluation, all_output_hints.len(), &p_vk0);
     push_compare_or_return!(p3);
 
+    println!("wrapping c and c_inv");
     let c = wrap_hint_hash_c(skip_evaluation, all_output_hints.len(), gc.clone());
     push_compare_or_return!(c);
 
     let gcinv = wrap_hint_hash_c_inv(skip_evaluation, all_output_hints.len(), gc);
     push_compare_or_return!(gcinv);
 
+    println!("wrapping t4 init");
     let mut t4 = wrap_hint_init_t4(
         skip_evaluation,
         all_output_hints.len(),
