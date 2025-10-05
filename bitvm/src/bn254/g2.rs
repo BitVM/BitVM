@@ -110,10 +110,6 @@ impl G2Affine {
         (scr, hints)
     }
 
-    pub fn one_in_script() -> ark_bn254::G2Affine {
-        ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE)
-    }
-
     pub fn zero_in_script() -> ark_bn254::G2Affine {
         ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
     }
@@ -914,7 +910,7 @@ mod test {
 
         // affine mode
         let coeffs = G2Prepared::from_affine(b);
-        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
+        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p.x, p.y);
         let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine_and_sparse_mul(
             f,
             -p.x / p.y,

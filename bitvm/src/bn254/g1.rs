@@ -139,10 +139,6 @@ impl G1Affine {
         }
     }
 
-    pub fn one_in_script() -> ark_bn254::G1Affine {
-        ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
-    }
-
     pub fn zero_in_script() -> ark_bn254::G1Affine {
         ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
     }
@@ -464,19 +460,20 @@ impl G1Affine {
 }
 
 /// input of func (params):
-///      p.x, p.y
+///      px, py
 /// Input Hints On Stack
-///      tmul hints, p.y_inverse
+///      tmul hints, py_inverse
 /// output on stack:
-///      x' = -p.x / p.y
+///      x' = -px / py
 pub fn hinted_x_from_eval_point(
-    p: ark_bn254::G1Affine,
+    px: ark_bn254::Fq,
+    py: ark_bn254::Fq,
     py_inv: ark_bn254::Fq,
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
-    let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
+    let (hinted_script1, hint1) = Fq::hinted_mul(1, py, 0, py_inv);
+    let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -px);
     let script = script! {   // Stack: [hints, pyd, px, py]
         {Fq::copy(2)}                        // Stack: [hints, pyd, px, py, pyd]
         {hinted_script1}
@@ -517,13 +514,13 @@ pub fn hinted_y_from_eval_point(py: ark_bn254::Fq, py_inv: ark_bn254::Fq) -> (Sc
 /// output on stack:
 ///      x' = -p.x / p.y
 ///      y' = 1 / p.y
-pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+pub fn hinted_from_eval_point(px: ark_bn254::Fq, py: ark_bn254::Fq) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let py_inv = p.y().unwrap().inverse().unwrap();
+    let py_inv = py.inverse().unwrap();
 
-    let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
-    let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
+    let (hinted_script1, hint1) = hinted_y_from_eval_point(py, py_inv);
+    let (hinted_script2, hint2) = hinted_x_from_eval_point(px, py, py_inv);
     let script = script! {
 
         // [hints, yinv, x, y]
@@ -544,13 +541,19 @@ pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     (script, hints)
 }
 
-pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+pub fn hinted_from_eval_points(px: ark_bn254::Fq, py: ark_bn254::Fq) -> (Script, Vec<Hint>, bool) {
     let mut hints = Vec::new();
 
-    let py_inv = p.y().unwrap().inverse().unwrap();
+    let p = ark_bn254::G1Affine::new_unchecked(px, py);
+    if p.is_zero() {
+        return (G1Affine::push_zero(), hints, true);
+    }
+    let valid_point = p.is_on_curve();
 
-    let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
-    let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
+    let py_inv = py.inverse().unwrap();
+
+    let (hinted_script1, hint1) = hinted_y_from_eval_point(py, py_inv);
+    let (hinted_script2, hint2) = hinted_x_from_eval_point(px, py, py_inv);
 
     let script = script! {
         // [yinv, hints,.., x, y]
@@ -574,7 +577,7 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     hints.extend(hint1);
     hints.extend(hint2);
 
-    (script, hints)
+    (script, hints, valid_point)
 }
 
 #[cfg(test)]
@@ -912,7 +915,7 @@ mod test {
     fn test_hinted_from_eval_point() {
         let mut prng = ChaCha20Rng::seed_from_u64(1);
         let p = ark_bn254::G1Affine::rand(&mut prng);
-        let (eval_scr, hints) = hinted_from_eval_point(p);
+        let (eval_scr, hints) = hinted_from_eval_point(p.x, p.y);
         let pyinv = p.y.inverse().unwrap();
 
         let script = script! {
@@ -938,7 +941,7 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p = ark_bn254::G1Affine::rand(&mut prng);
         let (ell_by_constant_affine_script, hints) =
-            hinted_x_from_eval_point(p, p.y.inverse().unwrap());
+            hinted_x_from_eval_point(p.x, p.y, p.y.inverse().unwrap());
         let script = script! {
             for tmp in hints {
                 { tmp.push() }

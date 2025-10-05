@@ -816,7 +816,7 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
 pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
-    let mock_t = G2Affine::one_in_script();
+    let mock_t = ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE);
     let are_valid_fps = ts.iter().filter(|f| **f < ark_bn254::Fq::MODULUS).count() == ts.len();
 
     let mut t4: ElemG2Eval = ElemG2Eval {
@@ -1281,15 +1281,15 @@ mod test {
 
         let t4 = ark_bn254::G2Affine::rand(&mut prng);
         let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+        let p4 = FqPair::rand(&mut prng);
 
         let t3 = t4; // ark_bn254::G2Affine::rand(&mut prng);
         let q3 = q4; //ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::new_unchecked(p4.x, -p4.y); //ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = FqPair::new(p4.x(), -p4.y()); //ark_bn254::G1Affine::rand(&mut prng);
 
         let t2 = ark_bn254::G2Affine::rand(&mut prng);
         let q2 = ark_bn254::G2Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let p2 = FqPair::rand(&mut prng);
 
         let is_dbl = false;
         let is_frob: Option<bool> = Some(false);
@@ -1304,15 +1304,12 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                //p4,
-                FqPair::new(p4.x, p4.y),
+                p4,
                 Some(q4),
-                //p3,
-                FqPair::new(p3.x, p3.y),
+                p3,
                 t3,
                 Some(q3),
-                //p2,
-                FqPair::new(p2.x, p2.y),
+                p2,
                 t2,
                 Some(q2),
             );
@@ -1335,9 +1332,9 @@ mod test {
             ]);
         }
 
-        preimage_hints.extend_from_slice(&[Hint::Fq(p4.x), Hint::Fq(p4.y)]);
-        preimage_hints.extend_from_slice(&[Hint::Fq(p3.x), Hint::Fq(p3.y)]);
-        preimage_hints.extend_from_slice(&[Hint::Fq(p2.x), Hint::Fq(p2.y)]);
+        preimage_hints.extend_from_slice(&[Hint::Fq(p4.x()), Hint::Fq(p4.y())]);
+        preimage_hints.extend_from_slice(&[Hint::Fq(p3.x()), Hint::Fq(p3.y())]);
+        preimage_hints.extend_from_slice(&[Hint::Fq(p2.x()), Hint::Fq(p2.y())]);
 
         let tap_len = ops_scr.len();
         // [hints, t4, (q2), p4, p3, p2]
@@ -1365,11 +1362,14 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(hint_out.t.x)}
             {Fq2::equalverify()}
-            {G1Affine::push(p2)}
+            {Fq::push(p2.x())}
+            {Fq::push(p2.y())}
             {Fq2::equalverify()}
-            {G1Affine::push(p3)}
+            {Fq::push(p3.x())}
+            {Fq::push(p3.y())}
             {Fq2::equalverify()}
-            {G1Affine::push(p4)}
+            {Fq::push(p4.x())}
+            {Fq::push(p4.y())}
             {Fq2::equalverify()}
             {Fq2::push(t4.y)}
             {Fq2::equalverify()}
@@ -1400,14 +1400,14 @@ mod test {
 
         let t4 = ark_bn254::G2Affine::rand(&mut prng);
         let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+        let p4 = FqPair::rand(&mut prng);
         let t3 = ark_bn254::G2Affine::rand(&mut prng);
         let q3 = ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = FqPair::rand(&mut prng);
 
         let t2 = ark_bn254::G2Affine::rand(&mut prng);
         let q2 = ark_bn254::G2Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let p2 = FqPair::rand(&mut prng);
 
         let t4 = ElemG2Eval {
             t: t4,
@@ -1420,15 +1420,12 @@ mod test {
             None,
             None,
             t4,
-            //p4,
-            FqPair::new(p4.x, p4.y),
+            p4,
             Some(q4),
-            //p3,
-            FqPair::new(p3.x, p3.y),
+            p3,
             t3,
             Some(q3),
-            //p2,
-            FqPair::new(p2.x, p2.y),
+            p2,
             t2,
             Some(q2),
         );
@@ -1515,14 +1512,14 @@ mod test {
 
         let t4 = ark_bn254::G2Affine::rand(&mut prng);
         let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+        let p4 = FqPair::rand(&mut prng);
         let t3 = ark_bn254::G2Affine::rand(&mut prng);
         let q3 = ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = FqPair::rand(&mut prng);
 
         let t2 = ark_bn254::G2Affine::rand(&mut prng);
         let q2 = ark_bn254::G2Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let p2 = FqPair::rand(&mut prng);
 
         let t4 = ElemG2Eval {
             t: t4,
@@ -1536,14 +1533,14 @@ mod test {
             None,
             t4,
             //p4,
-            FqPair::new(p4.x, p4.y),
+            FqPair::new(p4.x(), p4.y()),
             Some(q4),
             //p3,
-            FqPair::new(p3.x, p3.y),
+            FqPair::new(p3.x(), p3.y()),
             t3,
             Some(q3),
             //p2,
-            FqPair::new(p2.x, p2.y),
+            FqPair::new(p2.x(), p2.y()),
             t2,
             Some(q2),
         );

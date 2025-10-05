@@ -73,9 +73,9 @@ impl Verifier {
 
         let (hinted_script1, hint1) = Fq::hinted_inv(p1.y);
         let (hinted_script2, hint2) = Fq::hinted_mul(1, p1.y.inverse().unwrap(), 0, p1.x.neg());
-        let (hinted_script3, hint3) = hinted_from_eval_point(p2);
-        let (hinted_script4, hint4) = hinted_from_eval_point(p3);
-        let (hinted_script5, hint5) = hinted_from_eval_point(p4);
+        let (hinted_script3, hint3) = hinted_from_eval_point(p2.x, p2.y);
+        let (hinted_script4, hint4) = hinted_from_eval_point(p3.x, p3.y);
+        let (hinted_script5, hint5) = hinted_from_eval_point(p4.x, p4.y);
         let (hinted_script6, hint6) = Pairing::hinted_quad_miller_loop_with_c_wi(
             q_prepared.to_vec(),
             c,

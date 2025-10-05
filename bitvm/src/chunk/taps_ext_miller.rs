@@ -39,24 +39,23 @@ pub(crate) fn chunk_precompute_p(
         hints.extend_from_slice(&on_curve_hint);
     }
 
-    let p = ark_bn254::G1Affine::new_unchecked(px, py);
-    let (eval_xy, eval_hints) = hinted_from_eval_points(p);
+    let (eval_xy, eval_hints, valid_point) = hinted_from_eval_points(px, py);
 
-    let valid_point = are_valid_field_elems && py != ark_bn254::Fq::ZERO && p.is_on_curve();
-    let mock_pd = G1Affine::one_in_script();
+    let valid_point = are_valid_field_elems && valid_point;
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        FqPair::new(p.x, p.y)
+        FqPair::new(px, py)
     } else {
-        mock_pd.into()
+        FqPair::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
     };
 
     let drop_and_return_scr = script! {
         // [px, py] [pdhash]
         {G1Affine::drop()}
         // [] [pdhash]
-        {G1Affine::push(mock_pd)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
+        {Fq::push(ark_bn254::Fq::ONE)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
+        {Fq::push(ark_bn254::Fq::ONE)}
         // [pd] [pdhash]
         {0} // skip output hash check because input was invalid
     };
@@ -131,22 +130,21 @@ pub(crate) fn chunk_precompute_p_from_hash(
         hints.extend_from_slice(&on_curve_hint);
     }
 
-    let p = ark_bn254::G1Affine::new_unchecked(px, py);
-    let (eval_xy, eval_hints) = hinted_from_eval_points(p);
+    let (eval_xy, eval_hints, valid_point) = hinted_from_eval_points(px, py);
 
-    let valid_point = py_is_not_zero && p.is_on_curve();
-    let mock_pd = G1Affine::one_in_script();
+    let valid_point = py_is_not_zero && valid_point;
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        FqPair::new(p.x, p.y)
+        FqPair::new(px, py)
     } else {
-        mock_pd.into()
+        FqPair::new(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
     };
 
     let drop_and_return_scr = script! {
         // [px, py] [pdhash, phash]
-        {G1Affine::push(mock_pd)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
+        {Fq::push(ark_bn254::Fq::ONE)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
+        {Fq::push(ark_bn254::Fq::ONE)}
         // [p, pd] [pdhash, phash]
         {0} // skip output hash check because input was invalid
     };

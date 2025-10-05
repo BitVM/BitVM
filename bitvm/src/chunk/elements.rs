@@ -7,8 +7,9 @@ use crate::{
         wrap_hasher::BLAKE3_HASH_LENGTH,
     },
 };
-use ark_ff::{AdditiveGroup, Field};
+use ark_ff::{AdditiveGroup, Field, UniformRand};
 use num_bigint::{BigInt, BigUint};
+use rand::Rng;
 use std::fmt::Debug;
 
 use super::helpers::{extern_hash_fps, extern_nibbles_to_limbs};
@@ -59,6 +60,11 @@ impl FqPair {
 
     pub fn lift(&self) -> Self {
         let p: ark_bn254::G1Affine = (*self).into();
+        Self::new(p.x, p.y)
+    }
+
+    pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        let p = ark_bn254::G1Affine::rand(rng);
         Self::new(p.x, p.y)
     }
 }

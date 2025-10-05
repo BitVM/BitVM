@@ -769,11 +769,11 @@ mod test {
 
         let mut hints = Vec::new();
 
-        let (from_eval_p1, hints1) = hinted_from_eval_point(p1);
-        let (from_eval_p2, hints2) = hinted_from_eval_point(p2);
+        let (from_eval_p1, hints1) = hinted_from_eval_point(p1.x, p1.y);
+        let (from_eval_p2, hints2) = hinted_from_eval_point(p2.x, p2.y);
 
-        let (from_eval_p3, hints3) = hinted_from_eval_point(p3);
-        let (from_eval_p4, hints4) = hinted_from_eval_point(p4);
+        let (from_eval_p3, hints3) = hinted_from_eval_point(p3.x, p3.y);
+        let (from_eval_p4, hints4) = hinted_from_eval_point(p4.x, p4.y);
 
         let (quad_miller_loop_affine_script, hints5) = Pairing::hinted_quad_miller_loop_with_c_wi(
             [q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
