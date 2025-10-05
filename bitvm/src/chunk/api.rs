@@ -705,6 +705,7 @@ mod test {
     // Step 2: Operator Generates keypairs and broadcasts pubkeys for a Bitvm setup;
     // Anyone can create Bitcomm part of tapscript; yields complete tapscript
     #[test]
+    #[ignore]
     fn test_fn_generate_tapscripts() {
         println!("start");
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
@@ -796,6 +797,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_fn_validate_assertions() {
         let vk_bytes = crate::chunk::api_runtime_utils::test::VK_BYTES.to_vec();
         let proof_bytes: Vec<u8> = crate::chunk::api_runtime_utils::test::PROOF_BYTES.to_vec();

@@ -476,7 +476,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_single_byte_with_all_limbs() {
         let messages: Vec<[u8; 1]> = (0..=255).map(|byte| [byte]).collect();
         let expected_hashes: Vec<[u8; 32]> = messages
@@ -536,7 +535,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_official_test_vectors_with_all_limbs() {
         test_official_test_vectors_with_limbs(&ALL_POSSIBLE_LIMB_LENGTHS)
     }
@@ -603,7 +601,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_maximum_alstack_element_calculation_with_all_limbs() {
         test_maximum_alstack_element_calculation_with_limbs(&ALL_POSSIBLE_LIMB_LENGTHS);
     }

@@ -19,7 +19,6 @@ use super::{
         chunk_point_ops_and_multiply_line_evals_step_2,
     },
 };
-use ark_ec::AffineRepr;
 use ark_ff::Field;
 use bitcoin::ScriptBuf;
 use bitcoin_script::script;
@@ -296,7 +295,7 @@ pub(crate) fn wrap_hint_msm(
     pub_vky: Vec<ark_bn254::G1Affine>,
 ) -> Vec<Segment> {
     let num_chunks_per_scalar =
-        (Fr::N_BITS + WINDOW_G1_MSM - 1) / (WINDOW_G1_MSM * BATCH_SIZE_PER_CHUNK);
+        (Fr::N_BITS + WINDOW_G1_MSM * BATCH_SIZE_PER_CHUNK - 1) / (WINDOW_G1_MSM * BATCH_SIZE_PER_CHUNK);
 
     let hint_scalars: Vec<ark_ff::BigInt<4>> = scalars
         .iter()
