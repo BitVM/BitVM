@@ -8,7 +8,7 @@ use crate::bn254::g2::{
     hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine,
 };
 use crate::bn254::utils::*;
-use crate::chunk::elements::G1AffineIsomorphic;
+use crate::chunk::elements::FqPair;
 use crate::chunk::taps_mul::{utils_fq6_sd_mul, utils_fq6_ss_mul};
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -113,7 +113,7 @@ pub(crate) fn frob_q_power(q: ark_bn254::G2Affine, ate: i8) -> ark_bn254::G2Affi
 
 fn utils_point_double_eval(
     t: ark_bn254::G2Affine,
-    p: G1AffineIsomorphic,
+    p: FqPair,
 ) -> (
     (ark_bn254::G2Affine, (ark_bn254::Fq2, ark_bn254::Fq2)),
     Script,
@@ -209,7 +209,7 @@ fn utils_point_double_eval(
 fn utils_point_add_eval(
     t: ark_bn254::G2Affine,
     q4: ark_bn254::G2Affine,
-    p: G1AffineIsomorphic,
+    p: FqPair,
     is_frob: bool,
     ate_bit: i8,
 ) -> (
@@ -412,13 +412,13 @@ fn point_ops_and_multiply_line_evals_step_1(
     is_frob: Option<bool>,
     ate_bit: Option<i8>,
     t4: ark_bn254::G2Affine,
-    p4: G1AffineIsomorphic,
+    p4: FqPair,
     q4: Option<ark_bn254::G2Affine>,
 
-    p3: G1AffineIsomorphic,
+    p3: FqPair,
     t3: ark_bn254::G2Affine,
     q3: Option<ark_bn254::G2Affine>,
-    p2: G1AffineIsomorphic,
+    p2: FqPair,
     t2: ark_bn254::G2Affine,
     q2: Option<ark_bn254::G2Affine>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
@@ -618,12 +618,12 @@ pub(crate) fn chunk_point_ops_and_multiply_line_evals_step_1(
     is_frob: Option<bool>,
     ate_bit: Option<i8>,
     t4: ElemG2Eval,
-    p4: G1AffineIsomorphic,
+    p4: FqPair,
     q4: Option<ark_bn254::G2Affine>,
-    p3: G1AffineIsomorphic,
+    p3: FqPair,
     t3: ark_bn254::G2Affine,
     q3: Option<ark_bn254::G2Affine>,
-    p2: G1AffineIsomorphic,
+    p2: FqPair,
     t2: ark_bn254::G2Affine,
     q2: Option<ark_bn254::G2Affine>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
@@ -830,7 +830,6 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
             ark_bn254::Fq2::new(ts[0].into(), ts[1].into()),
             ark_bn254::Fq2::new(ts[2].into(), ts[3].into()),
         );
-        G2Affine::check(&t4.t);
     }
 
     let (on_curve_scr, on_curve_hints) = G2Affine::hinted_is_on_curve(t4.t.x, t4.t.y);
@@ -915,7 +914,7 @@ mod test {
             utils::Hint,
         },
         chunk::{
-            elements::{DataType, ElemG2Eval, ElementType, G1AffineIsomorphic},
+            elements::{DataType, ElemG2Eval, ElementType, FqPair},
             taps_point_ops::{
                 chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1,
                 chunk_point_ops_and_multiply_line_evals_step_2,
@@ -941,7 +940,7 @@ mod test {
         let t = ark_bn254::G2Affine::rand(&mut prng);
         let p = ark_bn254::G1Affine::rand(&mut prng);
 
-        let ((r, le), scr, hints) = utils_point_double_eval(t, G1AffineIsomorphic::new(p.x, p.y));
+        let ((r, le), scr, hints) = utils_point_double_eval(t, FqPair::new(p.x, p.y));
         // a, b, tx, ty, px, py
 
         let script = script! {
@@ -1030,7 +1029,8 @@ mod test {
             (qb, q, p, true, -1),    // frob pow 2
             (qb, -q, p, true, -1),   // frob pow 2
         ] {
-            let ((r, le), hinted_check_add, hints) = utils_point_add_eval(t, q, G1AffineIsomorphic::new(p.x, p.y), frob, ate);
+            let ((r, le), hinted_check_add, hints) =
+                utils_point_add_eval(t, q, FqPair::new(p.x, p.y), frob, ate);
 
             let script = script! {
                 for hint in hints {
@@ -1188,14 +1188,14 @@ mod test {
                 ate_bit,
                 t4,
                 //p4,
-                G1AffineIsomorphic::new(p4.x, p4.y),
+                FqPair::new(p4.x, p4.y),
                 Some(q4),
                 //p3,
-                G1AffineIsomorphic::new(p3.x, p3.y),
+                FqPair::new(p3.x, p3.y),
                 t3,
                 Some(q3),
                 //p2,
-                G1AffineIsomorphic::new(p2.x, p2.y),
+                FqPair::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );
@@ -1305,14 +1305,14 @@ mod test {
                 ate_bit,
                 t4,
                 //p4,
-                G1AffineIsomorphic::new(p4.x, p4.y),
+                FqPair::new(p4.x, p4.y),
                 Some(q4),
                 //p3,
-                G1AffineIsomorphic::new(p3.x, p3.y),
+                FqPair::new(p3.x, p3.y),
                 t3,
                 Some(q3),
                 //p2,
-                G1AffineIsomorphic::new(p2.x, p2.y),
+                FqPair::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );
@@ -1421,14 +1421,14 @@ mod test {
             None,
             t4,
             //p4,
-            G1AffineIsomorphic::new(p4.x, p4.y),
+            FqPair::new(p4.x, p4.y),
             Some(q4),
             //p3,
-            G1AffineIsomorphic::new(p3.x, p3.y),
+            FqPair::new(p3.x, p3.y),
             t3,
             Some(q3),
             //p2,
-            G1AffineIsomorphic::new(p2.x, p2.y),
+            FqPair::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1536,14 +1536,14 @@ mod test {
             None,
             t4,
             //p4,
-            G1AffineIsomorphic::new(p4.x, p4.y),
+            FqPair::new(p4.x, p4.y),
             Some(q4),
             //p3,
-            G1AffineIsomorphic::new(p3.x, p3.y),
+            FqPair::new(p3.x, p3.y),
             t3,
             Some(q3),
             //p2,
-            G1AffineIsomorphic::new(p2.x, p2.y),
+            FqPair::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1645,14 +1645,14 @@ mod test {
             None,
             t4,
             //p4,
-            G1AffineIsomorphic::new(p4.x, p4.y),
+            FqPair::new(p4.x, p4.y),
             Some(q4),
             //p3,
-            G1AffineIsomorphic::new(p3.x, p3.y),
+            FqPair::new(p3.x, p3.y),
             t3,
             Some(q3),
             //p2,
-            G1AffineIsomorphic::new(p2.x, p2.y),
+            FqPair::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1741,14 +1741,14 @@ mod test {
                 ate_bit,
                 t4,
                 //p4,
-                G1AffineIsomorphic::new(p4.x, p4.y),
+                FqPair::new(p4.x, p4.y),
                 Some(q4),
                 //p3,
-                G1AffineIsomorphic::new(p3.x, p3.y),
+                FqPair::new(p3.x, p3.y),
                 t3,
                 Some(q3),
                 //p2,
-                G1AffineIsomorphic::new(p2.x, p2.y),
+                FqPair::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );

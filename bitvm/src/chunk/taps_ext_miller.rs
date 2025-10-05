@@ -5,7 +5,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::g2::{hinted_mul_by_char_on_phi_sq_q, G2Affine};
 use crate::bn254::utils::*;
-use crate::chunk::elements::{ElementType, G1AffineIsomorphic};
+use crate::chunk::elements::{ElementType, FqPair};
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -19,7 +19,7 @@ use super::wrap_hasher::hash_utils::{hash_fp6, hash_g2acc_with_hashed_le};
 pub(crate) fn chunk_precompute_p(
     hint_in_py: ark_ff::BigInt<4>,
     hint_in_px: ark_ff::BigInt<4>,
-) -> (G1AffineIsomorphic, bool, Script, Vec<Hint>) {
+) -> (FqPair, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
     // is py and px less than f_p i.e. are they field elements
@@ -47,7 +47,7 @@ pub(crate) fn chunk_precompute_p(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        G1AffineIsomorphic::new(p.x, p.y)
+        FqPair::new(p.x, p.y)
     } else {
         mock_pd.into()
     };
@@ -114,7 +114,7 @@ pub(crate) fn chunk_precompute_p(
 // precompute P
 pub(crate) fn chunk_precompute_p_from_hash(
     hint_in_p: ark_bn254::G1Affine,
-) -> (G1AffineIsomorphic, bool, Script, Vec<Hint>) {
+) -> (FqPair, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
     let mut px: ark_bn254::Fq = ark_bn254::Fq::ONE;
@@ -139,7 +139,7 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        G1AffineIsomorphic::new(p.x, p.y)
+        FqPair::new(p.x, p.y)
     } else {
         mock_pd.into()
     };

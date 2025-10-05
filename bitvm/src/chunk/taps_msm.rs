@@ -135,20 +135,16 @@ pub(crate) fn chunk_hash_p(
     hint_in_t: ark_bn254::G1Affine,
     hint_in_q: ark_bn254::G1Affine,
 ) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
-    use ark_ec::AffineRepr;
     // r (gp3) = t(msm) + q(vk0)
-    let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
     // Assume that the hint_in_t and hint_in_t are valid points, and there is no case that public inputs are zero scalars.
-    let t = if hint_in_t.is_zero() { ark_bn254::G1Affine::zero() } else { ark_bn254::G1Affine::new(tx, ty) };
-    let q = ark_bn254::G1Affine::new(qx, qy);
-    let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
+    let (add_scr, add_hints) = G1Affine::hinted_check_add(hint_in_t, hint_in_q);
     let r = (hint_in_t + hint_in_q).into_affine();
 
     let ops_script = script! {
         // [t] [hash_r, hash_t]
         { Fq2::copy(0)}
         // [t, t]
-        {G1Affine::push(q)}
+        {G1Affine::push(hint_in_q)}
         // [t, t, q]
         {add_scr}
         // [t, r]

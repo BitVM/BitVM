@@ -2,7 +2,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::g2::hinted_ell_by_constant_affine;
 use crate::bn254::utils::Hint;
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
-use crate::chunk::elements::G1AffineIsomorphic;
+use crate::chunk::elements::FqPair;
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::treepp::*;
 use ark_ff::{AdditiveGroup, Field};
@@ -153,7 +153,7 @@ pub(crate) fn utils_multiply_by_line_eval(
     f: ark_bn254::Fq6,
     alpha_t3: ark_bn254::Fq2,
     neg_bias_t3: ark_bn254::Fq2,
-    p3: G1AffineIsomorphic,
+    p3: FqPair,
 ) -> (ark_bn254::Fq6, Script, Vec<Hint>) {
     assert_eq!(f.c2, ark_bn254::Fq2::ZERO);
 

@@ -2,11 +2,10 @@ use crate::{
     bn254::{
         fp254impl::Fp254Impl,
         fr::Fr,
-        g2::G2Affine,
         msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM},
         utils::Hint,
     },
-    chunk::{elements::G1AffineIsomorphic, taps_msm::chunk_msm},
+    chunk::{elements::FqPair, taps_msm::chunk_msm},
 };
 
 use super::{
@@ -219,12 +218,14 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     ];
 
     let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
-    let p4: G1AffineIsomorphic = in_p4.result.0.try_into().unwrap();
-    let p3: G1AffineIsomorphic = in_p3.result.0.try_into().unwrap();
-    let p2: G1AffineIsomorphic = in_p2.result.0.try_into().unwrap();
-    let p4 = p4.into();
-    let p3 = p3.into();
-    let p2 = p2.into();
+    let p4: FqPair = in_p4.result.0.try_into().unwrap();
+    let p3: FqPair = in_p3.result.0.try_into().unwrap();
+    let p2: FqPair = in_p2.result.0.try_into().unwrap();
+
+    let p4 = p4.lift();
+    let p3 = p3.lift();
+    let p2 = p2.lift();
+
     let mut q4: Option<ark_bn254::G2Affine> = None;
 
     if !is_dbl {
@@ -241,7 +242,6 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
             ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
             ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
         ));
-        G2Affine::check(&q4.unwrap());
     }
 
     let (mut dbladd, mut is_valid_input, mut scr, mut op_hints) =
@@ -364,8 +364,8 @@ pub(crate) fn wrap_hint_hash_p(
 ) -> Segment {
     let input_segment_info = vec![(in_t.id, ElementType::G1)];
 
-    let t: G1AffineIsomorphic = in_t.result.0.try_into().unwrap();
-    let t = t.into();
+    let t: FqPair = in_t.result.0.try_into().unwrap();
+    let t = t.into(); // the values has been converted to FqPair in chunk_msm.
     let (mut p3, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
     if !skip {
@@ -432,7 +432,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
         vec![],
     );
     if !skip {
-        let in_p: G1AffineIsomorphic = in_p.result.0.try_into().unwrap();
+        let in_p: FqPair = in_p.result.0.try_into().unwrap();
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
     }
 
@@ -440,7 +440,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3d.into()), ElementType::G1),
+        result: (DataType::G1Data(p3d), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerPrecomputePFromHash,
         scr: scr.compile(),
@@ -529,7 +529,6 @@ pub(crate) fn wrap_chunk_final_verify(
         ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
         ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
     );
-    G2Affine::check(&q4);
 
     let (mut is_valid, mut scr, mut op_hints) = (true, script! {}, vec![]);
     if !skip {

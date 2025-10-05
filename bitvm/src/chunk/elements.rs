@@ -25,65 +25,78 @@ pub enum DataType {
     G2EvalData(ElemG2Eval),
 
     /// G1Affine points
-    G1Data(G1AffineIsomorphic),
+    G1Data(FqPair),
 
     /// BigIntegers - Field & Scalar elements
     U256Data(ark_ff::BigInt<4>),
 }
 
-// Represent point by (-x/y, 1/y) and avoid any point computation, see more: https://github.com/BitVM/BitVM/issues/213
+/// Represent coordinates by evaluation form (-x/y, 1/y), see more: https://github.com/BitVM/BitVM/issues/213
+/// Use `lift` to convert to evaluation form lazily.
 #[derive(Debug, Clone, Copy)]
-pub struct G1AffineIsomorphic {
-    pub inner: ark_bn254::G1Affine,
-    pub zero: bool, // true if y is zero
+pub struct FqPair {
+    x: ark_bn254::Fq, // -x/y
+    y: ark_bn254::Fq, // 1/y
+    pub zero: bool,   // true if y is zero
 }
 
-impl G1AffineIsomorphic {
+impl FqPair {
     pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
         Self {
-            inner: ark_bn254::G1Affine::new_unchecked(x, y),
+            x,
+            y,
             zero: y == ark_bn254::Fq::ZERO,
         }
     }
 
     pub fn x(&self) -> ark_bn254::Fq {
-        self.inner.x
+        self.x
     }
 
     pub fn y(&self) -> ark_bn254::Fq {
-        self.inner.y
+        self.y
+    }
+
+    pub fn lift(&self) -> Self {
+        let p: ark_bn254::G1Affine = (*self).into();
+        Self::new(p.x, p.y)
     }
 }
 
-impl From<ark_bn254::G1Affine> for G1AffineIsomorphic {
+impl From<ark_bn254::G1Affine> for FqPair {
     fn from(p: ark_bn254::G1Affine) -> Self {
         if p.y == ark_bn254::Fq::ZERO {
             return Self {
-                inner: p,
+                x: p.x,
+                y: p.y,
                 zero: true,
             };
         }
         let (x, y) = (p.x, p.y);
-        let ny = y.inverse().expect("y must be nonzero for normalization");
+        let ny = y.inverse().expect("y must be nonzero for evaluation form");
         let nx = -(x * ny);
-        let np = ark_bn254::G1Affine::new_unchecked(nx, ny);
         Self {
-            inner: np,
+            x: nx,
+            y: ny,
             zero: false,
         }
     }
 }
 
-impl From<G1AffineIsomorphic> for ark_bn254::G1Affine {
-    fn from(norm: G1AffineIsomorphic) -> Self {
-        if norm.zero {
-            return norm.inner;
+impl From<FqPair> for ark_bn254::G1Affine {
+    fn from(pi: FqPair) -> Self {
+        use ark_ec::AffineRepr;
+        if pi.zero {
+            if pi.x == ark_bn254::Fq::ZERO {
+                return ark_bn254::G1Affine::zero();
+            }
+            return ark_bn254::G1Affine::new_unchecked(pi.x, pi.y);
         }
 
-        let (nx, ny) = (norm.inner.x, norm.inner.y);
+        let (nx, ny) = (pi.x, pi.y);
         let y = ny
             .inverse()
-            .expect("ny must be nonzero for denormalization");
+            .expect("ny must be nonzero for evaluation form");
         let x = -nx * y; // equivalent to -nx / ny⁻¹
 
         ark_bn254::G1Affine::new_unchecked(x, y)
@@ -114,7 +127,7 @@ macro_rules! impl_try_from_element {
 
 impl_try_from_element!(ark_bn254::Fq6, { Fp6Data });
 impl_try_from_element!(ark_ff::BigInt<4>, { U256Data });
-impl_try_from_element!(G1AffineIsomorphic, { G1Data });
+impl_try_from_element!(FqPair, { G1Data });
 impl_try_from_element!(ElemG2Eval, { G2EvalData });
 
 /// Abstraction over DataType that specifies how the
@@ -266,8 +279,8 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
-                let r: ark_bn254::G1Affine = r.into();
-                let hash = extern_hash_fps(vec![r.x, r.y]);
+                let r = r.lift();
+                let hash = extern_hash_fps(vec![r.x(), r.y()]);
                 CompressedStateObject::Hash(hash)
             }
         }
@@ -288,7 +301,7 @@ impl DataType {
                 as_hints_g2evalmultype_g2evaldata(*g)
             }
             (ElementType::Fp6, DataType::Fp6Data(r)) => as_hints_fq6type_fq6data(*r),
-            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data((*r).into()),
+            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data(r),
             (ElementType::FieldElem, DataType::U256Data(r)) => as_hints_fieldelemtype_u256data(*r),
             (ElementType::ScalarElem, DataType::U256Data(r)) => {
                 as_hints_scalarelemtype_u256data(*r)
@@ -348,8 +361,9 @@ fn as_hints_scalarelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
     hints
 }
 
-fn as_hints_g1type_g1data(r: ark_bn254::G1Affine) -> Vec<Hint> {
-    let hints = vec![Hint::Fq(r.x), Hint::Fq(r.y)];
+fn as_hints_g1type_g1data(r: &FqPair) -> Vec<Hint> {
+    let r = r.lift();
+    let hints = vec![Hint::Fq(r.x()), Hint::Fq(r.y())];
     hints
 }
 
@@ -447,7 +461,7 @@ mod test {
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq},
         chunk::{
-            elements::{ElementType, G1AffineIsomorphic},
+            elements::{ElementType, FqPair},
             wrap_hasher::hash_messages,
         },
         execute_script,
@@ -480,11 +494,11 @@ mod test {
     }
 
     #[test]
-    fn test_norm_g1affine() {
+    fn test_fq_pair() {
         let zero = ark_bn254::G1Affine::zero();
         assert_eq!(
             zero,
-            <G1AffineIsomorphic as Into<ark_bn254::G1Affine>>::into(G1AffineIsomorphic::from(zero))
+            <FqPair as Into<ark_bn254::G1Affine>>::into(FqPair::from(zero))
         );
 
         let mut rng = thread_rng();
@@ -492,9 +506,7 @@ mod test {
             let random = ark_bn254::G1Affine::rand(&mut rng);
             assert_eq!(
                 random,
-                <G1AffineIsomorphic as Into<ark_bn254::G1Affine>>::into(G1AffineIsomorphic::from(
-                    random
-                ))
+                <FqPair as Into<ark_bn254::G1Affine>>::into(FqPair::from(random))
             );
         });
     }

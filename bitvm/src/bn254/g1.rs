@@ -139,14 +139,6 @@ impl G1Affine {
         }
     }
 
-    pub fn check(element: &ark_bn254::G1Affine) {
-        assert!(
-            (element.is_on_curve() && element.is_in_correct_subgroup_assuming_on_curve())
-                || element == &Self::zero_in_script()
-                || element == &Self::one_in_script()
-        )
-    }
-
     pub fn one_in_script() -> ark_bn254::G1Affine {
         ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE)
     }
@@ -157,10 +149,9 @@ impl G1Affine {
 
     pub fn push(element: ark_bn254::G1Affine) -> Script {
         let mut element = element;
-        //Self::check(&element);
-        //if element == Self::zero_in_script() {
-        //    element = ark_bn254::G1Affine::zero();
-        //}
+        if element == Self::zero_in_script() {
+            element = ark_bn254::G1Affine::zero();
+        }
         script! {
             { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
@@ -179,12 +170,11 @@ impl G1Affine {
         if element == Self::zero_in_script() {
             element = ark_bn254::G1Affine::zero();
         }
-        Self::check(&element);
         element
     }
 
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
-         let mut hints = vec![];
+        let mut hints = vec![];
 
         let (alpha, bias) = if t == q && !t.is_zero() {
             let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);

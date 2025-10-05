@@ -110,14 +110,6 @@ impl G2Affine {
         (scr, hints)
     }
 
-    pub fn check(element: &ark_bn254::G2Affine) {
-        assert!(
-            (element.is_on_curve() && element.is_in_correct_subgroup_assuming_on_curve())
-                || element == &Self::zero_in_script()
-                || element == &Self::one_in_script()
-        )
-    }
-
     pub fn one_in_script() -> ark_bn254::G2Affine {
         ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE)
     }
@@ -127,7 +119,6 @@ impl G2Affine {
     }
 
     pub fn push(element: ark_bn254::G2Affine) -> Script {
-        Self::check(&element);
         script! {
             { Fq2::push(element.x) }
             { Fq2::push(element.y) }
@@ -145,10 +136,9 @@ impl G2Affine {
             y,
             infinity: false,
         };
-        //if element == Self::zero_in_script() {
-        //    element = ark_bn254::G2Affine::zero();
-        //}
-        //Self::check(&element);
+        if element == Self::zero_in_script() {
+            element = ark_bn254::G2Affine::zero();
+        }
         element
     }
 }
