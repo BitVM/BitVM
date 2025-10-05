@@ -8,6 +8,7 @@ use crate::bn254::g2::{
     hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine,
 };
 use crate::bn254::utils::*;
+use crate::chunk::elements::G1AffineIsomorphic;
 use crate::chunk::taps_mul::{utils_fq6_sd_mul, utils_fq6_ss_mul};
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -112,7 +113,7 @@ pub(crate) fn frob_q_power(q: ark_bn254::G2Affine, ate: i8) -> ark_bn254::G2Affi
 
 fn utils_point_double_eval(
     t: ark_bn254::G2Affine,
-    p: ark_bn254::G1Affine,
+    p: G1AffineIsomorphic,
 ) -> (
     (ark_bn254::G2Affine, (ark_bn254::Fq2, ark_bn254::Fq2)),
     Script,
@@ -132,13 +133,13 @@ fn utils_point_double_eval(
 
     let (hinted_script1, hint1) = hinted_check_tangent_line_keep_elements(t, alpha, -bias);
     let (hinted_script2, hint2) = hinted_affine_double_line(t.x, alpha, -bias);
-    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y, alpha, -bias);
+    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x(), p.y(), alpha, -bias);
 
     let result = if is_valid_input {
         let mut dbl_le0 = alpha;
-        dbl_le0.mul_assign_by_fp(&p.x);
+        dbl_le0.mul_assign_by_fp(&p.x());
         let mut dbl_le1 = -bias;
-        dbl_le1.mul_assign_by_fp(&p.y);
+        dbl_le1.mul_assign_by_fp(&p.y());
         ((t + t).into_affine(), (dbl_le0, dbl_le1))
     } else {
         let zero_pt = G2Affine::zero_in_script();
@@ -208,7 +209,7 @@ fn utils_point_double_eval(
 fn utils_point_add_eval(
     t: ark_bn254::G2Affine,
     q4: ark_bn254::G2Affine,
-    p: ark_bn254::G1Affine,
+    p: G1AffineIsomorphic,
     is_frob: bool,
     ate_bit: i8,
 ) -> (
@@ -267,7 +268,7 @@ fn utils_point_add_eval(
     let (hinted_script11, hint11) = hinted_check_line_through_point(t.x, alpha, -bias); // todo: remove unused arg: bias
     let (hinted_script12, hint12) = hinted_check_line_through_point(qq.x, alpha, -bias); // todo: remove unused arg: bias
     let (hinted_script2, hint2) = hinted_affine_add_line(t.x, qq.x, alpha, -bias);
-    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y, alpha, -bias);
+    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x(), p.y(), alpha, -bias);
 
     // check t and qq are in the same subgroup
     assert!(
@@ -280,9 +281,9 @@ fn utils_point_add_eval(
     // if it's valid input, you can compute result, else degenerate values
     let result = if is_valid_input {
         let mut add_le0 = alpha;
-        add_le0.mul_assign_by_fp(&p.x);
+        add_le0.mul_assign_by_fp(&p.x());
         let mut add_le1 = -bias;
-        add_le1.mul_assign_by_fp(&p.y);
+        add_le1.mul_assign_by_fp(&p.y());
         ((t + qq).into_affine(), (add_le0, add_le1))
     } else {
         let zero_pt = G2Affine::zero_in_script();
@@ -411,13 +412,13 @@ fn point_ops_and_multiply_line_evals_step_1(
     is_frob: Option<bool>,
     ate_bit: Option<i8>,
     t4: ark_bn254::G2Affine,
-    p4: ark_bn254::G1Affine,
+    p4: G1AffineIsomorphic,
     q4: Option<ark_bn254::G2Affine>,
 
-    p3: ark_bn254::G1Affine,
+    p3: G1AffineIsomorphic,
     t3: ark_bn254::G2Affine,
     q3: Option<ark_bn254::G2Affine>,
-    p2: ark_bn254::G1Affine,
+    p2: G1AffineIsomorphic,
     t2: ark_bn254::G2Affine,
     q2: Option<ark_bn254::G2Affine>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
@@ -487,16 +488,16 @@ fn point_ops_and_multiply_line_evals_step_1(
     let fpg = le4 + g;
 
     let (hinted_ell_t2, hints_ell_t2) =
-        hinted_ell_by_constant_affine(p2.x, p2.y, alpha_t2, neg_bias_t2);
+        hinted_ell_by_constant_affine(p2.x(), p2.y(), alpha_t2, neg_bias_t2);
     let mut t2le_a = alpha_t2;
-    t2le_a.mul_assign_by_fp(&p2.x);
+    t2le_a.mul_assign_by_fp(&p2.x());
     let mut t2le_b = neg_bias_t2;
-    t2le_b.mul_assign_by_fp(&p2.y);
+    t2le_b.mul_assign_by_fp(&p2.y());
 
     let mut t3le_a = alpha_t3;
-    t3le_a.mul_assign_by_fp(&p3.x);
+    t3le_a.mul_assign_by_fp(&p3.x());
     let mut t3le_b = neg_bias_t3;
-    t3le_b.mul_assign_by_fp(&p3.y);
+    t3le_b.mul_assign_by_fp(&p3.y());
 
     let mut hints = vec![];
     hints.extend_from_slice(&nt_hints);
@@ -617,12 +618,12 @@ pub(crate) fn chunk_point_ops_and_multiply_line_evals_step_1(
     is_frob: Option<bool>,
     ate_bit: Option<i8>,
     t4: ElemG2Eval,
-    p4: ark_bn254::G1Affine,
+    p4: G1AffineIsomorphic,
     q4: Option<ark_bn254::G2Affine>,
-    p3: ark_bn254::G1Affine,
+    p3: G1AffineIsomorphic,
     t3: ark_bn254::G2Affine,
     q3: Option<ark_bn254::G2Affine>,
-    p2: ark_bn254::G1Affine,
+    p2: G1AffineIsomorphic,
     t2: ark_bn254::G2Affine,
     q2: Option<ark_bn254::G2Affine>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
@@ -914,7 +915,7 @@ mod test {
             utils::Hint,
         },
         chunk::{
-            elements::{DataType, ElemG2Eval, ElementType},
+            elements::{DataType, ElemG2Eval, ElementType, G1AffineIsomorphic},
             taps_point_ops::{
                 chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1,
                 chunk_point_ops_and_multiply_line_evals_step_2,
@@ -940,7 +941,7 @@ mod test {
         let t = ark_bn254::G2Affine::rand(&mut prng);
         let p = ark_bn254::G1Affine::rand(&mut prng);
 
-        let ((r, le), scr, hints) = utils_point_double_eval(t, p);
+        let ((r, le), scr, hints) = utils_point_double_eval(t, G1AffineIsomorphic::new(p.x, p.y));
         // a, b, tx, ty, px, py
 
         let script = script! {
@@ -1029,7 +1030,7 @@ mod test {
             (qb, q, p, true, -1),    // frob pow 2
             (qb, -q, p, true, -1),   // frob pow 2
         ] {
-            let ((r, le), hinted_check_add, hints) = utils_point_add_eval(t, q, p, frob, ate);
+            let ((r, le), hinted_check_add, hints) = utils_point_add_eval(t, q, G1AffineIsomorphic::new(p.x, p.y), frob, ate);
 
             let script = script! {
                 for hint in hints {
@@ -1186,12 +1187,15 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                p4,
+                //p4,
+                G1AffineIsomorphic::new(p4.x, p4.y),
                 Some(q4),
-                p3,
+                //p3,
+                G1AffineIsomorphic::new(p3.x, p3.y),
                 t3,
                 Some(q3),
-                p2,
+                //p2,
+                G1AffineIsomorphic::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );
@@ -1300,12 +1304,15 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                p4,
+                //p4,
+                G1AffineIsomorphic::new(p4.x, p4.y),
                 Some(q4),
-                p3,
+                //p3,
+                G1AffineIsomorphic::new(p3.x, p3.y),
                 t3,
                 Some(q3),
-                p2,
+                //p2,
+                G1AffineIsomorphic::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );
@@ -1413,12 +1420,15 @@ mod test {
             None,
             None,
             t4,
-            p4,
+            //p4,
+            G1AffineIsomorphic::new(p4.x, p4.y),
             Some(q4),
-            p3,
+            //p3,
+            G1AffineIsomorphic::new(p3.x, p3.y),
             t3,
             Some(q3),
-            p2,
+            //p2,
+            G1AffineIsomorphic::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1525,12 +1535,15 @@ mod test {
             None,
             None,
             t4,
-            p4,
+            //p4,
+            G1AffineIsomorphic::new(p4.x, p4.y),
             Some(q4),
-            p3,
+            //p3,
+            G1AffineIsomorphic::new(p3.x, p3.y),
             t3,
             Some(q3),
-            p2,
+            //p2,
+            G1AffineIsomorphic::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1631,12 +1644,15 @@ mod test {
             None,
             None,
             t4,
-            p4,
+            //p4,
+            G1AffineIsomorphic::new(p4.x, p4.y),
             Some(q4),
-            p3,
+            //p3,
+            G1AffineIsomorphic::new(p3.x, p3.y),
             t3,
             Some(q3),
-            p2,
+            //p2,
+            G1AffineIsomorphic::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1724,12 +1740,15 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                p4,
+                //p4,
+                G1AffineIsomorphic::new(p4.x, p4.y),
                 Some(q4),
-                p3,
+                //p3,
+                G1AffineIsomorphic::new(p3.x, p3.y),
                 t3,
                 Some(q3),
-                p2,
+                //p2,
+                G1AffineIsomorphic::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );

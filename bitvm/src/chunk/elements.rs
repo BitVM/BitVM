@@ -53,11 +53,6 @@ impl G1AffineIsomorphic {
     pub fn y(&self) -> ark_bn254::Fq {
         self.inner.y
     }
-
-    /// The inner point should never be used for point operations.
-    pub fn inner(&self) -> ark_bn254::G1Affine {
-        self.inner
-    }
 }
 
 impl From<ark_bn254::G1Affine> for G1AffineIsomorphic {

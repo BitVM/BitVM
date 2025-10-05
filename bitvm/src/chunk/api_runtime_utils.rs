@@ -726,7 +726,7 @@ mod test {
         assert!(res.is_none());
         println!("finished test");
     }
-    
+
     #[test]
     fn zellic_test_public_input_zero() {
         use ark_bn254::{G1Affine, G2Affine};

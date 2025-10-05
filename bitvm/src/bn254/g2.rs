@@ -145,10 +145,10 @@ impl G2Affine {
             y,
             infinity: false,
         };
-        if element == Self::zero_in_script() {
-            element = ark_bn254::G2Affine::zero();
-        }
-        Self::check(&element);
+        //if element == Self::zero_in_script() {
+        //    element = ark_bn254::G2Affine::zero();
+        //}
+        //Self::check(&element);
         element
     }
 }

@@ -157,10 +157,10 @@ impl G1Affine {
 
     pub fn push(element: ark_bn254::G1Affine) -> Script {
         let mut element = element;
-        Self::check(&element);
-        if element == Self::zero_in_script() {
-            element = ark_bn254::G1Affine::zero();
-        }
+        //Self::check(&element);
+        //if element == Self::zero_in_script() {
+        //    element = ark_bn254::G1Affine::zero();
+        //}
         script! {
             { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
