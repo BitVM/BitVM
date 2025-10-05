@@ -10,6 +10,7 @@ use ark_ec::bn::BnConfig;
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
+use num_traits::Zero;
 use std::str::FromStr;
 
 pub struct G2Affine;
@@ -132,7 +133,7 @@ impl G2Affine {
             y,
             infinity: false,
         };
-        if element == Self::zero_in_script() {
+        if element.x.is_zero() && element.y.is_zero() {
             element = ark_bn254::G2Affine::zero();
         }
         element

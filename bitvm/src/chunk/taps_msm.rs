@@ -42,7 +42,8 @@ pub(crate) fn chunk_msm(
     for (msm_tap_index, chunk) in chunks.iter().enumerate() {
         let ops_script = if msm_tap_index == 0 {
             script! {
-                { G1Affine::push( G1Affine::zero_in_script() )}
+                { Fq::push_zero() }
+                { Fq::push_zero() }
                 { Fr::fromaltstack()}
 
                 { Fr::copy(0)}

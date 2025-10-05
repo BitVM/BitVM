@@ -1,3 +1,4 @@
+use super::fq2::Fq2;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::Hint;
@@ -5,8 +6,7 @@ use crate::treepp::{script, Script};
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
-
-use super::fq2::Fq2;
+use num_traits::Zero;
 
 pub struct G1Affine;
 
@@ -139,15 +139,7 @@ impl G1Affine {
         }
     }
 
-    pub fn zero_in_script() -> ark_bn254::G1Affine {
-        ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
-    }
-
     pub fn push(element: ark_bn254::G1Affine) -> Script {
-        let mut element = element;
-        if element == Self::zero_in_script() {
-            element = ark_bn254::G1Affine::zero();
-        }
         script! {
             { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
@@ -163,7 +155,7 @@ impl G1Affine {
             y: BigUint::from_slice(&y).into(),
             infinity: false,
         };
-        if element == Self::zero_in_script() {
+        if element.x.is_zero() && element.y.is_zero() {
             element = ark_bn254::G1Affine::zero();
         }
         element
@@ -522,7 +514,6 @@ pub fn hinted_from_eval_point(px: ark_bn254::Fq, py: ark_bn254::Fq) -> (Script, 
     let (hinted_script1, hint1) = hinted_y_from_eval_point(py, py_inv);
     let (hinted_script2, hint2) = hinted_x_from_eval_point(px, py, py_inv);
     let script = script! {
-
         // [hints, yinv, x, y]
         {Fq::copy(2)}
         {Fq::copy(1)}
