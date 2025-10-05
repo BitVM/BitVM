@@ -142,12 +142,12 @@ pub(crate) fn chunk_hash_p(
     let t = if hint_in_t.is_zero() {
         ark_bn254::G1Affine::zero()
     } else {
-        ark_bn254::G1Affine::new_unchecked(tx, ty)
+        ark_bn254::G1Affine::new(tx, ty)
     };
     println!("qx: {:?}, qy: {:?} ", qx, qy);
     let q = ark_bn254::G1Affine::new(qx, qy);
     let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
-    let r = (hint_in_t + hint_in_q).into_affine();
+    let r = (t + q).into_affine();
 
     let ops_script = script! {
         // [t] [hash_r, hash_t]

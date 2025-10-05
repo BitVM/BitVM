@@ -113,17 +113,18 @@ pub(crate) fn chunk_precompute_p(
 
 // precompute P
 pub(crate) fn chunk_precompute_p_from_hash(
-    hint_in_p: ark_bn254::G1Affine,
+    hint_in_p: G1AffineIsomorphic,
 ) -> (G1AffineIsomorphic, bool, Script, Vec<Hint>) {
+    println!("chunk_precompute_p_from_hash: hint_in_p {:?}", hint_in_p);
     let mut hints = vec![];
 
     let mut px: ark_bn254::Fq = ark_bn254::Fq::ONE;
     let mut py: ark_bn254::Fq = ark_bn254::Fq::ONE;
 
-    let py_is_not_zero = hint_in_p.y != ark_bn254::Fq::ZERO;
+    let py_is_not_zero = hint_in_p.zero == false; 
     if py_is_not_zero {
-        px = hint_in_p.x;
-        py = hint_in_p.y;
+        px = hint_in_p.x();
+        py = hint_in_p.y();
     }
 
     let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(px, py);
@@ -689,17 +690,12 @@ mod test {
         let p4 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ONE);
         let p5 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
         let p6 = ark_bn254::G1Affine::new_unchecked(p1.x, p1.x);
-        let dataset = vec![
-            (p1, false),
-            (p2, true),
-            (p3, true),
-            (p4, true),
-            (p5, true),
-            (p6, true),
-        ];
+        let dataset = vec![(p1, false), (p2, true), (p3, true), (p4, true), (p5, true), (p6, true)];
 
         for (p, disprovable) in dataset {
-            let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
+            let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(
+                G1AffineIsomorphic::new(p.x, p.y),
+            );
             assert_eq!(input_is_valid, !disprovable);
             let hint_out = DataType::G1Data(hint_out);
             let p = DataType::G1Data(G1AffineIsomorphic::new(p.x, p.y));

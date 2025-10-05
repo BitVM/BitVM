@@ -304,11 +304,14 @@ pub(crate) fn wrap_hint_msm(
 
     let mut segments = vec![];
     if !skip {
-        let houts = chunk_msm(hint_scalars, pub_vky.clone());
+        let houts = chunk_msm(hint_scalars.clone(), pub_vky.clone());
         assert_eq!(houts.len(), num_chunks_per_scalar as usize * scalars.len());
         for (msm_chunk_index, (hout_msm, is_valid_input, scr, op_hints)) in
             houts.into_iter().enumerate()
         {
+            assert!(is_valid_input);
+
+            println!("hout_msm: {:?}\n hint_scalars: {:?}", hout_msm, hint_scalars.clone());
             let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
             if msm_chunk_index > 0 {
                 let prev_msm_id = (segment_id + msm_chunk_index - 1) as u32;
@@ -316,8 +319,10 @@ pub(crate) fn wrap_hint_msm(
             }
 
             let sc = &scalars[msm_chunk_index / num_chunks_per_scalar as usize];
+            println!("sc id: {}, msm_chunk_index: {}, num_chunks_per_scalar: {}", sc.id, msm_chunk_index, num_chunks_per_scalar);
             input_segment_info.push((sc.id, ElementType::ScalarElem));
 
+            println!("MSM segment id: {}, msm_chunk_index: {msm_chunk_index}, g1: {:?}, is_valid_input: {is_valid_input}", segment_id + msm_chunk_index, hout_msm);
             segments.push(Segment {
                 id: (segment_id + msm_chunk_index) as u32,
                 is_valid_input,
@@ -339,6 +344,7 @@ pub(crate) fn wrap_hint_msm(
             let sc = &scalars[(msm_chunk_index / num_chunks_per_scalar) as usize];
             input_segment_info.push((sc.id, ElementType::ScalarElem));
 
+            println!("push MSM segment id: {} with MSM zero point", segment_id as u32 + msm_chunk_index);
             segments.push(Segment {
                 id: (segment_id as u32 + msm_chunk_index),
                 is_valid_input: true,
@@ -369,11 +375,14 @@ pub(crate) fn wrap_hint_hash_p(
         (p3, is_valid_input, scr, op_hints) = chunk_hash_p(t, pub_vky0);
         // op_hints.extend_from_slice(&DataType::G1Data(t).get_hash_preimage_as_hints());
     }
+    println!("segment id: {segment_id}, skip: {skip}, p3: {p3:?}");
     Segment {
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3.into()), ElementType::G1),
+        result: (DataType::G1Data(
+            G1AffineIsomorphic::new(p3.x, p3.y)
+        ), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashP,
         scr: scr.compile(),
@@ -399,21 +408,14 @@ pub(crate) fn wrap_hints_precompute_p(
         vec![],
     );
     // let mut tap_prex = script! {};
-    println!("segment id: {segment_id}, skip: {skip}");
+    println!("segment id: {segment_id}, skip: {skip}, in_py.result: {:?}, in_px.result: {:?}", in_py.result, in_px.result);
     if !skip {
         let in_py = in_py.result.0.try_into().unwrap();
         let in_px = in_px.result.0.try_into().unwrap();
         println!("in px: {:?}, in py: {:?} ", in_px, in_py);
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p(in_py, in_px);
     }
-    println!(
-        "ONE: {:?}, p3d: {:?}",
-        G1AffineIsomorphic::from(ark_bn254::G1Affine::new_unchecked(
-            ark_bn254::Fq::ONE,
-            ark_bn254::Fq::ONE
-        )),
-        p3d
-    );
+    println!("p3d: {:?}", p3d);
 
     Segment {
         id: segment_id as u32,
@@ -439,22 +441,14 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
         script! {},
         vec![],
     );
-    println!("segment id: {segment_id}, skip: {skip}");
+    println!("segment id: {segment_id}, input id: {:?}, type: G1, skip: {skip}", in_p.id);
+
     if !skip {
         let in_p: G1AffineIsomorphic = in_p.result.0.try_into().unwrap();
-
-        let ttt: ark_bn254::G1Affine = in_p.into();
-        println!("in_p: {:?}, ttt: {:?}", in_p, ttt);
-        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
+        let affine: ark_bn254::G1Affine = in_p.into();
+        println!("in p: {:?} ", affine);
+        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p);
     }
-    println!(
-        "ONE: {:?}, p3d: {:?}",
-        G1AffineIsomorphic::from(ark_bn254::G1Affine::new_unchecked(
-            ark_bn254::Fq::ONE,
-            ark_bn254::Fq::ONE
-        )),
-        p3d
-    );
 
     Segment {
         id: segment_id as u32,

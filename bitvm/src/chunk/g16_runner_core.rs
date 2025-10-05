@@ -105,12 +105,12 @@ pub(crate) fn groth16_generate_segments(
                     unreachable!();
                 }
             } else if $seg.is_valid_input == false {
-                println!("Input validity check failed at segment id: {:?}", $seg.id);
+                println!("Input validity check failed at segment id: {:?}, type: {:?}", $seg.id, $seg.scr_type);
                 return false;
             } else {
                 let matches = compare(&$seg.result.0, claimed_assertions);
                 if matches.is_some() && matches.unwrap() == false {
-                    println!("Output validity check failed at segment id: {:?}", $seg.id);
+                    println!("Output validity check failed at segment id: {:?}, type: {:?}", $seg.id, $seg.scr_type);
                     return false;
                 }
             }
@@ -132,9 +132,11 @@ pub(crate) fn groth16_generate_segments(
 
     let pub_scalars = pub_scalars.to_vec();
 
+    // proof.a
     let p4 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp4y, &gp4x);
     push_compare_or_return!(p4);
 
+    // proof.c
     let p2 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp2y, &gp2x);
     push_compare_or_return!(p2);
 
@@ -165,6 +167,7 @@ pub(crate) fn groth16_generate_segments(
     let gcinv = wrap_hint_hash_c_inv(skip_evaluation, all_output_hints.len(), gc);
     push_compare_or_return!(gcinv);
 
+    // proof.b
     let mut t4 = wrap_hint_init_t4(
         skip_evaluation,
         all_output_hints.len(),

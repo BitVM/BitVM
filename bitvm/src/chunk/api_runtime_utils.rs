@@ -393,7 +393,9 @@ fn utils_execute_chunked_g16(
     disprove_scripts: &[ScriptBuf; NUM_TAPS],
 ) -> Option<(usize, Script)> {
     let mut tap_script_index = 0;
+    println!("aux_hints.len() {}, segments.len() {}", aux_hints.len(), segments.len());
     for i in 0..aux_hints.len() {
+        println!("segment {}: {:?}", i, segments[i].scr_type);
         if segments[i].scr_type == ScriptType::NonDeterministic {
             continue;
         }
@@ -750,12 +752,6 @@ pub mod test {
         };
         let scalars = [public_input];
         println!("public input: {:?}", public_input);
-
-        // verify proof
-        let pvk = ark_groth16::prepare_verifying_key(&vk);
-        let res = ark_groth16::Groth16::<ark_bn254::Bn254>::verify_proof(&pvk, &proof, &scalars);
-        println!("verify proof: {:?}", res);
-        assert!(res.is_ok() && res.unwrap());
 
         // generate segments
         println!("get_segments_from_groth16_proof");

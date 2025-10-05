@@ -753,13 +753,23 @@ mod test {
         let scalar = crate::chunk::api_runtime_utils::test::PUBLIC_INPUT_BYTES.to_vec();
         let proof: ark_groth16::Proof<Bn254> =
             ark_groth16::Proof::deserialize_uncompressed(&proof_bytes[..]).unwrap();
-        let mock_vk: ark_groth16::VerifyingKey<Bn254> =
+        let vk: ark_groth16::VerifyingKey<Bn254> =
             ark_groth16::VerifyingKey::deserialize_uncompressed(&vk_bytes[..]).unwrap();
         let scalar: ark_bn254::Fr = ark_bn254::Fr::deserialize_uncompressed(&scalar[..]).unwrap();
         let public_inputs = [scalar];
 
-        assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
-        let proof_asserts = generate_assertions(proof, public_inputs.to_vec(), &mock_vk).unwrap();
+        println!("public_inputs {:?}", public_inputs);
+        println!("proof {:?}", proof);
+        println!("vk {:?}", vk);
+
+        // verify proof
+        let pvk = ark_groth16::prepare_verifying_key(&vk);
+        let res = ark_groth16::Groth16::<ark_bn254::Bn254>::verify_proof(&pvk, &proof, &public_inputs);
+        println!("verify proof: {:?}", res);
+        assert!(res.is_ok() && res.unwrap());
+
+        assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1);
+        let proof_asserts = generate_assertions(proof, public_inputs.to_vec(), &vk).unwrap();
 
         std::fs::create_dir_all("bridge_data/chunker_data")
             .expect("Failed to create directory structure");
