@@ -25,7 +25,7 @@ use super::taps_mul::utils_multiply_by_line_eval;
 use super::wrap_hasher::hash_messages;
 
 // [q1, -q2, q3]
-pub(crate) fn frob_q_power(qx: ark_bn254::Fq2, qy: ark_bn254::Fq2, ate: i8) -> TwistPoint {
+pub(crate) fn frob_q_power(q: TwistPoint, ate: i8) -> TwistPoint {
     let beta_12x = BigUint::from_str(
         "21575463638280843010398324269430826099269044274347216827212613867836435027261",
     )
@@ -92,8 +92,8 @@ pub(crate) fn frob_q_power(qx: ark_bn254::Fq2, qy: ark_bn254::Fq2, ate: i8) -> T
     ])
     .unwrap();
 
-    let mut qqx = qx;
-    let mut qqy = qy;
+    let mut qqx = q.x();
+    let mut qqy = q.y();
     if ate == 1 {
         qqx.conjugate_in_place();
         qqx *= beta_12;
@@ -1834,16 +1834,16 @@ mod test {
     #[test]
     fn test_frob() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let p = ark_bn254::G2Affine::rand(&mut prng);
+        let p = TwistPoint::rand(&mut prng);
 
         // compute frob_q_power iteratively
-        let q1 = frob_q_power(p.x, p.y, 1);
-        let q2 = frob_q_power(q1.x(), q1.y(), 1);
-        let q3 = frob_q_power(q2.x(), q2.y(), 1);
+        let q1 = frob_q_power(p, 1);
+        let q2 = frob_q_power(q1, 1);
+        let q3 = frob_q_power(q2, 1);
 
         // compute frob_q_power directly
-        let q2d = frob_q_power(p.x, p.y, -1);
-        let q3d = frob_q_power(p.x, p.y, 3);
+        let q2d = frob_q_power(p, -1);
+        let q3d = frob_q_power(p, 3);
 
         assert_eq!(q2d.neg(), q2);
         assert_eq!(q3d, q3);

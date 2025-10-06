@@ -163,8 +163,8 @@ fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Se
 
     // public values known at compile time
     let pubs: PublicParams = PublicParams {
-        q2: TwistPoint::new(vk.q2.x, vk.q2.y),
-        q3: TwistPoint::new(vk.q3.x, vk.q3.y),
+        q2: TwistPoint::from(vk.q2),
+        q3: TwistPoint::from(vk.q3),
         fixed_acc: vk.p1q1.c1 / vk.p1q1.c0,
         ks_vks: vk.p3vk,
         vky0: vk.vky0,

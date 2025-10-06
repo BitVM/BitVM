@@ -36,7 +36,6 @@ pub enum DataType {
 }
 
 /// Represent coordinates by evaluation form (-x/y, 1/y), see more: https://github.com/BitVM/BitVM/issues/213
-/// Use `lift` to convert to evaluation form lazily.
 #[derive(Debug, Clone, Copy)]
 pub struct FqPair {
     x: ark_bn254::Fq, // -x/y
@@ -61,9 +60,20 @@ impl FqPair {
         self.y
     }
 
-    pub fn lift(&self) -> Self {
-        let p: ark_bn254::G1Affine = (*self).into();
-        Self::new(p.x, p.y)
+    /// Recover the evaluation form to original form.
+    pub fn recover(&self) -> Self {
+        if self.zero {
+            if self.x == ark_bn254::Fq::ZERO {
+                return Self::new(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
+            }
+            return Self::new(self.x, self.y);
+        }
+
+        let (nx, ny) = (self.x, self.y);
+        let y = ny.inverse().expect("ny should be non-zero to recover");
+        let x = -nx * y; // equivalent to -nx / ny⁻¹
+
+        Self::new(x, y)
     }
 
     pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
@@ -92,24 +102,24 @@ impl From<ark_bn254::G1Affine> for FqPair {
     }
 }
 
-impl From<FqPair> for ark_bn254::G1Affine {
-    fn from(pi: FqPair) -> Self {
-        if pi.zero {
-            if pi.x == ark_bn254::Fq::ZERO {
-                return ark_bn254::G1Affine::zero();
-            }
-            return ark_bn254::G1Affine::new_unchecked(pi.x, pi.y);
-        }
-
-        let (nx, ny) = (pi.x, pi.y);
-        let y = ny
-            .inverse()
-            .expect("ny must be nonzero for evaluation form");
-        let x = -nx * y; // equivalent to -nx / ny⁻¹
-
-        ark_bn254::G1Affine::new_unchecked(x, y)
-    }
-}
+//impl From<FqPair> for ark_bn254::G1Affine {
+//    fn from(pi: FqPair) -> Self {
+//        if pi.zero {
+//            if pi.x == ark_bn254::Fq::ZERO {
+//                return ark_bn254::G1Affine::zero();
+//            }
+//            return ark_bn254::G1Affine::new_unchecked(pi.x, pi.y);
+//        }
+//
+//        let (nx, ny) = (pi.x, pi.y);
+//        let y = ny
+//            .inverse()
+//            .expect("ny must be nonzero for evaluation form");
+//        let x = -nx * y; // equivalent to -nx / ny⁻¹
+//
+//        ark_bn254::G1Affine::new_unchecked(x, y)
+//    }
+//}
 
 /// Non-G2 Group on E'
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
@@ -408,7 +418,7 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
-                let r = r.lift();
+                let r = r.recover();
                 let hash = extern_hash_fps(vec![r.x(), r.y()]);
                 CompressedStateObject::Hash(hash)
             }
@@ -491,7 +501,7 @@ fn as_hints_scalarelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
 }
 
 fn as_hints_g1type_g1data(r: &FqPair) -> Vec<Hint> {
-    let r = r.lift();
+    let r = r.recover();
     let hints = vec![Hint::Fq(r.x()), Hint::Fq(r.y())];
     hints
 }
@@ -626,19 +636,21 @@ mod test {
 
     #[test]
     fn test_fq_pair() {
-        let zero = ark_bn254::G1Affine::zero();
+        let zero = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
+        let fp_zero = FqPair::from(zero);
+        assert!(fp_zero.zero);
         assert_eq!(
             zero,
-            <FqPair as Into<ark_bn254::G1Affine>>::into(FqPair::from(zero))
+            ark_bn254::G1Affine::new_unchecked(fp_zero.x(), fp_zero.y())
         );
 
         let mut rng = thread_rng();
         (0..100).into_iter().for_each(|_| {
             let random = ark_bn254::G1Affine::rand(&mut rng);
-            assert_eq!(
-                random,
-                <FqPair as Into<ark_bn254::G1Affine>>::into(FqPair::from(random))
-            );
+            let fp_rand = FqPair::from(random);
+            assert!(!fp_rand.zero);
+            let lifted = fp_rand.recover();
+            assert_eq!(random, ark_bn254::G1Affine::new(lifted.x(), lifted.y()));
         });
     }
 
@@ -664,7 +676,7 @@ mod test {
         let mut rng = thread_rng();
         let p = TwistPoint::rand(&mut rng);
 
-        let zero = TwistPoint::new(ark_bn254::Fq2::zero(), ark_bn254::Fq2::zero());
+        let zero = TwistPoint::from(ark_bn254::G2Affine::zero());
 
         // P + 0 = P
         let s1 = p.add(&zero);

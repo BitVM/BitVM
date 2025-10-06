@@ -355,10 +355,9 @@ pub(crate) fn chunk_final_verify(
     fixed_p1q1: ark_bn254::Fq6,
 
     t4: TwistPoint,
-    q4: ark_bn254::G2Affine,
+    q4: TwistPoint,
 ) -> (bool, Script, Vec<Hint>) {
-    let ((qqx, qqy), precomp_q_scr, hints) = hinted_mul_by_char_on_phi_sq_q(q4.x, q4.y);
-
+    let ((qqx, qqy), precomp_q_scr, hints) = hinted_mul_by_char_on_phi_sq_q(q4.x(), q4.y());
     let qq = TwistPoint::new(qqx, qqy);
     let t4_is_in_subgroup = t4 == qq.neg();
     let fp12_is_unity = f + fixed_p1q1 == ark_bn254::Fq6::ZERO;
@@ -689,7 +688,7 @@ mod test {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
             let hint_out = DataType::G1Data(hint_out);
-            let p = DataType::G1Data(p.lift());
+            let p = DataType::G1Data(p.recover());
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
@@ -739,8 +738,8 @@ mod test {
         let f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
         let g = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, g.c1 / g.c0);
 
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let t = frob_q_power(q4.x, q4.y, 3).neg().into();
+        let q4 = TwistPoint::rand(&mut prng);
+        let t = frob_q_power(q4, 3).neg().into();
         let t4 = ElemG2Eval {
             t,
             p2le: [ark_bn254::Fq2::ONE; 2],
@@ -766,13 +765,13 @@ mod test {
             {f_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
 
-            {Fq::push(q4.y.c1)}
+            {Fq::push(q4.y().c1)}
             {Fq::toaltstack()}
-            {Fq::push(q4.y.c0)}
+            {Fq::push(q4.y().c0)}
             {Fq::toaltstack()}
-            {Fq::push(q4.x.c1)}
+            {Fq::push(q4.x().c1)}
             {Fq::toaltstack()}
-            {Fq::push(q4.x.c0)}
+            {Fq::push(q4.x().c0)}
             {Fq::toaltstack()}
         };
 

@@ -293,9 +293,9 @@ pub(crate) fn groth16_generate_segments(
     );
     push_compare_or_return!(t4);
 
-    let tmp_q2f = frob_q_power(pubs.q2.x(), pubs.q2.y(), 1);
+    let tmp_q2f = frob_q_power(pubs.q2, 1);
     t2 = t2.add(&tmp_q2f);
-    let tmp_q3f = frob_q_power(pubs.q3.x(), pubs.q3.y(), 1);
+    let tmp_q3f = frob_q_power(pubs.q3, 1);
     t3 = t3.add(&tmp_q3f);
     let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(
         skip_evaluation,
@@ -570,8 +570,8 @@ mod test {
         let eval_ins_raw = eval_ins.to_raw();
 
         let pubs: PublicParams = PublicParams {
-            q2: TwistPoint::new(q2.x, q2.y),
-            q3: TwistPoint::new(q3.x, q3.y),
+            q2: TwistPoint::from(q2),
+            q3: TwistPoint::from(q3),
             fixed_acc: f_fixed.c1 / f_fixed.c0,
             ks_vks: msm_gs,
             vky0,
@@ -674,7 +674,7 @@ mod test {
             let t = ts[i];
             let p = ps[i];
 
-            q = frob_q_power(q.x(), q.y(), 1);
+            q = frob_q_power(q, 1);
 
             let alpha = (t.y() - q.y()) / (t.x() - q.x());
             let neg_bias = alpha * t.x() - t.y();
@@ -699,7 +699,7 @@ mod test {
             let t = ts[i];
             let p = ps[i];
 
-            q = frob_q_power(q.x(), q.y(), -1);
+            q = frob_q_power(q, -1);
 
             let alpha = (t.y() - q.y()) / (t.x() - q.x());
             let neg_bias = alpha * t.x() - t.y();
@@ -721,7 +721,7 @@ mod test {
         for i in 0..num_pairings {
             let mut q = qs[i];
             let t = ts[i];
-            q = frob_q_power(q.x(), q.y(), 3);
+            q = frob_q_power(q, 3);
 
             ts[i] = t.add(&q).into();
         }
@@ -967,8 +967,7 @@ mod test {
             f *= le;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-            let q = TwistPoint::new(qx, qy);
-            ts[i] = t.add(&q);
+            ts[i] = t.add(&TwistPoint::new(qx, qy));
         }
         (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
             false,
@@ -991,9 +990,9 @@ mod test {
 
         (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
         total_script_size += temp_scr.len();
-        let tmp_q2f = frob_q_power(qs[0].x(), qs[0].y(), 1);
+        let tmp_q2f = frob_q_power(qs[0], 1);
         t2 = t2.add(&tmp_q2f);
-        let tmp_q3f = frob_q_power(qs[1].x(), qs[1].y(), 1);
+        let tmp_q3f = frob_q_power(qs[1], 1);
         t3 = t3.add(&tmp_q3f);
         assert_eq!(g, f.c1);
 
@@ -1151,7 +1150,7 @@ mod test {
         // actual scripted verification
         let qs = vec![q2, q3, q4]
             .iter()
-            .map(|q| TwistPoint::new(q.x, q.y))
+            .map(|q| TwistPoint::from(*q))
             .collect::<Vec<_>>();
         verify_pairing(vec![p2, p3, p4], qs.clone(), c, wi, fixed_p1q1);
         verify_pairing_scripted(vec![p2, p3, p4], qs, c, wi, fixed_p1q1);

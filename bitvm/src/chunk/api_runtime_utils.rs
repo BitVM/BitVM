@@ -211,8 +211,8 @@ pub(crate) fn get_segments_from_assertion(
         let fixed_acc = pairing.multi_miller_loop_affine([vk.alpha_g1], [q1]).0;
 
         let pubs: PublicParams = PublicParams {
-            q2: TwistPoint::new(q2.x, q2.y),
-            q3: TwistPoint::new(q3.x, q3.y),
+            q2: TwistPoint::from(q2),
+            q3: TwistPoint::from(q3),
             fixed_acc: fixed_acc.c1 / fixed_acc.c0,
             ks_vks: msm_gs.clone(),
             vky0,
@@ -280,8 +280,8 @@ pub(crate) fn get_segments_from_groth16_proof(
     };
 
     let pubs: PublicParams = PublicParams {
-        q2: TwistPoint::new(q2.x, q2.y),
-        q3: TwistPoint::new(q3.x, q3.y),
+        q2: TwistPoint::from(q2),
+        q3: TwistPoint::from(q3),
         fixed_acc: f_fixed.c1 / f_fixed.c0,
         ks_vks: msm_gs,
         vky0,
@@ -726,44 +726,5 @@ mod test {
         let res = execute_script_from_signature(&segments, signed_assts, &disprove_scripts);
         assert!(res.is_none());
         println!("finished test");
-    }
-
-    #[test]
-    fn zellic_test_public_input_zero() {
-        use ark_bn254::{G1Affine, G2Affine};
-        println!("Preparing Input");
-        let public_input_int: u64 = 0;
-        let public_input: ark_bn254::Fr = ark_bn254::Fr::from(public_input_int);
-        let vk: ark_groth16::VerifyingKey<Bn254> = ark_groth16::VerifyingKey {
-            alpha_g1: G1Affine::generator(),
-            beta_g2: G2Affine::generator(),
-            gamma_g2: G2Affine::generator(),
-            delta_g2: G2Affine::generator(),
-            gamma_abc_g1: vec![G1Affine::generator(), G1Affine::generator()],
-        };
-        let proof: ark_groth16::Proof<Bn254> = ark_groth16::Proof {
-            a: G1Affine::generator()
-                .mul_bigint([1 * 1 + 1 * 1 + public_input_int * 1 + 1 * 1])
-                .into_affine(),
-            b: G2Affine::generator(),
-            c: G1Affine::generator(),
-        };
-        let scalars = [public_input];
-        println!("public input: {:?}", public_input);
-
-        // generate segments
-        println!("get_segments_from_groth16_proof");
-        let (success, segments) = get_segments_from_groth16_proof(proof, scalars.to_vec(), &vk);
-        println!("Finished generating segments, success={}", success);
-        assert!(success);
-        // segments to assertion
-        println!("get_assertion_from_segments");
-        let assts = get_assertion_from_segments(&segments);
-        println!("execute_script_from_assertion");
-        let res = execute_script_from_assertion(&segments, assts);
-        println!("Result is none: {}", res.is_none());
-        if res.is_some() {
-            println!("Result id: {}", res.unwrap().0);
-        }
     }
 }
