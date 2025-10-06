@@ -7,6 +7,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::api::{NUM_PUBS, NUM_TAPS};
 use crate::chunk::elements::ElementType;
+use crate::chunk::elements::TwistPoint;
 use crate::treepp;
 use ark_bn254::Bn254;
 use ark_ec::bn::BnConfig;
@@ -162,8 +163,8 @@ fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Se
 
     // public values known at compile time
     let pubs: PublicParams = PublicParams {
-        q2: vk.q2,
-        q3: vk.q3,
+        q2: TwistPoint::new(vk.q2.x, vk.q2.y),
+        q3: TwistPoint::new(vk.q3.x, vk.q3.y),
         fixed_acc: vk.p1q1.c1 / vk.p1q1.c0,
         ks_vks: vk.p3vk,
         vky0: vk.vky0,

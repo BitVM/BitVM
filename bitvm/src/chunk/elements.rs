@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
     bn254::utils::Hint,
     chunk::{
@@ -7,10 +5,15 @@ use crate::{
         wrap_hasher::BLAKE3_HASH_LENGTH,
     },
 };
+use ark_bn254::g2::Config as G2Config;
+use ark_ec::short_weierstrass::SWCurveConfig;
+use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field, UniformRand};
 use num_bigint::{BigInt, BigUint};
+use num_traits::Zero;
 use rand::Rng;
 use std::fmt::Debug;
+use std::str::FromStr;
 
 use super::helpers::{extern_hash_fps, extern_nibbles_to_limbs};
 
@@ -91,7 +94,6 @@ impl From<ark_bn254::G1Affine> for FqPair {
 
 impl From<FqPair> for ark_bn254::G1Affine {
     fn from(pi: FqPair) -> Self {
-        use ark_ec::AffineRepr;
         if pi.zero {
             if pi.x == ark_bn254::Fq::ZERO {
                 return ark_bn254::G1Affine::zero();
@@ -106,6 +108,127 @@ impl From<FqPair> for ark_bn254::G1Affine {
         let x = -nx * y; // equivalent to -nx / ny⁻¹
 
         ark_bn254::G1Affine::new_unchecked(x, y)
+    }
+}
+
+/// Non-G2 Group on E'
+#[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
+pub struct TwistPoint {
+    x: ark_bn254::Fq2,
+    y: ark_bn254::Fq2,
+    pub zero: bool,
+}
+
+impl TwistPoint {
+    pub fn new(x: ark_bn254::Fq2, y: ark_bn254::Fq2) -> Self {
+        Self {
+            x,
+            y,
+            zero: x == ark_bn254::Fq2::ZERO && y == ark_bn254::Fq2::ZERO,
+        }
+    }
+
+    pub fn x(&self) -> ark_bn254::Fq2 {
+        self.x
+    }
+
+    pub fn y(&self) -> ark_bn254::Fq2 {
+        self.y
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.zero
+    }
+
+    pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        let p = ark_bn254::G2Affine::rand(rng);
+        Self::new(p.x, p.y)
+    }
+
+    /// y^2 = x^3 + b'  (b' from E')
+    pub fn is_on_curve(&self) -> bool {
+        let y2 = self.y.square();
+        let x3b = self.x.square() * self.x + <G2Config as SWCurveConfig>::COEFF_B;
+        y2 == x3b
+    }
+
+    /// Negation
+    pub fn neg(&self) -> Self {
+        if self.zero {
+            *self
+        } else {
+            Self::new(self.x, -self.y)
+        }
+    }
+
+    /// Point doubling: (x3, y3) = 2 * (x1, y1)
+    pub fn double(&self) -> Self {
+        if self.zero {
+            return *self;
+        }
+
+        let two = ark_bn254::Fq2::from(2u64);
+        let three = ark_bn254::Fq2::from(3u64);
+
+        let x1 = self.x;
+        let y1 = self.y;
+
+        if y1.is_zero() {
+            return Self {
+                x: ark_bn254::Fq2::zero(),
+                y: ark_bn254::Fq2::zero(),
+                zero: true,
+            };
+        }
+
+        let slope = (three * x1.square()) / (two * y1);
+        let x3 = slope.square() - (two * x1);
+        let y3 = slope * (x1 - x3) - y1;
+
+        Self::new(x3, y3)
+    }
+
+    /// Point addition on E': P3 = P1 + P2
+    pub fn add(&self, other: &Self) -> Self {
+        if self.zero {
+            return *other;
+        }
+        if other.zero {
+            return *self;
+        }
+
+        let x1 = self.x;
+        let y1 = self.y;
+        let x2 = other.x;
+        let y2 = other.y;
+
+        if x1 == x2 {
+            if y1 + y2 == ark_bn254::Fq2::zero() {
+                return Self {
+                    x: ark_bn254::Fq2::zero(),
+                    y: ark_bn254::Fq2::zero(),
+                    zero: true,
+                };
+            } else {
+                return self.double();
+            }
+        }
+
+        let slope = (y2 - y1) / (x2 - x1);
+        let x3 = slope.square() - x1 - x2;
+        let y3 = slope * (x1 - x3) - y1;
+
+        Self::new(x3, y3)
+    }
+}
+
+impl From<ark_bn254::G2Affine> for TwistPoint {
+    fn from(p: ark_bn254::G2Affine) -> Self {
+        Self {
+            x: p.x,
+            y: p.y,
+            zero: p.is_zero(),
+        }
     }
 }
 
@@ -376,7 +499,7 @@ fn as_hints_g1type_g1data(r: &FqPair) -> Vec<Hint> {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ElemG2Eval {
     /// G2 point accumulator of Miller's Algorithm
-    pub(crate) t: ark_bn254::G2Affine,
+    pub(crate) t: TwistPoint,
 
     // We have,
     // A <- (1 + a), B <- (1 + b), C <- (1 + c), C = A x B
@@ -452,7 +575,7 @@ impl ElemG2Eval {
         );
         let tx = ark_bn254::Fq2::new(q4xc0, q4xc1);
         let ty = ark_bn254::Fq2::new(q4yc0, q4yc1);
-        let t = ark_bn254::G2Affine::new(tx, ty);
+        let t = TwistPoint::new(tx, ty);
         ElemG2Eval {
             t,
             p2le: [ark_bn254::Fq2::ONE; 2],
@@ -464,16 +587,18 @@ impl ElemG2Eval {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::{
         bn254::{fp254impl::Fp254Impl, fq::Fq},
         chunk::{
-            elements::{ElementType, FqPair},
+            elements::{ElementType, FqPair, TwistPoint},
             wrap_hasher::hash_messages,
         },
         execute_script,
     };
-    use ark_ec::AffineRepr;
-    use ark_ff::UniformRand;
+    use ark_bn254::{g2::Config as G2Config, Fr};
+    use ark_ec::{CurveGroup, PrimeGroup};
+    use ark_ff::PrimeField;
     use bitcoin_script::script;
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -515,5 +640,134 @@ mod test {
                 <FqPair as Into<ark_bn254::G1Affine>>::into(FqPair::from(random))
             );
         });
+    }
+
+    #[test]
+    fn test_on_curve_and_addition() {
+        let mut rng = thread_rng();
+        let p1 = TwistPoint::rand(&mut rng);
+        let p2 = TwistPoint::rand(&mut rng);
+
+        assert!(p1.is_on_curve(), "p1 should be on E'");
+        assert!(p2.is_on_curve(), "p2 should be on E'");
+
+        // Add and double
+        let sum = p1.add(&p2);
+        assert!(sum.is_on_curve(), "p1 + p2 should still be on E'");
+
+        let dbl = p1.double();
+        assert!(dbl.is_on_curve(), "2*p1 should be on E'");
+    }
+
+    #[test]
+    fn test_additive_identities() {
+        let mut rng = thread_rng();
+        let p = TwistPoint::rand(&mut rng);
+
+        let zero = TwistPoint::new(ark_bn254::Fq2::zero(), ark_bn254::Fq2::zero());
+
+        // P + 0 = P
+        let s1 = p.add(&zero);
+        assert_eq!(s1.x, p.x);
+        assert_eq!(s1.y, p.y);
+
+        // 0 + P = P
+        let s2 = zero.add(&p);
+        assert_eq!(s2.x, p.x);
+        assert_eq!(s2.y, p.y);
+
+        // P + (-P) = 0
+        let neg = p.neg();
+        let s3 = p.add(&neg);
+        assert!(s3.zero, "P + (-P) should be zero point");
+    }
+
+    #[test]
+    fn test_double_equals_add_self() {
+        let mut rng = thread_rng();
+        let p = TwistPoint::rand(&mut rng);
+
+        let dbl1 = p.double();
+        let dbl2 = p.add(&p);
+
+        assert_eq!(dbl1.x, dbl2.x);
+        assert_eq!(dbl1.y, dbl2.y);
+    }
+
+    fn is_in_g2_subgroup(p: &ark_bn254::G2Projective) -> bool {
+        // Check if the point is in the correct G2 subgroup:
+        // h * P == O
+        let r = <Fr as PrimeField>::MODULUS;
+        (p.mul_bigint(r)).is_zero()
+    }
+
+    fn random_point_on_twist_not_in_g2() -> TwistPoint {
+        let mut rng = thread_rng();
+        loop {
+            let x = ark_bn254::Fq2::rand(&mut rng);
+            let rhs = x * x * x + G2Config::COEFF_B;
+            if let Some(y) = rhs.sqrt() {
+                // This (x, y) satisfies the twist curve equation but is *not* subgroup-checked.
+                let p = ark_bn254::G2Affine::new_unchecked(x, y);
+                assert!(p.is_on_curve(), "curve equation must hold");
+                assert!(
+                    !p.is_in_correct_subgroup_assuming_on_curve(),
+                    "point should not be in G2 subgroup"
+                );
+                return TwistPoint::new(x, y);
+            }
+        }
+    }
+
+    #[test]
+    fn test_point_not_on_g2_but_on_twist() {
+        // Get a valid but non-G₂ point
+        let non_g2 = random_point_on_twist_not_in_g2();
+
+        // Check it's on the twist equation
+        let x = non_g2.x();
+        let y = non_g2.y();
+        assert_eq!(
+            y.square(),
+            x * x * x + G2Config::COEFF_B,
+            "must be on twist"
+        );
+
+        // Try converting to a projective point (optional)
+        let p = ark_bn254::G2Affine::new_unchecked(x, y);
+        assert!(p.is_on_curve(), "curve equation must hold");
+
+        // Check it’s not in G2 subgroup
+        let non_g2_proj = p.into_group();
+        assert!(
+            !is_in_g2_subgroup(&non_g2_proj),
+            "point should not be in G2 subgroup"
+        );
+        println!("Non-G2 point on E': {:?}", non_g2_proj);
+
+        // Basic curve operations sanity checks
+        let neg = -non_g2_proj;
+
+        // Check some properties
+        assert_ne!(
+            non_g2_proj,
+            ark_bn254::G2Projective::zero(),
+            "point not zero"
+        );
+        assert_eq!(
+            non_g2_proj + neg,
+            ark_bn254::G2Projective::zero(),
+            "P + (-P) must be identity"
+        );
+
+        // Check that group law preserves twist equation
+        let doubled = non_g2_proj.double();
+        let added = non_g2_proj + doubled;
+        let added_affine = added.into_affine();
+        let x2 = added_affine.x;
+        let y2 = added_affine.y;
+        let lhs2 = y2.square();
+        let rhs2 = x2 * x2.square() + G2Config::COEFF_B;
+        assert_eq!(lhs2, rhs2, "sum must stay on twist curve");
     }
 }

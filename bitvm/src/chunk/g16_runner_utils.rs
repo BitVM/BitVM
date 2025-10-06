@@ -5,7 +5,10 @@ use crate::{
         msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM},
         utils::Hint,
     },
-    chunk::{elements::FqPair, taps_msm::chunk_msm},
+    chunk::{
+        elements::{FqPair, TwistPoint},
+        taps_msm::chunk_msm,
+    },
 };
 
 use super::{
@@ -204,11 +207,11 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     in_p4: &Segment,
     in_q4: Option<Vec<Segment>>,
     in_p3: &Segment,
-    t3: ark_bn254::G2Affine,
-    q3: Option<ark_bn254::G2Affine>,
+    t3: TwistPoint,
+    q3: Option<TwistPoint>,
     in_p2: &Segment,
-    t2: ark_bn254::G2Affine,
-    q2: Option<ark_bn254::G2Affine>,
+    t2: TwistPoint,
+    q2: Option<TwistPoint>,
 ) -> Segment {
     let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![
         (in_p2.id, ElementType::G1),
@@ -226,7 +229,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     let p3 = p3.lift();
     let p2 = p2.lift();
 
-    let mut q4: Option<ark_bn254::G2Affine> = None;
+    let mut q4: Option<TwistPoint> = None;
 
     if !is_dbl {
         let in_q4 = in_q4.unwrap();
@@ -238,7 +241,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         let q4xc1: ark_ff::BigInt<4> = in_q4[1].result.0.try_into().unwrap();
         let q4yc0: ark_ff::BigInt<4> = in_q4[2].result.0.try_into().unwrap();
         let q4yc1: ark_ff::BigInt<4> = in_q4[3].result.0.try_into().unwrap();
-        q4 = Some(ark_bn254::G2Affine::new_unchecked(
+        q4 = Some(TwistPoint::new(
             ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
             ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
         ));
@@ -433,7 +436,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     );
     if !skip {
         let in_p: FqPair = in_p.result.0.try_into().unwrap();
-        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.into());
+        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.lift());
     }
 
     Segment {
