@@ -663,40 +663,6 @@ mod test {
     }
 
     #[test]
-    fn test_is_field() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        println!("Fq.is_field: {} bytes", Fq::is_field().len());
-
-        for _ in 0..10 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let a = a.rem(&m);
-
-            let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::is_field() }
-            };
-            run(script);
-        }
-
-        let script = script! {
-            { Fq::push_modulus() } OP_1 OP_ADD
-            { Fq::is_field() }
-            OP_NOT
-        };
-        run(script);
-
-        let script = script! {
-            { Fq::push_modulus() } OP_1 OP_SUB
-            OP_NEGATE
-            { Fq::is_field() }
-            OP_NOT
-        };
-        run(script);
-    }
-
-    #[test]
     fn test_hinted_mul() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 

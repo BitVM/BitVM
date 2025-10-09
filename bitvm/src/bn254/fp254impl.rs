@@ -133,27 +133,6 @@ pub trait Fp254Impl {
         }
     }
 
-    fn is_field() -> Script {
-        script! {
-            // Each limb must not be negative
-            for i in 0..Self::N_LIMBS - 1 {
-                { i } OP_PICK
-                0 OP_GREATERTHANOREQUAL OP_TOALTSTACK
-            }
-            { Self::N_LIMBS - 1 } OP_PICK
-            0 OP_GREATERTHANOREQUAL
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_FROMALTSTACK OP_BOOLAND
-            }
-            OP_TOALTSTACK
-
-            { Self::push_modulus() }
-            { U254::lessthan(1, 0) }
-
-            OP_FROMALTSTACK OP_BOOLAND
-        }
-    }
-
     #[inline]
     fn convert_to_le_bits_toaltstack() -> Script {
         U254::convert_to_le_bits_toaltstack()
