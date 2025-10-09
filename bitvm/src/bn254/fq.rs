@@ -122,7 +122,7 @@ macro_rules! fp_lc_mul {
             trait [<Fp254 $NAME>] {
                 const LIMB_SIZE: u32 = 29;
                 const LCS: [bool; $LCS.len()] = $LCS;
-                const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
+                const LC_BITS: u32 = usize::BITS - ($LCS.len() - 1).leading_zeros();
                 type U;
                 type T;
                 fn tmul() -> Script;
