@@ -63,22 +63,32 @@ impl Fq {
         }
     }
 
-    pub const fn bigint_tmul_lc_1() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_1() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_2() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul2LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_4() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2_w4() -> (u32, u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LCW4>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LCW4>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LCW4>::T::N_LIMBS;
+        (X, Y, Z)
+    }
+
+    pub const fn bigint_tmul_lc_4() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul4LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul4LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul4LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul4LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
     #[inline]
