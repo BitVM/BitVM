@@ -251,19 +251,13 @@ fn utils_point_add_eval(
         || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
     let q_is_zero = qq.is_zero()
         || (qq == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // q is none or Some(0)
-    let is_valid_input = !t_is_zero && !q_is_zero && t != -qq;
+    let is_valid_input = !t_is_zero && !q_is_zero && t != -qq  && t != qq;
 
     // if it's valid input, you can compute line coefficients, else hardcode degenerate values
     let (alpha, bias) = if is_valid_input {
-        if t == qq {
-            let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
-            let bias = t.y - alpha * t.x;
-            (alpha, bias)
-        } else {
             let alpha = (t.y - qq.y) / (t.x - qq.x);
             let bias = t.y - alpha * t.x;
             (alpha, bias)
-        }
     } else {
         (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
     };
@@ -343,59 +337,70 @@ fn utils_point_add_eval(
                     // [q, t]
                     {G2Affine::roll(1)}
                     // [t, q]
-                    {drop_and_insert_zero}
-                OP_ELSE
-                    // [qx, qy, tx, ty]
-                    for _ in 0..Fq::N_LIMBS * 2 {
-                        OP_DEPTH OP_1SUB OP_ROLL
-                    }
-                    for _ in 0..Fq::N_LIMBS * 2 {
-                        OP_DEPTH OP_1SUB OP_ROLL
-                    }
-                    // [qx, qy, tx, ty, c3, c4]
-                    {Fq2::roll(6)} {Fq2::roll(6)}
-                    // [qx, qy, c3, c4, tx, ty]
-                    {Fq2::copy(2)} {Fq2::copy(2)}
-                    {Fq2::toaltstack()} {Fq2::toaltstack()}
-                    // [qx, qy, c3, c4, tx, ty] [tx, y]
-                    {hinted_script11}
-                    // [qx, qy, c3, c4 ]
-                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}
-                    // [qx, qy, c3, c4, tx, ty]
-                    {Fq2::roll(6)} {Fq2::roll(6)}
-                    // [qx, qy, tx, ty, c3, c4]
-                    { Fq2::copy(10) }
-                    { Fq2::roll(10) }
-                    // [qx, tx, ty, c3, c4, qx, qy]
-                    { hinted_script12 }
-                    // [qx, tx, ty, c3, c4]
+                    {drop_and_insert_zero.clone() }
+                    OP_ELSE
+                    // qx qy tx ty
+                    {G2Affine::copy(1)}
+                    {G2Affine::copy(1)}
+                    {G2Affine::equal()} // q = t ?
+                    OP_IF // q == t
+                        // [q, t]
+                        {G2Affine::roll(1)}
+                        // [t, q]
+                        {drop_and_insert_zero}
+                        OP_ELSE
+                            // [qx, qy, tx, ty]
+                            for _ in 0..Fq::N_LIMBS * 2 {
+                                OP_DEPTH OP_1SUB OP_ROLL
+                            }
+                            for _ in 0..Fq::N_LIMBS * 2 {
+                                OP_DEPTH OP_1SUB OP_ROLL
+                            }
+                            // [qx, qy, tx, ty, c3, c4]
+                            {Fq2::roll(6)} {Fq2::roll(6)}
+                            // [qx, qy, c3, c4, tx, ty]
+                            {Fq2::copy(2)} {Fq2::copy(2)}
+                            {Fq2::toaltstack()} {Fq2::toaltstack()}
+                            // [qx, qy, c3, c4, tx, ty] [tx, y]
+                            {hinted_script11}
+                            // [qx, qy, c3, c4 ]
+                            {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                            // [qx, qy, c3, c4, tx, ty]
+                            {Fq2::roll(6)} {Fq2::roll(6)}
+                            // [qx, qy, tx, ty, c3, c4]
+                            { Fq2::copy(10) }
+                            { Fq2::roll(10) }
+                            // [qx, tx, ty, c3, c4, qx, qy]
+                            { hinted_script12 }
+                            // [qx, tx, ty, c3, c4]
 
-                    {Fq2::copy(2)} {Fq2::copy(2)}
-                    // [qx, tx, ty, c3, c4, c3, c4]
-                    { Fq2::copy(10) }
-                    // [qx, tx, ty, c3, c4, c3, c4, tx]
-                    { Fq2::roll(14) }
-                    // [tx, ty, c3, c4, c3, c4, tx, qx]
-                    { hinted_script2 }
-                    // [tx, ty, c3, c4, c3, c4, x', y']
-                    {Fq2::toaltstack()} {Fq2::toaltstack()}
-                    {Fq2::drop()} {Fq2::drop()}
-                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}
-                    // [tx, ty, c3, c4, x', y']
-                    {Fq2::fromaltstack()}
-                    // [tx, ty, c3, c4, x', y', px, py]
-                    {Fq2::roll(4)} {Fq2::roll(4)}
-                    // [tx, ty, c3, c4, px, py, x', y']
-                    {Fq2::toaltstack()} {Fq2::toaltstack()}
-                    // [tx, ty, c3, c4, px, py]
-                    { hinted_script3 }
-                    // [tx, ty,le0, le1]
-                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}
-                    // [tx, ty, le0, le1, x', y']
-                    {Fq2::roll(6)} {Fq2::roll(6)}
-                     // [tx, ty, x', y', le0, le1]
-                OP_ENDIF
+                            {Fq2::copy(2)} {Fq2::copy(2)}
+                            // [qx, tx, ty, c3, c4, c3, c4]
+                            { Fq2::copy(10) }
+                            // [qx, tx, ty, c3, c4, c3, c4, tx]
+                            { Fq2::roll(14) }
+                            // [tx, ty, c3, c4, c3, c4, tx, qx]
+                            { hinted_script2 }
+                            // [tx, ty, c3, c4, c3, c4, x', y']
+                            {Fq2::toaltstack()} {Fq2::toaltstack()}
+                            {Fq2::drop()} {Fq2::drop()}
+                            {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                            // [tx, ty, c3, c4, x', y']
+                            {Fq2::fromaltstack()}
+                            // [tx, ty, c3, c4, x', y', px, py]
+                            {Fq2::roll(4)} {Fq2::roll(4)}
+                            // [tx, ty, c3, c4, px, py, x', y']
+                            {Fq2::toaltstack()} {Fq2::toaltstack()}
+                            // [tx, ty, c3, c4, px, py]
+                            { hinted_script3 }
+                            // [tx, ty,le0, le1]
+                            {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                            // [tx, ty, le0, le1, x', y']
+                            {Fq2::roll(6)} {Fq2::roll(6)}
+                            // [tx, ty, x', y', le0, le1]
+                        OP_ENDIF
                 // [tx, ty, x', y', le0, le1]
+                OP_ENDIF
             OP_ENDIF
         OP_ENDIF
     };
@@ -429,7 +434,14 @@ fn point_ops_and_multiply_line_evals_step_1(
     };
     let le4 = ark_bn254::Fq6::new(le4_0, le4_1, ark_bn254::Fq2::ZERO);
 
-    let (alpha_t3, neg_bias_t3) = if is_dbl {
+    let t3_is_zero = t3.is_zero() 
+        || (t3 == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t3 is none or Some(0)
+    let t4_is_zero = t4.is_zero() 
+        || (t4 == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t4 is none or Some(0)
+    let t3_is_valid_input = !t3_is_zero;
+    let t4_is_valid_input = !t4_is_zero;
+
+    let (alpha_t3, neg_bias_t3) = if is_dbl && t3_is_valid_input {
         let alpha_t3 = (t3.x.square() + t3.x.square() + t3.x.square()) / (t3.y + t3.y);
         let neg_bias_t3 = alpha_t3 * t3.x - t3.y;
         (alpha_t3, neg_bias_t3)
@@ -454,7 +466,7 @@ fn point_ops_and_multiply_line_evals_step_1(
         (alpha_t3, neg_bias_t3)
     };
 
-    let (alpha_t2, neg_bias_t2) = if is_dbl {
+    let (alpha_t2, neg_bias_t2) = if is_dbl && t4_is_valid_input {
         let alpha_t2 = (t2.x.square() + t2.x.square() + t2.x.square()) / (t2.y + t2.y);
         let neg_bias_t2 = alpha_t2 * t2.x - t2.y;
         (alpha_t2, neg_bias_t2)
