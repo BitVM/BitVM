@@ -93,6 +93,7 @@ fn blake3(
         // unpack the compact form of message
         stack.custom(
             script!(
+                {U256::verify_bigint_on_stack_with_limb_size(limb_len as u32)}
                 {U256::transform_limbsize(limb_len as u32, 4)}
                 for _ in 0..64{
                     OP_TOALTSTACK
@@ -106,6 +107,7 @@ fn blake3(
 
         stack.custom(
             script!(
+                {U256::verify_bigint_on_stack_with_limb_size(limb_len as u32)}
                 {U256::transform_limbsize(limb_len as u32, 4)}
                 for _ in 0..64{
                     OP_FROMALTSTACK
@@ -374,6 +376,8 @@ pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
     use crate::{execute_script, execute_script_buf_without_stack_limit};
     use bitcoin::ScriptBuf;
     use bitcoin_script_stack::optimizer;
@@ -606,5 +610,26 @@ mod tests {
     #[ignore]
     fn test_maximum_alstack_element_calculation_with_all_limbs() {
         test_maximum_alstack_element_calculation_with_limbs(&ALL_POSSIBLE_LIMB_LENGTHS);
+    }
+
+    #[test]
+    fn test_failure_on_invalid_input() {
+        let zero = script! {
+            {0} {0} {0} {0} {0} {0} {0} {0} {0}
+        };
+        let fake_zero = script! {
+            {0} {0} {0} {0} {0} {0} {0} {0} {-1}
+        };
+        let res = execute_script(script! {
+            // fake_zero has same hash as zero
+            {zero.clone()} {zero.clone()} {blake3_compute_script(64)}
+            for _ in 0..64 {
+                OP_TOALTSTACK
+            }
+            {zero.clone()} {fake_zero.clone()} {blake3_compute_script(64)}
+        });
+        println! {"{:?} {:?} {:?} {:?}", res.success, res.final_stack, res.stats, res.last_opcode};
+        assert_eq!(res.success, false);
+        assert_eq!(res.last_opcode, Some(bitcoin::opcodes::all::OP_VERIFY));
     }
 }
