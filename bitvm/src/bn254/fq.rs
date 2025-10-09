@@ -400,25 +400,22 @@ macro_rules! fp_lc_mul {
                             }
                         }
 
-                        { T::is_positive(size_table(MOD_WIDTH) +                 // q was negative
-                            N_LC * size_table(VAR_WIDTH) + N_LC) } OP_TOALTSTACK // {-q_table} {x0_table} {x1_table} {y0} {y1} {r} -> {0/1}
-                        { T::toaltstack() }                                      // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
+                        { T::toaltstack() }                                            // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r}
 
                         // Cleanup
-                        for _ in 0..N_LC { { T::drop() } }             // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
-                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r} {0/1}
-                        { drop_table(MOD_WIDTH) }                      // -> {r} {0/1}
+                        for _ in 0..N_LC { { T::drop() } }                             // {-q_table} {x0_table} {x1_table} -> {r}
+                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } }                 // {-q_table} -> {r}
+                        { drop_table(MOD_WIDTH) }                                      // -> {r}
 
                         // Correction/validation
                         // r = if q < 0 { r + p } else { r }; assert(r < p)
-                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r} {0/1}
-                        { T::fromaltstack() } OP_FROMALTSTACK // {MODULUS} {r} {0/1}
-                        OP_IF { T::add_ref(1) } OP_ENDIF      // {MODULUS} {-r/r}
-                        { T::copy(0) }                        // {MODULUS} {-r/r} {-r/r}
-                        { T::lessthan(0, 2) } OP_VERIFY       // {-r/r}
+                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r}
+                        { T::fromaltstack() }                                          // {MODULUS} {r}
+                        { T::copy(0) }                                                 // {MODULUS} {r} {r}
+                        { T::lessthan(0, 2) } OP_VERIFY                                // {r}
 
                         // Resize res back to N_BITS
-                        { T::resize::<N_BITS>() } // {r}
+                        { T::resize::<N_BITS>() }                                      // {r}
                     }
                 }
             }
