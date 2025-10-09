@@ -144,6 +144,25 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    /// Double the referenced BigInt but keep the original element in its position
+    /// This function prevents overflow of the underlying integer types during
+    /// doubling operation.
+    pub fn double_prevent_overflow_keep_element(n: u32) -> Script {
+        script! {
+            { 1 << LIMB_SIZE }
+            { n + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
+            for i in 0..Self::N_LIMBS - 2 {
+                { n + i + 3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
+            }
+            OP_NIP
+            { n + Self::N_LIMBS } OP_PICK OP_SWAP
+            { limb_double_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
     /// Left shift the BigInt on top of the stack by `bits`
     ///
     /// # Note
