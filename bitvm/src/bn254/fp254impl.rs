@@ -4,7 +4,7 @@ use crate::bigint::U254;
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::Hint;
 use crate::treepp::*;
-use ark_ff::PrimeField;
+use ark_ff::{Field, PrimeField};
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
 use num_traits::Num;
@@ -573,6 +573,11 @@ pub trait Fp254Impl {
 
     // TODO: Optimize by using the constant feature
     fn hinted_mul_by_constant(a: ark_bn254::Fq, constant: &ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        if *constant == ark_bn254::Fq::ONE {
+            return (script! {}, vec![]);
+        } else if *constant == -ark_bn254::Fq::ONE {
+            return (Fq::neg(0), vec![]);
+        }
         let mut hints = Vec::new();
         let x = BigInt::from_str(&a.to_string()).unwrap();
         let y = BigInt::from_str(&constant.to_string()).unwrap();
