@@ -2,7 +2,7 @@ use crate::bigint::add::limb_add_carry;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
 use crate::treepp::*;
-use ark_ff::PrimeField;
+use ark_ff::{Field, PrimeField};
 use bitcoin_script::script;
 use num_bigint::BigUint;
 use num_traits::Num;
@@ -127,27 +127,6 @@ pub trait Fp254Impl {
         script! {
             { Self::copy(a) }
             { Self::is_one() }
-        }
-    }
-
-    fn is_field() -> Script {
-        script! {
-            // Each limb must not be negative
-            for i in 0..Self::N_LIMBS - 1 {
-                { i } OP_PICK
-                0 OP_GREATERTHANOREQUAL OP_TOALTSTACK
-            }
-            { Self::N_LIMBS - 1 } OP_PICK
-            0 OP_GREATERTHANOREQUAL
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_FROMALTSTACK OP_BOOLAND
-            }
-            OP_TOALTSTACK
-
-            { Self::push_modulus() }
-            { U254::lessthan(1, 0) }
-
-            OP_FROMALTSTACK OP_BOOLAND
         }
     }
 

@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use crate::groth16::constants::{COFACTOR_CUBIC, H, K, LAMBDA, MM, R, S, T, W};
-use ark_ff::{Field, One};
+use crate::groth16::constants::{COFACTOR_CUBIC, H, K, LAMBDA, MM_INV, R, S, T, W};
+use ark_ff::Field;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 
@@ -56,7 +56,6 @@ fn tonelli_shanks_cubic(
 ) -> ark_bn254::Fq12 {
     let mut r = a.pow(t.to_u64_digits());
     let e = 3_u32.pow(s - 1);
-    let exp = 3_u32.pow(s) * &t;
 
     // compute cubic root of (a^t)^-1, say h
     let (mut h, cc, mut c) = (
@@ -64,13 +63,9 @@ fn tonelli_shanks_cubic(
         c.pow([e as u64]),
         c.inverse().unwrap(),
     );
-    for i in 1..(s as i32) {
-        let delta = (s as i32) - i - 1;
-        let d = if delta < 0 {
-            r.pow((&exp / 3_u32.pow((-delta) as u32)).to_u64_digits())
-        } else {
-            r.pow([3_u32.pow(delta as u32).to_u64().unwrap()])
-        };
+    for i in 1..s {
+        let delta = s - i - 1;
+        let d = r.pow([3_u32.pow(delta as u32).to_u64().unwrap()]);
         if d == cc {
             (h, r) = (h * c, r * c.pow([3_u64]));
         } else if d == cc.pow([2_u64]) {
@@ -116,23 +111,17 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
 
     // r-th root of f1, say f2
     let r_inv = R.modinv(&H).unwrap();
-    log_assert_ne!(r_inv, BigUint::one());
     let f2 = f1.pow(r_inv.to_u64_digits());
-    log_assert_ne!(f2, ark_bn254::Fq12::ONE);
 
     // m'-th root of f, say f3
-    let mm_inv = MM.modinv(&(&*R * &*H)).unwrap();
-    log_assert_ne!(mm_inv, BigUint::one());
-    let f3 = f2.pow(mm_inv.to_u64_digits());
+    let f3 = f2.pow(MM_INV.to_u64_digits());
     log_assert_eq!(
         f3.pow(&*COFACTOR_CUBIC.to_u64_digits()),
         ark_bn254::Fq12::ONE
     );
-    log_assert_ne!(f3, ark_bn254::Fq12::ONE);
 
     // d-th (cubic) root, say c
     let c = tonelli_shanks_cubic(f3, w, S, T.clone(), K.clone());
-    log_assert_ne!(c, ark_bn254::Fq12::ONE);
     log_assert_eq!(c.pow(LAMBDA.to_u64_digits()), f * wi);
 
     (c, wi)

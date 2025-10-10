@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Run rustfmt
       run: cargo fmt --all -- --check
 
@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Run clippy (no guests)
       run: cargo clippy --workspace --exclude header-chain-circuit --exclude final-spv-circuit
 
@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Build guests
       run: |
         REPR_GUEST_BUILD=1 BITCOIN_NETWORK=mainnet cargo build -p header-chain-circuit --release
@@ -46,7 +46,7 @@ jobs:
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Cache Build Artifacts
       uses: actions/cache@v4
@@ -79,7 +79,7 @@ jobs:
         hash::blake3::tests::test_blake3_randominputs
         hash::blake3::tests::test_blake3_randominputs_multipleof64bytes
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Cache Build Artifacts
       uses: actions/cache@v4
@@ -110,7 +110,7 @@ jobs:
 #    needs: build
 #    runs-on: self-hosted
 #    steps:
-#    - uses: actions/checkout@v4
+#    - uses: actions/checkout@v5
 #    
 #    - name: Cache Build Artifacts
 #      uses: actions/cache@v4

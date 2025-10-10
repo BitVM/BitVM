@@ -63,6 +63,34 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    /// add one
+    pub fn add1() -> Script {
+        script! {
+            OP_1ADD                             // a0 ... an
+            { 1 << LIMB_SIZE }                  // a0 ... an x
+            OP_SWAP                             // a0 ... x an
+            for _ in 0..Self::N_LIMBS-1 {       // ... x a
+                OP_2DUP                         // ... x a x a
+                OP_EQUAL                        // ... x a 0/1
+                OP_TUCK                         // ... x 0/1 a 0/1
+                OP_IF OP_NOT OP_ENDIF           // ... x 0/1 a/0
+                OP_TOALTSTACK                   // ... x 0/1
+                OP_ROT                          // .. x 0/1 a_{i-1}
+                OP_ADD                          // .. x a'
+            }
+                                                // x a0
+            OP_NIP                              // a0
+            { Self::HEAD_OFFSET }               // a0 y
+            OP_OVER                             // a0 y a0
+            OP_EQUAL                            // a0 0/1
+            OP_IF OP_NOT OP_ENDIF               // a/0
+
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
     /// Double the BigInt on top of the stack
     ///
     /// # Note
@@ -138,6 +166,25 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { limb_double_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
 
             // Take all limbs from the alt stack to the main stack
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
+    /// Double the referenced BigInt but keep the original element in its position
+    /// This function prevents overflow of the underlying integer types during
+    /// doubling operation.
+    pub fn double_prevent_overflow_keep_element(n: u32) -> Script {
+        script! {
+            { 1 << LIMB_SIZE }
+            { n + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
+            for i in 0..Self::N_LIMBS - 2 {
+                { n + i + 3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
+            }
+            OP_NIP
+            { n + Self::N_LIMBS } OP_PICK OP_SWAP
+            { limb_double_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
@@ -234,7 +281,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
             OP_NIP
             { b_depth + 1 } OP_PICK
-            OP_ROT
+            OP_SWAP
             { limb_add_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
@@ -361,7 +408,7 @@ fn limb_add_with_carry_prevent_overflow(head_offset: u32) -> Script {
         OP_2SWAP                                             // {a+b+c_nlo} {x} {a} {sign_b} {a+b+c_nlo} {x}
         OP_GREATERTHANOREQUAL                                // {a+b+c_nlo} {x} {a} {sign_b} {I:0/1}
         OP_2SWAP                                             // {a+b+c_nlo} {sign_b} {I:0/1} {x} {a}
-        OP_GREATERTHANOREQUAL                                // {a+b+c_nlo} {sign_b} {I:0/1} {sign_a}
+        OP_GREATERTHAN                                       // {a+b+c_nlo} {sign_b} {I:0/1} {sign_a}
         OP_ADD OP_ADD 1 3 OP_WITHIN OP_VERIFY                // verify (sign_a, sign_b, I) is not (0, 0, 0) or (1, 1, 1) which would mean overflow
     }
 }
@@ -417,7 +464,7 @@ fn limb_double_with_carry_prevent_overflow(head_offset: u32) -> Script {
         OP_TUCK OP_DUP OP_ADD                            // {a} {x} {2a+c} {2x}
         OP_2DUP OP_GREATERTHANOREQUAL                    // {a} {x} {2a+c} {2x} {L:0/1}
         OP_NOTIF OP_NOT OP_ENDIF OP_SUB                  // {a} {x} {2a+c_nlo}
-        OP_2DUP OP_LESSTHAN                              // {a} {x} {2a+c_nlo} {I:0/1}
+        OP_2DUP OP_LESSTHANOREQUAL                       // {a} {x} {2a+c_nlo} {I:0/1}
         OP_2SWAP                                         // {2a+c_nlo} {I:0/1} {a} {x}
         OP_LESSTHAN                                      // {2a+c_nlo} {I:0/1} {sign_a}
 
@@ -531,6 +578,25 @@ mod test {
                 { U64::add(1, 0) }
                 { U64::push_u64_le(&[c]) }
                 { U64::equalverify(1, 0) }
+                OP_TRUE
+            };
+            run(script);
+        }
+    }
+
+    #[test]
+    fn test_add1() {
+        println!("U254.add1: {} bytes", U254::add1().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + BigUint::one()).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::add1() }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
                 OP_TRUE
             };
             run(script);

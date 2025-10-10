@@ -66,22 +66,32 @@ impl Fq {
         }
     }
 
-    pub const fn bigint_tmul_lc_1() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_1() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_2() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul2LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_4() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2_w4() -> (u32, u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LCW4>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LCW4>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LCW4>::T::N_LIMBS;
+        (X, Y, Z)
+    }
+
+    pub const fn bigint_tmul_lc_4() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul4LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul4LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul4LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul4LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
     #[inline]
@@ -484,7 +494,7 @@ macro_rules! fp_lc_mul {
             trait [<Fp254 $NAME>] {
                 const LIMB_SIZE: u32 = 29;
                 const LCS: [bool; $LCS.len()] = $LCS;
-                const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
+                const LC_BITS: u32 = usize::BITS - ($LCS.len() - 1).leading_zeros();
                 type U;
                 type T;
                 fn tmul() -> Script;
@@ -541,15 +551,17 @@ macro_rules! fp_lc_mul {
                     // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
-                            (1..=6).contains(&window),
-                            "expected 1<=window<=6; got window={}",
+                            (2..=6).contains(&window),
+                            "expected 2<=window<=6; got window={}",
                             window
                         );
                         script! {
                             for i in 2..=window {
                                 for j in 1 << (i - 1)..1 << i {
                                     if j % 2 == 0 {
-                                        { T::double_allow_overflow_keep_element( (j/2 - 1) * T::N_LIMBS ) }
+                                        // { T::copy(j/2 - 1) }
+                                        // { T::double_prevent_overflow() }
+                                        { T::double_prevent_overflow_keep_element((j/2 - 1) * T::N_LIMBS) }
                                     } else {
                                         { T::add_ref_with_top(j - 2) }
                                     }
@@ -695,9 +707,8 @@ macro_rules! fp_lc_mul {
                             { U::lessthan(1, 0) } OP_VERIFY                                // {q} {x0} {x1} {y0} {y1}
                             { U::toaltstack() }                                            // {q} {x0} {x1} {y0} -> {y1}
                         }                                                                  // {q} -> {x0} {x1} {y0} {y1}
-                        // Pre-compute lookup tables
-                        { T::push_zero() }                   // {q} {0} -> {x0} {x1} {y0} {y1}
-                        { T::sub(0, 1) }                     // {-q} -> {x0} {x1} {y0} {y1}
+                        // Pre-compute lookup tables (q can not be 2^T::N_BITS-1 when tmul is correctly used, so neg() gives correct result)
+                        { T::neg() }                         // {-q} -> {x0} {x1} {y0} {y1}
                         { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
                         for i in 0..N_LC {
                             { U::fromaltstack() }            // {-q_table} {x0} -> {x1} {y0} {y1}
@@ -730,12 +741,12 @@ macro_rules! fp_lc_mul {
                                         OP_SWAP
                                         OP_SUB
                                         if i + j == MAIN_LOOP_START && j == 0 {
-                                            for _ in 0..Self::N_LIMBS {
+                                            for _ in 0..T::N_LIMBS {
                                                 OP_NIP
                                             }
-                                            { NMUL(Self::N_LIMBS) }
+                                            { NMUL(T::N_LIMBS) }
                                             OP_DUP OP_PICK
-                                            for _ in 0..Self::N_LIMBS-1 {
+                                            for _ in 0..T::N_LIMBS-1 {
                                                 OP_SWAP
                                                 OP_DUP OP_PICK
                                             }
@@ -762,25 +773,22 @@ macro_rules! fp_lc_mul {
                             }
                         }
 
-                        { T::is_positive(size_table(MOD_WIDTH) +                 // q was negative
-                            N_LC * size_table(VAR_WIDTH) + N_LC) } OP_TOALTSTACK // {-q_table} {x0_table} {x1_table} {y0} {y1} {r} -> {0/1}
-                        { T::toaltstack() }                                      // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
+                        { T::toaltstack() }                                            // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r}
 
                         // Cleanup
-                        for _ in 0..N_LC { { T::drop() } }             // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
-                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r} {0/1}
-                        { drop_table(MOD_WIDTH) }                      // -> {r} {0/1}
+                        for _ in 0..N_LC { { T::drop() } }                             // {-q_table} {x0_table} {x1_table} -> {r}
+                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } }                 // {-q_table} -> {r}
+                        { drop_table(MOD_WIDTH) }                                      // -> {r}
 
                         // Correction/validation
                         // r = if q < 0 { r + p } else { r }; assert(r < p)
-                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r} {0/1}
-                        { T::fromaltstack() } OP_FROMALTSTACK // {MODULUS} {r} {0/1}
-                        OP_IF { T::add_ref(1) } OP_ENDIF      // {MODULUS} {-r/r}
-                        { T::copy(0) }                        // {MODULUS} {-r/r} {-r/r}
-                        { T::lessthan(0, 2) } OP_VERIFY       // {-r/r}
+                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r}
+                        { T::fromaltstack() }                                          // {MODULUS} {r}
+                        { T::copy(0) }                                                 // {MODULUS} {r} {r}
+                        { T::lessthan(0, 2) } OP_VERIFY                                // {r}
 
                         // Resize res back to N_BITS
-                        { T::resize::<N_BITS>() } // {r}
+                        { T::resize::<N_BITS>() }                                      // {r}
                     }
                 }
             }
@@ -1032,40 +1040,6 @@ mod test {
             };
             run(script);
         }
-    }
-
-    #[test]
-    fn test_is_field() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        println!("Fq.is_field: {} bytes", Fq::is_field().len());
-
-        for _ in 0..10 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let a = a.rem(&m);
-
-            let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::is_field() }
-            };
-            run(script);
-        }
-
-        let script = script! {
-            { Fq::push_modulus() } OP_1 OP_ADD
-            { Fq::is_field() }
-            OP_NOT
-        };
-        run(script);
-
-        let script = script! {
-            { Fq::push_modulus() } OP_1 OP_SUB
-            OP_NEGATE
-            { Fq::is_field() }
-            OP_NOT
-        };
-        run(script);
     }
 
     #[test]
