@@ -454,8 +454,8 @@ fn init_state(
     for u32 in &IV[0..4] {
         state.push(stack.number_u32(*u32));
     }
-    state.push(stack.number_u32(0));
     state.push(stack.number_u32(counter));
+    state.push(stack.number_u32(0));
     state.push(stack.number_u32(block_len));
     state.push(stack.number_u32(flags));
 
@@ -482,6 +482,9 @@ pub(crate) fn compress(
 ) {
     //chaining value needs to be copied for multiple blocks
     //every time that is provided
+
+    // final_rounds must be 8, if you need more than 32 output bytes, you need to change this
+    assert_eq!(final_rounds, 8);
 
     let mut state = init_state(stack, chaining, counter, block_len, flags);
 

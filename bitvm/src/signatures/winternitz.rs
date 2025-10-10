@@ -35,9 +35,9 @@ impl Parameters {
             message_digit_len,
             log2_base,
             checksum_digit_len: log_base_ceil(
-                ((1 << log2_base) - 1) * message_digit_len,
+                ((1 << log2_base) - 1) * message_digit_len + 1,
                 1 << log2_base,
-            ) + 1,
+            ),
         }
     }
 
@@ -65,11 +65,19 @@ impl Parameters {
     }
 }
 
+/// Returns the secret key for given digit, appending the representation of it in bigger endian bytes to the message secret key
+pub fn secret_key_for_digit(secret_key: &SecretKey, mut digit_index: u32) -> hash160::Hash {
+    let mut secret_i = secret_key.clone();
+    while digit_index > 0 {
+        secret_i.push((digit_index & 255) as u8);
+        digit_index >>= 8;
+    }
+    hash160::Hash::hash(&secret_i)
+}
+
 /// Returns the signature of a given digit, requires the digit index to modify the secret key for each digit
 pub fn digit_signature(secret_key: &SecretKey, digit_index: u32, message_digit: u32) -> HashOut {
-    let mut secret_i = secret_key.clone();
-    secret_i.push(digit_index as u8);
-    let mut hash = hash160::Hash::hash(&secret_i);
+    let mut hash = secret_key_for_digit(secret_key, digit_index);
     for _ in 0..message_digit {
         hash = hash160::Hash::hash(&hash[..]);
     }
@@ -78,7 +86,19 @@ pub fn digit_signature(secret_key: &SecretKey, digit_index: u32, message_digit: 
 
 /// Returns the public key of a given digit, requires the digit index to modify the secret key for each digit
 fn public_key_for_digit(ps: &Parameters, secret_key: &SecretKey, digit_index: u32) -> HashOut {
-    digit_signature(secret_key, digit_index, ps.max_digit())
+    let mut hash = secret_key_for_digit(secret_key, digit_index);
+    let mut all_possible_digits = vec![hash];
+    for _ in 0..ps.max_digit() {
+        hash = hash160::Hash::hash(&hash[..]);
+        all_possible_digits.push(hash)
+    }
+    all_possible_digits.sort();
+    for i in 0..ps.max_digit() as usize {
+        if all_possible_digits[i] == all_possible_digits[i + 1] {
+            eprintln!("WARNING: Given secret key has repetitive hashes for digit {}, it won't work with brute force verifier", digit_index);
+        }
+    }
+    *hash.as_byte_array()
 }
 
 /// Returns the public key for the given secret key and the parameters
@@ -136,7 +156,7 @@ pub trait Verifier {
             //        Maybe the script! macro removes the zeroes.
             //        There is a 1/256 chance that a signature contains a trailing zero.
             result.push(sig);
-            result.push(u32_to_le_bytes_minimal(digits[i as usize]));
+            result.push(bitcoin_representation(digits[i as usize] as i32));
         }
         result
     }
@@ -349,6 +369,11 @@ impl Verifier for ListpickVerifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_digit_len() {
+                //two OP_SWAP's are necessary since the signature hash is never on top of the stack. Order of them can be optimized in the future to negate one of the OP_SWAP's.
+                OP_SWAP
+                OP_SIZE
+                { 20 } OP_EQUALVERIFY
+                OP_SWAP
                 // See https://github.com/BitVM/BitVM/issues/35
                 { ps.max_digit() }
                 OP_MIN
@@ -446,6 +471,8 @@ impl Verifier for BruteforceVerifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_digit_len() {
+                OP_SIZE
+                { 20 } OP_EQUALVERIFY
                 { public_key[(ps.total_digit_len() - 1 - digit_index) as usize].to_vec() }
                 OP_SWAP
                 { -1 } OP_TOALTSTACK // To avoid illegal stack access, same -1 is checked later
@@ -469,7 +496,8 @@ impl Verifier for BruteforceVerifier {
                 OP_DUP
                 { -1 }
                 OP_NUMNOTEQUAL OP_VERIFY
-                OP_FROMALTSTACK OP_DROP
+                OP_FROMALTSTACK 
+                { -1 } OP_EQUALVERIFY // Verify the sentinel value -1 to avoid altstack overflow in the rare case where pk == hash160^n(pk).
                 OP_TOALTSTACK
             }
         }
@@ -503,9 +531,18 @@ impl Verifier for BinarysearchVerifier {
     fn verify_digits(ps: &Parameters, public_key: &PublicKey) -> Script {
         script! {
             for digit_index in 0..ps.total_digit_len() {
-                //one can send digits out of the range, i.e. negative or bigger than D for it to act as in range, so inorder for checksum to not be decreased, a lower bound check is necessary and enough
-                OP_0
-                OP_MAX
+                //two OP_SWAP's are necessary since the signature hash is never on top of the stack. Order of them can be optimized in the future to negate one of the OP_SWAP's.
+                OP_SWAP
+                OP_SIZE
+                { 20 } OP_EQUALVERIFY
+                OP_SWAP
+                // One can try send digits out of the range, i.e. negative or bigger than D for it to act as in range, but due to bitcoin consensus rules,
+                // OP_IF's fail to execute if their input is not 0 or 1, so OP_IF below marked with (*) does this check already
+                // Note that this behaviour might change in the future with bitcoin consensus rules, so the test [`test_if_binary_search_verifier_allows_out_of_range_digits`] is added to confirm that this works
+                // OP_0
+                // OP_MAX
+                // {ps.max_digit() }
+                // OP_MIN
                 OP_DUP
                 OP_TOALTSTACK
                 { ps.max_digit() } OP_SWAP OP_SUB
@@ -525,7 +562,7 @@ impl Verifier for BinarysearchVerifier {
                         OP_ENDIF
                         OP_DROP
                     } else {
-                        OP_IF
+                        OP_IF //(*)
                             OP_HASH160
                         OP_ENDIF
                     }
@@ -992,5 +1029,84 @@ mod test {
                 false,
             );
         }
+    }
+
+    #[test]
+    fn test_if_binary_search_verifier_allows_out_of_range_digits() {
+        let secret_key = match Vec::<u8>::from_hex(SAMPLE_SECRET_KEY) {
+            Ok(bytes) => bytes,
+            Err(_) => panic!("Invalid hex string"),
+        };
+        let o = Winternitz::<BinarysearchVerifier, VoidConverter>::new();
+        let ps = Parameters::new_by_bit_length(8, 4); //changing log2_base will break this test
+        let public_key = generate_public_key(&ps, &secret_key);
+        assert_eq!(ps.checksum_digit_len, 2);
+
+        fn signed_checksum(ps: &Parameters, message_digits: &[i32]) -> u32 {
+            debug_assert_eq!(message_digits.len(), ps.message_digit_len as usize);
+
+            let sum: i32 = message_digits.iter().sum();
+            assert!(sum >= 0);
+            ps.max_digit() * ps.message_digit_len - sum as u32
+        }
+
+        fn add_message_signed_checksum(ps: &Parameters, mut message_digits: Vec<i32>) -> Vec<i32> {
+            debug_assert_eq!(message_digits.len(), ps.message_digit_len as usize);
+            let checksum_digits = checksum_to_digits(
+                signed_checksum(ps, &message_digits),
+                ps.max_digit() + 1,
+                ps.checksum_digit_len,
+            );
+            message_digits.extend(checksum_digits.iter().map(|&x| x as i32));
+            message_digits
+        }
+
+        fn sign_signed_digits(
+            ps: &Parameters,
+            secret_key: &SecretKey,
+            message_digits: Vec<i32>,
+        ) -> Witness {
+            let digits = add_message_signed_checksum(ps, message_digits);
+            let mut result = Witness::new();
+            for i in 0..ps.total_digit_len() {
+                let mut impersonator_digit = digits[i as usize];
+                impersonator_digit = impersonator_digit.max(0);
+                impersonator_digit = impersonator_digit.min(ps.max_digit() as i32);
+                let sig = digit_signature(secret_key, i, impersonator_digit as u32);
+                // FIXME: Do trailing zeroes violate Bitcoin Script's minimum data push requirement?
+                //        Maybe the script! macro removes the zeroes.
+                //        There is a 1/256 chance that a signature contains a trailing zero.
+                result.push(sig);
+                result.push(bitcoin_representation(digits[i as usize]));
+            }
+            result
+        }
+
+        assert!(
+            execute_script(script! {
+                { sign_signed_digits(&ps, &secret_key, vec![2, 3]) }
+                { o.checksig_verify_and_clear_stack(&ps, &public_key) }
+                OP_TRUE
+            })
+            .success
+        );
+
+        assert!(
+            !execute_script(script! {
+                { sign_signed_digits(&ps, &secret_key, vec![-1, 1]) }
+                { o.checksig_verify_and_clear_stack(&ps, &public_key) }
+                OP_TRUE
+            })
+            .success
+        );
+
+        assert!(
+            !execute_script(script! {
+                { sign_signed_digits(&ps, &secret_key, vec![20, 0]) }
+                { o.checksig_verify_and_clear_stack(&ps, &public_key) }
+                OP_TRUE
+            })
+            .success
+        );
     }
 }

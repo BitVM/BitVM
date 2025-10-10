@@ -4,7 +4,7 @@ use crate::bigint::U254;
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::Hint;
 use crate::treepp::*;
-use ark_ff::PrimeField;
+use ark_ff::{Field, PrimeField};
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
 use num_traits::Num;
@@ -144,27 +144,6 @@ pub trait Fp254Impl {
         script! {
             { Self::copy(a) }
             { Self::is_one() }
-        }
-    }
-
-    fn is_field() -> Script {
-        script! {
-            // Each limb must not be negative
-            for i in 0..Self::N_LIMBS - 1 {
-                { i } OP_PICK
-                0 OP_GREATERTHANOREQUAL OP_TOALTSTACK
-            }
-            { Self::N_LIMBS - 1 } OP_PICK
-            0 OP_GREATERTHANOREQUAL
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_FROMALTSTACK OP_BOOLAND
-            }
-            OP_TOALTSTACK
-
-            { Self::push_modulus() }
-            { U254::lessthan(1, 0) }
-
-            OP_FROMALTSTACK OP_BOOLAND
         }
     }
 
@@ -591,9 +570,10 @@ pub trait Fp254Impl {
         let y = BigInt::from_str(&b.to_string()).unwrap();
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * y) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_1().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -608,14 +588,20 @@ pub trait Fp254Impl {
 
     // TODO: Optimize by using the constant feature
     fn hinted_mul_by_constant(a: ark_bn254::Fq, constant: &ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        if *constant == ark_bn254::Fq::ONE {
+            return (script! {}, vec![]);
+        } else if *constant == -ark_bn254::Fq::ONE {
+            return (Fq::neg(0), vec![]);
+        }
         let mut hints = Vec::new();
         let x = BigInt::from_str(&a.to_string()).unwrap();
         let y = BigInt::from_str(&constant.to_string()).unwrap();
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * y) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_1().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -645,9 +631,10 @@ pub trait Fp254Impl {
         let y = BigInt::from_str(&b.to_string()).unwrap();
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * y) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_1().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -683,9 +670,10 @@ pub trait Fp254Impl {
         let w = BigInt::from_str(&d.to_string()).unwrap();
 
         let q = (x * z + y * w) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_2().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -726,9 +714,10 @@ pub trait Fp254Impl {
         let w = BigInt::from_str(&d.to_string()).unwrap();
 
         let q = (x * z + y * w) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_2_w4().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -738,7 +727,7 @@ pub trait Fp254Impl {
             { Fq::roll(d_depth + 4) }
             { Fq::tmul_lc2_w4() }
         };
-        hints.push(Hint::BigIntegerTmulLC2(q));
+        hints.push(Hint::BigIntegerTmulLC2W4(q));
 
         (script, hints)
     }
@@ -788,9 +777,10 @@ pub trait Fp254Impl {
         let w2 = BigInt::from_str(&h.to_string()).unwrap();
 
         let q = (x1 * x2 + y1 * y2 + z1 * z2 + w1 * w2) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_4().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -832,9 +822,10 @@ pub trait Fp254Impl {
         let w = BigInt::from_str(&d.to_string()).unwrap();
 
         let q = (x * z + y * w) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_2().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -873,9 +864,10 @@ pub trait Fp254Impl {
         let w = BigInt::from_str(&d.to_string()).unwrap();
 
         let q = (x * z + y * w) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_2_w4().2;
 
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -885,7 +877,7 @@ pub trait Fp254Impl {
             { Fq::copy(d_depth + 4) }
             { Fq::tmul_lc2_w4() }
         };
-        hints.push(Hint::BigIntegerTmulLC2(q));
+        hints.push(Hint::BigIntegerTmulLC2W4(q));
 
         (script, hints)
     }
@@ -896,8 +888,10 @@ pub trait Fp254Impl {
         let x = &BigInt::from_str(&a.to_string()).unwrap();
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * x) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_1().2;
+
         let script = script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..T_N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -916,6 +910,8 @@ pub trait Fp254Impl {
         let modulus = &Fq::modulus_as_bigint();
         let y = &x.modinv(modulus).unwrap();
         let q = (x * y) / modulus;
+        const T_N_LIMBS: u32 = Fq::bigint_tmul_lc_1().2;
+
         let script = script! {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hint, y
