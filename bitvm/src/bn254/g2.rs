@@ -9,6 +9,7 @@ use crate::treepp::{script, Script};
 use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
+use num_traits::Zero;
 use std::str::FromStr;
 
 pub struct G2Affine;
@@ -88,11 +89,12 @@ impl G2Affine {
         let (y_sq, y_sq_hint) = Fq2::hinted_square(y);
 
         let mut hints = Vec::new();
+        hints.extend(y_sq_hint);
         hints.extend(x_sq_hint);
         hints.extend(x_cu_hint);
-        hints.extend(y_sq_hint);
 
         let scr = script! {
+            { y_sq }
             { Fq2::copy(2) }
             { x_sq }
             { Fq2::roll(4) }
@@ -100,8 +102,6 @@ impl G2Affine {
             { Fq::push_dec("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
             { Fq::push_dec("266929791119991161246907387137283842545076965332900288569378510910307636690") }
             { Fq2::add(2, 0) }
-            { Fq2::roll(2) }
-            { y_sq }
             { Fq2::equal() }
         };
         (scr, hints)
@@ -120,10 +120,13 @@ impl G2Affine {
         let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
+
+        let is_inf = x.is_zero() && y.is_zero();
+
         ark_bn254::G2Affine {
             x,
             y,
-            infinity: false,
+            infinity: is_inf,
         }
     }
 }
@@ -301,11 +304,12 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     let (hinted_script5, hint5) = Fq12::hinted_mul_by_34(f, c1, c2);
 
     let hinted_script_constant = script! {
-       for _ in 0..4 {
-           for _ in 0..Fq::N_LIMBS {
-               OP_DEPTH OP_1SUB OP_ROLL
-           }
-       }
+        for _ in 0..4 {
+            for _ in 0..Fq::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL
+            }
+            { Fq::check_validity_and_keep_element() }
+        }
     };
     let script = script! {
         {hinted_script_constant}
@@ -768,7 +772,7 @@ mod test {
     use super::*;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::g1::{hinted_from_eval_point, G1Affine};
+    use crate::bn254::g1::hinted_from_eval_point;
     use crate::bn254::g2::G2Affine;
     use crate::{treepp::*, ExecuteInfo};
     use ark_ff::AdditiveGroup;
@@ -787,18 +791,18 @@ mod test {
     #[test]
     fn test_read_from_stack() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let a = ark_bn254::G1Affine::rand(&mut prng);
+        let a = ark_bn254::G2Affine::rand(&mut prng);
         let script = script! {
-            {G1Affine::push(a)}
+            {G2Affine::push(a)}
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
-        let recovered_a = G1Affine::read_from_stack(witness);
+        let recovered_a = G2Affine::read_from_stack(witness);
 
         assert_eq!(a, recovered_a);
 
-        let b = ark_bn254::G2Affine::rand(&mut prng);
+        let b = ark_bn254::G2Affine::identity();
         let script = script! {
             {G2Affine::push(b)}
         };

@@ -176,9 +176,11 @@ fn utils_point_double_eval(
             for _ in 0..Fq::N_LIMBS * 2 {
                 OP_DEPTH OP_1SUB OP_ROLL
             }                                        // -bias, ...,  x, y, alpha
+            { Fq2::check_validity_and_keep_element() }
             for _ in 0..Fq::N_LIMBS * 2 {
                 OP_DEPTH OP_1SUB OP_ROLL
             }
+            { Fq2::check_validity_and_keep_element() }
             // [tx ty a b]
             {Fq2::roll(6)} {Fq2::roll(6)}          // alpha, -bias, x, y
             // [a b tx ty]
@@ -349,9 +351,11 @@ fn utils_point_add_eval(
                     for _ in 0..Fq::N_LIMBS * 2 {
                         OP_DEPTH OP_1SUB OP_ROLL
                     }
+                    { Fq2::check_validity_and_keep_element() }
                     for _ in 0..Fq::N_LIMBS * 2 {
                         OP_DEPTH OP_1SUB OP_ROLL
                     }
+                    { Fq2::check_validity_and_keep_element() }
                     // [qx, qy, tx, ty, c3, c4]
                     {Fq2::roll(6)} {Fq2::roll(6)}
                     // [qx, qy, c3, c4, tx, ty]
