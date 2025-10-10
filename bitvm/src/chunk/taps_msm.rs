@@ -71,6 +71,11 @@ pub(crate) fn chunk_msm(
         } else {
             script! {
                 // [hints, G1Acc] [G1AccDashHash, G1AccHash]
+
+                // Validity checks for G1Acc
+                { Fq::check_validity() } { Fq::check_validity() }
+                { G1Affine::fromaltstack() }
+
                 {Fr::fromaltstack()}
 
                 {Fr::copy(0)}
