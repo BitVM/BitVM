@@ -38,8 +38,7 @@ impl G2Affine {
         }
     }
 
-    pub fn roll(mut a: u32) -> Script {
-        a *= 4;
+    pub fn roll(a: u32) -> Script {
         script! {
             { Fq::roll(a + 3) }
             { Fq::roll(a + 3) }
@@ -49,8 +48,7 @@ impl G2Affine {
     }
 
     // [ax, ay, bx, by]
-    pub fn copy(mut a: u32) -> Script {
-        a *= 4;
+    pub fn copy(a: u32) -> Script {
         script! {
             { Fq::copy(a + 3) }
             { Fq::copy(a + 3) }

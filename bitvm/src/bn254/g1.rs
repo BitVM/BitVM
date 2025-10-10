@@ -174,7 +174,7 @@ impl G1Affine {
             OP_IF
                 { G1Affine::drop() }
             OP_ELSE
-                { G1Affine::roll(1) }
+                { G1Affine::roll(2) }
                 { G1Affine::is_zero_keep_element() }
                 OP_IF
                     { G1Affine::drop() }
@@ -400,8 +400,7 @@ impl G1Affine {
         }
     }
 
-    pub fn roll(mut a: u32) -> Script {
-        a *= 2;
+    pub fn roll(a: u32) -> Script {
         script! {
             { Fq::roll(a + 1) }
             { Fq::roll(a + 1) }

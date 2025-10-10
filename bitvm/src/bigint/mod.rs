@@ -15,6 +15,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub const N_LIMBS: u32 = N_BITS.div_ceil(LIMB_SIZE);
     pub const HEAD: u32 = N_BITS - (Self::N_LIMBS - 1) * LIMB_SIZE;
     pub const HEAD_OFFSET: u32 = 1u32 << Self::HEAD;
+    const _ASSERTION1: () = assert!(Self::N_LIMBS > 1);
+    const _ASSERTION2: () = assert!(Self::LIMB_SIZE < 31);
 }
 
 pub type U254 = BigIntImpl<254, 29>;

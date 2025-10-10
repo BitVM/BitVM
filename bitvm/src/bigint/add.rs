@@ -126,15 +126,15 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { 1 << LIMB_SIZE }
 
             // Double the limb, take the result to the alt stack, and add initial carry
-            { n + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
+            { n * Self::N_LIMBS + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
 
             for i in 0..Self::N_LIMBS - 2 {
-                { n + i +  3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
+                { n * Self::N_LIMBS + i +  3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
             }
 
             // When we got {limb} {base} {carry} on the stack, we drop the base
             OP_NIP // {limb} {carry}
-            { n + 9 } OP_PICK { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) }
+            { n * Self::N_LIMBS + Self::N_LIMBS } OP_PICK { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) }
 
             // Take all limbs from the alt stack to the main stack
             for _ in 0..Self::N_LIMBS - 1 {
@@ -178,12 +178,12 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn double_prevent_overflow_keep_element(n: u32) -> Script {
         script! {
             { 1 << LIMB_SIZE }
-            { n + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
+            { n * Self::N_LIMBS + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
             for i in 0..Self::N_LIMBS - 2 {
-                { n + i + 3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
+                { n * Self::N_LIMBS + i + 3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
             }
             OP_NIP
-            { n + Self::N_LIMBS } OP_PICK OP_SWAP
+            { n * Self::N_LIMBS + Self::N_LIMBS } OP_PICK OP_SWAP
             { limb_double_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK

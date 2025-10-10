@@ -325,25 +325,25 @@ fn utils_point_add_eval(
             {drop_and_insert_zero.clone()}
         OP_ELSE
             // [t, q]
-            { G2Affine::roll(1) }
+            { G2Affine::roll(4) }
             { G2Affine::is_zero_keep_element() }
             OP_IF // t == 0
                 // [q, t]
-                {G2Affine::roll(1)}
+                {G2Affine::roll(4)}
                 {drop_and_insert_zero.clone()}
             OP_ELSE
                 // qx qy tx ty
-                {G2Affine::copy(1)}
+                {G2Affine::copy(4)}
                 // qx qy tx ty qx qy
                 { Fq2::neg(0)}
                 // qx qy tx ty qx -qy
-                {G2Affine::copy(1)}
+                {G2Affine::copy(4)}
                 // qx qy tx ty qx -qy tx ty
                 {G2Affine::equal()} // q = -t ?
                 // qx qy tx ty 0/1
                 OP_IF // q == -t
                     // [q, t]
-                    {G2Affine::roll(1)}
+                    {G2Affine::roll(4)}
                     // [t, q]
                     {drop_and_insert_zero}
                 OP_ELSE
