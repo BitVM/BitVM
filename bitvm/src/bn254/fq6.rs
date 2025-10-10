@@ -725,6 +725,14 @@ impl Fq6 {
 
         (script, hints)
     }
+
+    pub fn check_validity() -> Script {
+        script! {
+            for _ in 0..3 {
+                { Fq2::check_validity() }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
