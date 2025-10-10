@@ -25,6 +25,10 @@ pub trait Fp254Impl {
 
     type ConstantType: PrimeField;
 
+    fn modulus_as_bigint() -> BigInt {
+        BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
+    }
+
     #[inline]
     fn copy(a: u32) -> Script {
         U254::copy(a)
@@ -120,6 +124,16 @@ pub trait Fp254Impl {
         script! {
             { Self::push_one() }
             { Self::equal(1, 0) }
+        }
+    }
+
+    fn is_one_verify() -> Script {
+        script! {
+            OP_1
+            OP_EQUALVERIFY
+            for _ in 0..Self::N_LIMBS-1 {
+                OP_NOT OP_VERIFY
+            }
         }
     }
 

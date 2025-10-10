@@ -156,6 +156,16 @@ impl Fq2 {
         }
     }
 
+    pub fn check_validity_and_keep_element() -> Script {
+        script! {
+            { Fq::check_validity() }
+            { Fq::check_validity_and_keep_element() }
+            for _ in 0..Fq::N_LIMBS {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
     pub fn hinted_mul(
         mut a_depth: u32,
         mut a: ark_bn254::Fq2,
@@ -349,6 +359,14 @@ impl Fq2 {
             &ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1
                 [i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()],
         )
+    }
+
+    pub fn check_validity() -> Script {
+        script! {
+            for _ in 0..2 {
+                { Fq::check_validity() }
+            }
+        }
     }
 }
 

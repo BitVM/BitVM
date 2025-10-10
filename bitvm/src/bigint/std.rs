@@ -23,6 +23,27 @@ struct TransformStep {
 }
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
+    pub fn biguint_to_limbs(x: BigUint) -> Vec<u32> {
+        let mut limbs = vec![];
+        let bits: Vec<bool> = (0..N_BITS).map(|i| x.bit(i as u64)).collect();
+        for chunk in bits.chunks(LIMB_SIZE as usize) {
+            let mut limb_value = 0u32;
+            for (i, bit_value) in chunk.into_iter().enumerate() {
+                limb_value += (*bit_value as u32) << i;
+            }
+            limbs.push(limb_value);
+        }
+        limbs
+    }
+
+    pub fn push_biguint(x: BigUint) -> Script {
+        script! {
+            for limb in Self::biguint_to_limbs(x).iter().rev() {
+                { *limb }
+            }
+        }
+    }
+
     pub fn push_u32_le(v: &[u32]) -> Script {
         let mut bits = vec![];
         for elem in v.iter() {
@@ -304,6 +325,21 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { (1 + depth) * Self::N_LIMBS } OP_PICK
             { Self::HEAD_OFFSET >> 1 }
             OP_LESSTHAN OP_BOOLAND
+        }
+    }
+
+    pub fn check_validity() -> Script {
+        script! {                            // a0 a1 ... an
+            { 1 << LIMB_SIZE }               // a0 a1 ... an x
+            for _ in 0..Self::N_LIMBS-2 {    // a x
+                OP_TUCK                      // x a x
+                0 OP_SWAP                    // x a 0 x
+                OP_WITHIN OP_VERIFY          // x
+            }                                // a0 a1 x
+            0 OP_SWAP                        // a0 a1 0 x
+            OP_WITHIN OP_VERIFY              // a0
+            0 { Self::HEAD_OFFSET }          // a0 0 y
+            OP_WITHIN OP_VERIFY
         }
     }
 
@@ -618,6 +654,7 @@ mod test {
     use crate::{execute_script, run};
 
     use bitcoin_script::script;
+    use num_bigint::{BigUint, RandBigInt};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
@@ -1188,6 +1225,21 @@ mod test {
             );
             let res = crate::execute_script(script.clone());
             assert!(res.success);
+        }
+    }
+
+    #[test]
+    fn test_biguint_to_limbs() {
+        const LIMB_SIZE: u32 = 29;
+        type U256 = BigIntImpl<256, LIMB_SIZE>;
+        let mut prng = ChaCha20Rng::seed_from_u64(37);
+        for _ in 0..100 {
+            let x: BigUint = prng.gen_biguint(256);
+            let mut sum = BigUint::from(0u32);
+            for limb in U256::biguint_to_limbs(x.clone()).iter().rev() {
+                sum = (sum * (1u32 << LIMB_SIZE)) + limb;
+            }
+            assert_eq!(sum, x);
         }
     }
 }
