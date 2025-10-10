@@ -418,8 +418,12 @@ fn utils_execute_chunked_g16(
                 println!("final {:?}", segments[i].scr_type);
                 panic!();
             }
-            if exec_result.remaining_script != "OP_PUSHNUM_1" && exec_result.remaining_script != "" {
-                println!("Script terminated early {:?} {:?}", exec_result.remaining_script, segments[i].scr_type);
+            if exec_result.remaining_script != "OP_PUSHNUM_1" && exec_result.remaining_script != ""
+            {
+                println!(
+                    "Script terminated early {:?} {:?}",
+                    exec_result.remaining_script, segments[i].scr_type
+                );
                 panic!();
             }
         } else {
