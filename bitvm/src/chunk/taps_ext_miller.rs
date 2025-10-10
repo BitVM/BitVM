@@ -414,7 +414,7 @@ pub(crate) fn chunk_final_verify(
 
         // Validity checks: f is Fq6, t4 is G2Affine, ht4_le is a hash and q4 is G2Affine
         { G2Affine::fromaltstack() }
-        { Fq2::check_validity() } { Fq2::check_validity() } // q4
+        { Fq2::toaltstack() } { Fq2::toaltstack() } // q4 doesn't need a validity check
         { Fq::toaltstack() } //ht4_le
         { Fq2::check_validity() } { Fq2::check_validity() } //t4
         { Fq6::check_validity() } { Fq6::fromaltstack() } //f, moved back to the top of the stack
