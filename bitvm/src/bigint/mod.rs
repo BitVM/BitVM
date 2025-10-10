@@ -2,9 +2,9 @@ pub mod add;
 pub mod bits;
 pub mod cmp;
 pub mod inv;
+pub mod mul;
 pub mod std;
 pub mod sub;
-pub mod mul;
 
 #[derive(Debug)]
 pub struct BigIntImpl<const N_BITS: u32, const LIMB_SIZE: u32> {}
