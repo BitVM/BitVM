@@ -220,18 +220,22 @@ impl G1Affine {
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
 
-        let (alpha, bias) = if t == q {
+        let (alpha, bias) = if t.is_zero() || q.is_zero() {
+            // no hint, dummy zero
+            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+        } else if t == -q {
+            // no hint, dummy zero
+            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+        } else if t == q {
+            // doubling hints
             let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
             let bias = t.y - alpha * t.x;
             (alpha, bias)
-        } else if t == -q {
-            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
-        } else if !t.is_zero() && !q.is_zero() {
+        } else {
+            // adding hints
             let alpha = (t.y - q.y) / (t.x - q.x);
             let bias = t.y - alpha * t.x;
             (alpha, bias)
-        } else {
-            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
         };
 
         let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, alpha);
@@ -294,19 +298,21 @@ impl G1Affine {
             OP_ENDIF
         };
 
-        if t == q {
+        if t.is_zero() || q.is_zero() {
+            // no hint
+        } else if t == -q {
+            // no hint
+        } else if t == q {
             hints.push(Hint::Fq(alpha));
             hints.push(Hint::Fq(-bias));
             hints.extend(hint3);
             hints.extend(hint2);
-        } else if t == -q {
-            // no hint
-        } else if !t.is_zero() && !q.is_zero() {
+        } else {
             hints.push(Hint::Fq(alpha));
             hints.push(Hint::Fq(-bias));
             hints.extend(hint1);
             hints.extend(hint2);
-        }
+        };
 
         (script, hints)
     }
