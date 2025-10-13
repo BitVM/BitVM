@@ -264,16 +264,16 @@ impl G1Affine {
                         OP_FROMALTSTACK OP_DROP
                         { G1Affine::drop() }
                         { G1Affine::drop() }
-                        { G1Affine::push_zero() }
+                        { G1Affine::identity() }
                     OP_ELSE                                // case: t != -q
                         for _ in 0..Fq::N_LIMBS {
                             OP_DEPTH OP_1SUB OP_ROLL
                         }
-                        // TODO: uncomment out this line after 3.4 { Fq::copy(0) } { Fq::check_validity() }
+                        { Fq::copy(0) } { Fq::check_validity() }
                         for _ in 0..Fq::N_LIMBS {
                             OP_DEPTH OP_1SUB OP_ROLL
                         }                                  // qx qy tx ty c3 c4
-                        // TODO: uncomment out this line after 3.4 { Fq::copy(0) } { Fq::check_validity() }
+                        { Fq::copy(0) } { Fq::check_validity() }
                         { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3
                         { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
                         { Fq::copy(5) }                    // qx qy tx ty c3 c4 c3 c4 tx
