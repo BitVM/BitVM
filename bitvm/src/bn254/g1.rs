@@ -247,7 +247,7 @@ impl G1Affine {
             OP_IF
                 { G1Affine::drop() }
             OP_ELSE
-                { G1Affine::roll(1) }
+                { G1Affine::roll(2) }
                 { G1Affine::is_zero_keep_element() }
                 OP_IF
                     { G1Affine::drop() }
@@ -269,11 +269,11 @@ impl G1Affine {
                         for _ in 0..Fq::N_LIMBS {
                             OP_DEPTH OP_1SUB OP_ROLL
                         }
-                        { Fq::copy(0) } { Fq::check_validity() }
+                        { Fq::check_validity_and_keep_element() }
                         for _ in 0..Fq::N_LIMBS {
                             OP_DEPTH OP_1SUB OP_ROLL
                         }                                  // qx qy tx ty c3 c4
-                        { Fq::copy(0) } { Fq::check_validity() }
+                        { Fq::check_validity_and_keep_element() }
                         { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3
                         { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
                         { Fq::copy(5) }                    // qx qy tx ty c3 c4 c3 c4 tx
@@ -802,7 +802,7 @@ mod test {
         let negt = -t;
         let z = ark_bn254::G1Affine::zero();
 
-        for (t, q, r) in [(t, q, r), (t, t, tt), (t, negt, z)] {
+        for (t, q, r) in [(t, q, r), (t, t, tt), (t, negt, z), (t, z, t)] {
             let (hinted_check_add, hints) = G1Affine::hinted_check_add(t, q);
 
             let script = script! {
