@@ -337,7 +337,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn is_positive(depth: u32) -> Script {
         script! {
             { Self::is_zero_keep_element(depth) } OP_NOT
-            { (1 + depth) * Self::N_LIMBS } OP_PICK
+            { (1 + depth) * Self::N_LIMBS - 1 } OP_PICK
             { Self::HEAD_OFFSET >> 1 }
             OP_LESSTHAN OP_BOOLAND
         }
