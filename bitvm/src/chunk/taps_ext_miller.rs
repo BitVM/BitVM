@@ -160,21 +160,13 @@ pub(crate) fn chunk_precompute_p_from_hash(
         // [hints, px, py] [pdhash, phash]
 
         // Validity checks
-        { Fq::copy(0) }
-        { Fq::is_valid() } OP_TOALTSTACK
-        { Fq::copy(1) }
-        { Fq::is_valid() } OP_TOALTSTACK
+        { Fq::check_validity() }
+        { Fq::check_validity() }
+        { Fq::fromaltstack() } { Fq::fromaltstack() }
+
+        // [hints, px, py] [pdhash, phash]
+
         {Fq::is_zero_keep_element(0)}
-
-        // [hints, px, py, 0/1 (is zero py)] [pdhash, phash, 0/1 (is_valid px), 0/1 (is valid py)]
-
-        OP_FROMALTSTACK
-        OP_FROMALTSTACK
-        OP_BOOLAND
-        OP_NOT OP_BOOLOR
-
-        // [hints, px, py, 0/1 (is the input invalid)]
-
         OP_IF // PY = 0
             {drop_and_return_scr.clone()}
         OP_ELSE // PY != 0
