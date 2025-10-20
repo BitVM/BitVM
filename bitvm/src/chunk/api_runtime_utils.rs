@@ -484,8 +484,8 @@ fn utils_analyze_largest_segments(
         max_script_size, max_script_size_index
     );
     println!(
-        "(This shouldn't change with VK) Max stack depth used is {} at index {}",
-        max_stack_depth, max_script_size_index
+        "(This shouldn't change with the VK) Max stack depth used is {} at index {}",
+        max_stack_depth, max_stack_depth_index
     );
 }
 
@@ -706,7 +706,6 @@ pub fn analyze_largest_segments_from_signatures(
     let mul_hints = utils_collect_mul_hints_per_segment(segments);
     let bc_hints = collect_wots_sig_as_witness_per_segment(segments, signed_assts);
 
-    // execute_chunked_g16
     utils_analyze_largest_segments(mul_hints, bc_hints, segments, disprove_scripts);
 }
 

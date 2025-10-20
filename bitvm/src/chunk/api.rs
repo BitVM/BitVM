@@ -512,7 +512,7 @@ mod test {
     }
 
     #[test]
-    fn test_largest_scripts() {
+    fn test_largest_chunks() {
         println!("Use mock groth16 proof");
         let vk_bytes = [
             115, 158, 251, 51, 106, 255, 102, 248, 22, 171, 229, 158, 80, 192, 240, 217, 99, 162,
@@ -595,7 +595,6 @@ mod test {
         println!("num assertion; 256-bit numbers {}", NUM_PUBS + NUM_U256);
         println!("num assertion; 160-bit numbers {}", NUM_HASH);
 
-        println!("STEP 3 CORRUPT AND DISPROVE SIGNED ASSERTIONS");
         let proof_asserts = get_assertions_from_signature(proof_sigs);
         let signed_asserts = get_signature_from_assertion(proof_asserts, secrets);
         let disprove_scripts: [ScriptBuf; NUM_TAPS] = disprove_scripts.try_into().unwrap();
