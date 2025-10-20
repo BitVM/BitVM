@@ -589,6 +589,7 @@ pub fn hinted_check_tangent_line(
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
 ) -> (Script, Vec<Hint>) {
+    assert_ne!(t, ark_bn254::G2Affine::zero());
     let mut hints = Vec::new();
 
     // let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(t.y.double(), &c3);
@@ -757,6 +758,8 @@ pub fn hinted_check_chord_line(
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
 ) -> (Script, Vec<Hint>) {
+    assert_ne!(t, ark_bn254::G2Affine::zero());
+    assert_ne!(q, ark_bn254::G2Affine::zero());
     let mut hints = Vec::new();
 
     let (script1, hint1) = hinted_check_line_through_point(q.x, c3, c4);

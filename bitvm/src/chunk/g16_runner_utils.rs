@@ -225,9 +225,9 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     let p3: FqPair = in_p3.result.0.try_into().unwrap();
     let p2: FqPair = in_p2.result.0.try_into().unwrap();
 
-    let p4 = p4.recover();
-    let p3 = p3.recover();
-    let p2 = p2.recover();
+    let p4 = ark_bn254::G1Affine::new_unchecked(p4.x(), p4.y()).into();
+    let p3 = ark_bn254::G1Affine::new_unchecked(p3.x(), p3.y()).into();
+    let p2 = ark_bn254::G1Affine::new_unchecked(p2.x(), p2.y()).into();
 
     let mut q4: Option<TwistPoint> = None;
 
@@ -368,13 +368,16 @@ pub(crate) fn wrap_hint_hash_p(
     let input_segment_info = vec![(in_t.id, ElementType::G1)];
 
     let t: FqPair = in_t.result.0.try_into().unwrap();
-    let (mut p3, mut is_valid_input, mut scr, mut op_hints) =
-        (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    let (mut p3, mut is_valid_input, mut scr, mut op_hints) = (
+        ark_bn254::G1Affine::identity().into(),
+        true,
+        script! {},
+        vec![],
+    );
     if !skip {
         // the value has been converted to FqPair in chunk_msm, we recover it to G1 coordinate.
         let t = t.recover();
-        let tq = ark_bn254::G1Affine::new_unchecked(t.x(), t.y());
-        (p3, is_valid_input, scr, op_hints) = chunk_hash_p(tq, pub_vky0);
+        (p3, is_valid_input, scr, op_hints) = chunk_hash_p(t, pub_vky0);
         // op_hints.extend_from_slice(&DataType::G1Data(t).get_hash_preimage_as_hints());
     }
     Segment {

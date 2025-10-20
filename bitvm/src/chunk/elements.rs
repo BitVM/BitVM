@@ -35,21 +35,26 @@ pub enum DataType {
     U256Data(ark_ff::BigInt<4>),
 }
 
-/// Represent coordinates by evaluation form (-x/y, 1/y), see more: https://github.com/BitVM/BitVM/issues/213
-#[derive(Debug, Clone, Copy)]
+/// Represent evaluation form (-x/y, 1/y) for G1Affine points, see more: https://github.com/BitVM/BitVM/issues/213
+/// Specially, for `chunk_precompute_p` and `chunk_precompute_p_from_hash`, the G1Data stores the values' original form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FqPair {
-    x: ark_bn254::Fq, // -x/y
-    y: ark_bn254::Fq, // 1/y
-    pub zero: bool,   // true if y is zero
+    x: ark_bn254::Fq,
+    y: ark_bn254::Fq,
 }
 
 impl FqPair {
+    pub const ZERO: Self = Self {
+        x: ark_bn254::Fq::ZERO,
+        y: ark_bn254::Fq::ZERO,
+    };
+
     pub fn new(x: ark_bn254::Fq, y: ark_bn254::Fq) -> Self {
-        Self {
-            x,
-            y,
-            zero: y == ark_bn254::Fq::ZERO,
+        if x == ark_bn254::Fq::ZERO || y == ark_bn254::Fq::ZERO {
+            assert_eq!(x, ark_bn254::Fq::ZERO);
+            assert_eq!(y, ark_bn254::Fq::ZERO);
         }
+        Self { x, y }
     }
 
     pub fn x(&self) -> ark_bn254::Fq {
@@ -61,81 +66,55 @@ impl FqPair {
     }
 
     /// Recover the evaluation form to original form.
-    pub fn recover(&self) -> Self {
-        if self.zero {
-            if self.x == ark_bn254::Fq::ZERO {
-                return Self::new(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
-            }
-            return Self::new(self.x, self.y);
+    pub fn recover(&self) -> ark_bn254::G1Affine {
+        if self.y == ark_bn254::Fq::ZERO {
+            return ark_bn254::G1Affine::zero();
         }
-
         let (nx, ny) = (self.x, self.y);
-        let y = ny.inverse().expect("ny should be non-zero to recover");
+        let y = ny
+            .inverse()
+            .expect("ny must be nonzero for evaluation form");
         let x = -nx * y; // equivalent to -nx / ny⁻¹
-
-        Self::new(x, y)
+                         // Use new_unchecked to get compitiable with generate_segments_using_mock_vk_and_mock_proof.
+        ark_bn254::G1Affine::new_unchecked(x, y)
     }
 
     pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
         let p = ark_bn254::G1Affine::rand(rng);
         Self::new(p.x, p.y)
     }
+
+    pub fn is_zero(&self) -> bool {
+        *self == Self::ZERO
+    }
 }
 
 impl From<ark_bn254::G1Affine> for FqPair {
     fn from(p: ark_bn254::G1Affine) -> Self {
         if p.y == ark_bn254::Fq::ZERO {
-            return Self {
-                x: p.x,
-                y: p.y,
-                zero: true,
-            };
+            return Self { x: p.x, y: p.y };
         }
         let (x, y) = (p.x, p.y);
         let ny = y.inverse().expect("y must be nonzero for evaluation form");
         let nx = -(x * ny);
-        Self {
-            x: nx,
-            y: ny,
-            zero: false,
-        }
+        Self { x: nx, y: ny }
     }
 }
-
-//impl From<FqPair> for ark_bn254::G1Affine {
-//    fn from(pi: FqPair) -> Self {
-//        if pi.zero {
-//            if pi.x == ark_bn254::Fq::ZERO {
-//                return ark_bn254::G1Affine::zero();
-//            }
-//            return ark_bn254::G1Affine::new_unchecked(pi.x, pi.y);
-//        }
-//
-//        let (nx, ny) = (pi.x, pi.y);
-//        let y = ny
-//            .inverse()
-//            .expect("ny must be nonzero for evaluation form");
-//        let x = -nx * y; // equivalent to -nx / ny⁻¹
-//
-//        ark_bn254::G1Affine::new_unchecked(x, y)
-//    }
-//}
 
 /// Non-G2 Group on E'
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
 pub struct TwistPoint {
     x: ark_bn254::Fq2,
     y: ark_bn254::Fq2,
-    pub zero: bool,
 }
 
 impl TwistPoint {
+    pub const ZERO: Self = Self {
+        x: ark_bn254::Fq2::ZERO,
+        y: ark_bn254::Fq2::ZERO,
+    };
     pub fn new(x: ark_bn254::Fq2, y: ark_bn254::Fq2) -> Self {
-        Self {
-            x,
-            y,
-            zero: x == ark_bn254::Fq2::ZERO && y == ark_bn254::Fq2::ZERO,
-        }
+        Self { x, y }
     }
 
     pub fn x(&self) -> ark_bn254::Fq2 {
@@ -146,25 +125,36 @@ impl TwistPoint {
         self.y
     }
 
-    pub fn is_zero(&self) -> bool {
-        self.zero
-    }
-
     pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
-        let p = ark_bn254::G2Affine::rand(rng);
-        Self::new(p.x, p.y)
+        loop {
+            let x = ark_bn254::Fq2::rand(rng);
+            let rhs = x * x * x + G2Config::COEFF_B;
+            if let Some(y) = rhs.sqrt() {
+                // This (x, y) satisfies the twist curve equation but is *not* subgroup-checked.
+                let p = ark_bn254::G2Affine::new_unchecked(x, y);
+                assert!(p.is_on_curve(), "curve equation must hold");
+                return TwistPoint::new(x, y);
+            }
+        }
     }
 
     /// y^2 = x^3 + b'  (b' from E')
     pub fn is_on_curve(&self) -> bool {
+        // We don't consider the 0 point is on curve to align with `hinted_is_on_curve`
+        let x2 = self.x.square();
         let y2 = self.y.square();
-        let x3b = self.x.square() * self.x + <G2Config as SWCurveConfig>::COEFF_B;
+        let x3b = x2 * self.x + <G2Config as SWCurveConfig>::COEFF_B;
         y2 == x3b
+    }
+
+    // check if a zero point
+    pub fn is_zero(&self) -> bool {
+        *self == Self::ZERO
     }
 
     /// Negation
     pub fn neg(&self) -> Self {
-        if self.zero {
+        if self.is_zero() {
             *self
         } else {
             Self::new(self.x, -self.y)
@@ -173,7 +163,7 @@ impl TwistPoint {
 
     /// Point doubling: (x3, y3) = 2 * (x1, y1)
     pub fn double(&self) -> Self {
-        if self.zero {
+        if self.is_zero() {
             return *self;
         }
 
@@ -187,7 +177,6 @@ impl TwistPoint {
             return Self {
                 x: ark_bn254::Fq2::zero(),
                 y: ark_bn254::Fq2::zero(),
-                zero: true,
             };
         }
 
@@ -200,10 +189,10 @@ impl TwistPoint {
 
     /// Point addition on E': P3 = P1 + P2
     pub fn add(&self, other: &Self) -> Self {
-        if self.zero {
+        if self.is_zero() {
             return *other;
         }
-        if other.zero {
+        if other.is_zero() {
             return *self;
         }
 
@@ -217,7 +206,6 @@ impl TwistPoint {
                 return Self {
                     x: ark_bn254::Fq2::zero(),
                     y: ark_bn254::Fq2::zero(),
-                    zero: true,
                 };
             } else {
                 return self.double();
@@ -234,11 +222,7 @@ impl TwistPoint {
 
 impl From<ark_bn254::G2Affine> for TwistPoint {
     fn from(p: ark_bn254::G2Affine) -> Self {
-        Self {
-            x: p.x,
-            y: p.y,
-            zero: p.is_zero(),
-        }
+        Self { x: p.x, y: p.y }
     }
 }
 
@@ -419,7 +403,7 @@ impl DataType {
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
                 let r = r.recover();
-                let hash = extern_hash_fps(vec![r.x(), r.y()]);
+                let hash = extern_hash_fps(vec![r.x, r.y]);
                 CompressedStateObject::Hash(hash)
             }
         }
@@ -502,7 +486,7 @@ fn as_hints_scalarelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
 
 fn as_hints_g1type_g1data(r: &FqPair) -> Vec<Hint> {
     let r = r.recover();
-    let hints = vec![Hint::Fq(r.x()), Hint::Fq(r.y())];
+    let hints = vec![Hint::Fq(r.x), Hint::Fq(r.y)];
     hints
 }
 
@@ -636,21 +620,16 @@ mod test {
 
     #[test]
     fn test_fq_pair() {
-        let zero = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
+        let zero = ark_bn254::G1Affine::zero();
         let fp_zero = FqPair::from(zero);
-        assert!(fp_zero.zero);
-        assert_eq!(
-            zero,
-            ark_bn254::G1Affine::new_unchecked(fp_zero.x(), fp_zero.y())
-        );
+        assert_eq!(zero, fp_zero.recover());
 
         let mut rng = thread_rng();
         (0..100).into_iter().for_each(|_| {
             let random = ark_bn254::G1Affine::rand(&mut rng);
             let fp_rand = FqPair::from(random);
-            assert!(!fp_rand.zero);
             let lifted = fp_rand.recover();
-            assert_eq!(random, ark_bn254::G1Affine::new(lifted.x(), lifted.y()));
+            assert_eq!(random, lifted);
         });
     }
 
@@ -691,7 +670,7 @@ mod test {
         // P + (-P) = 0
         let neg = p.neg();
         let s3 = p.add(&neg);
-        assert!(s3.zero, "P + (-P) should be zero point");
+        assert!(s3.is_zero(), "P + (-P) should be zero point");
     }
 
     #[test]

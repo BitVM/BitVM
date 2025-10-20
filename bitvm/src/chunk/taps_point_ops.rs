@@ -121,7 +121,7 @@ fn utils_point_double_eval(
 ) {
     let mut hints = vec![];
 
-    let t_is_zero = t.is_zero(); // t is none or Some(0)
+    let t_is_zero = t.is_zero();
     let is_valid_input = !t_is_zero;
     let (alpha, bias) = if is_valid_input {
         let alpha = (t.x().square() + t.x().square() + t.x().square()) / (t.y() + t.y());
@@ -254,10 +254,6 @@ fn utils_point_add_eval(
     let qq = TwistPoint::new(qqx, qqy);
     let q_is_zero = qq.is_zero(); // q is none or Some(0)
     let is_valid_input = !t_is_zero && !q_is_zero && t != qq.neg();
-    println!(
-        "t_is_zero = {}, q_is_zero = {}, is_valid_input = {}",
-        t_is_zero, q_is_zero, is_valid_input
-    );
 
     // if it's valid input, you can compute line coefficients, else hardcode degenerate values
     let (alpha, bias) = if is_valid_input {
@@ -820,9 +816,8 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
 pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
-    let mock_t = TwistPoint::new(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE);
+    let mock_t = TwistPoint::ZERO;
     let are_valid_fps = ts.iter().filter(|f| **f < ark_bn254::Fq::MODULUS).count() == ts.len();
-    println!("are_valid_fps: {are_valid_fps}");
 
     let mut t4: ElemG2Eval = ElemG2Eval {
         t: mock_t,
@@ -842,7 +837,6 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
         hints.extend_from_slice(&on_curve_hints);
     }
     let is_valid_input = are_valid_fps && t4.t.is_on_curve();
-    println!("is_valid_input: {is_valid_input}, t4.t: {:?}", t4.t);
 
     let aux_hash_le = t4.hash_le(); // aux_hash_le doesn't include t4.t, is constant, so hash_le can be hardcoded
 

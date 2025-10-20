@@ -36,6 +36,7 @@ impl G2Prepared {
         t: &mut ark_bn254::G2Affine,
         three_div_two: &ark_bn254::Fq,
     ) -> EllCoeff {
+        assert_ne!(*t, ark_bn254::G2Affine::zero());
         //  for affine coordinates
         //  slope: alpha = 3 * x^2 / 2 * y
         // intercept: bias = y - alpha * x
@@ -55,6 +56,8 @@ impl G2Prepared {
     }
 
     fn affine_add_in_place(t: &mut ark_bn254::G2Affine, q: &ark_bn254::G2Affine) -> EllCoeff {
+        assert_ne!(*t, ark_bn254::G2Affine::zero());
+        assert_ne!(*q, ark_bn254::G2Affine::zero());
         // alpha = (t.y - q.y) / (t.x - q.x)
         // bias = t.y - alpha * t.x
         let alpha = (t.y - q.y) / (t.x - q.x);

@@ -155,6 +155,7 @@ pub(crate) fn utils_multiply_by_line_eval(
     neg_bias_t3: ark_bn254::Fq2,
     p3: FqPair,
 ) -> (ark_bn254::Fq6, Script, Vec<Hint>) {
+    assert_eq!(p3.is_zero(), false);
     assert_eq!(f.c2, ark_bn254::Fq2::ZERO);
 
     let mut l0_t3 = alpha_t3;

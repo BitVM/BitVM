@@ -63,6 +63,9 @@ impl G1Affine {
         q: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
+        // TODO: uncommnent change the hinted_check_add to hinted_check_add_prevent_degenerate https://github.com/BitVM/BitVM/pull/379
+        // assert_ne!(t, ark_bn254::G1Affine::zero());
+        // assert_ne!(q, ark_bn254::G1Affine::zero());
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Self::hinted_check_line_through_point(q.x, c3);
@@ -103,6 +106,7 @@ impl G1Affine {
         t: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
+        assert_ne!(t, ark_bn254::G1Affine::zero());
         let mut hints = vec![];
 
         let (hinted_script1, hint1) = Fq::hinted_mul(1, t.y + t.y, 0, c3);
@@ -496,10 +500,10 @@ pub fn hinted_from_eval_point(px: ark_bn254::Fq, py: ark_bn254::Fq) -> (Script, 
 pub fn hinted_from_eval_points(px: ark_bn254::Fq, py: ark_bn254::Fq) -> (Script, Vec<Hint>, bool) {
     let mut hints = Vec::new();
 
-    let p = ark_bn254::G1Affine::new_unchecked(px, py);
-    if p.is_zero() {
+    if px == ark_bn254::Fq::ZERO && py == ark_bn254::Fq::ZERO {
         return (G1Affine::push_zero(), hints, true);
     }
+    let p = ark_bn254::G1Affine::new_unchecked(px, py);
     let valid_point = p.is_on_curve();
 
     let py_inv = py.inverse().unwrap();
