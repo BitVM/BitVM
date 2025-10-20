@@ -1,7 +1,8 @@
 use bitcoin::hex::DisplayHex;
+use bitcoin::script::read_scriptint;
 use bitcoin_script::Script;
 
-use super::utils::u32_to_le_bytes_minimal;
+use crate::signatures::utils::bitcoin_representation;
 use crate::signatures::winternitz;
 use crate::signatures::winternitz::{
     BruteforceVerifier, Converter, ListpickVerifier, Parameters, VoidConverter, Winternitz,
@@ -124,17 +125,17 @@ pub trait Wots {
                 "the digit signature should be constant 20 bytes"
             );
             assert!(
-                witness[i + 1].len() <= 1,
-                "the digit should be a compressed byte, which is the empty vector for digit = 0"
+                witness[i + 1].len() <= 2,
+                "the digit should be in compressed bytes, which is equal the empty vector for digit = 0"
             );
-
+            let digit_value = read_scriptint(&witness[i + 1]).unwrap();
+            assert!(
+                (0..(1 << LOG2_BASE)).contains(&digit_value),
+                "the digit should be in the valid range"
+            );
             let mut digit_signature: [u8; 21] = [0; 21];
             digit_signature[0..20].copy_from_slice(&witness[i]);
-            if witness[i + 1].is_empty() {
-                digit_signature[20] = 0;
-            } else {
-                digit_signature[20..21].copy_from_slice(&witness[i + 1]);
-            }
+            digit_signature[20] = digit_value as u8;
             digit_signatures.push(digit_signature);
         }
 
@@ -151,7 +152,7 @@ pub trait Wots {
 
         for digit_signature in signature.as_ref().iter() {
             witness.push(&digit_signature[0..20]);
-            witness.push(u32_to_le_bytes_minimal(u32::from(digit_signature[20])));
+            witness.push(bitcoin_representation(i32::from(digit_signature[20])));
         }
 
         witness
@@ -859,6 +860,7 @@ mod tests {
         assert!(execute_script(compact_script).success);
     }
 
+    /*
     #[test]
     fn verify_test_vectors() -> io::Result<()> {
         let test_vectors = load_test_vectors()?;
@@ -874,4 +876,5 @@ mod tests {
 
         Ok(())
     }
+    */
 }

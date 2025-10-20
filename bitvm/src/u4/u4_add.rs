@@ -5,7 +5,6 @@ use bitcoin::opcodes::all::*;
 /// Pushes the table for calculating the quotient, i.e. floor(x / 16) for x < 65. i.e. 15 (max u4) * 4 (max # numbers to sum) + 4 (max carry)
 pub fn u4_push_quotient_table() -> Script {
     script! {
-        OP_4
         for i in (0..=3).rev() {
             { i }
             OP_DUP
@@ -35,13 +34,13 @@ pub fn u4_push_quotient_table_5() -> Script {
 
 /// Drop quotient table
 pub fn u4_drop_quotient_table() -> Script {
-    u4_drop(65)
+    u4_drop(64)
 }
 
 /// Pushes the table for calculating the modulo, i.e. x % 16 for x < 65. i.e. 15 (max u4) * 4 (max # numbers to sum) + 4 (max carry)
 pub fn u4_push_modulo_table() -> Script {
     script! {
-        for i in (0..65).rev() {
+        for i in (0..64).rev() {
             { i % 16 }
         }
     }
@@ -58,7 +57,7 @@ pub fn u4_push_modulo_table_5() -> Script {
 
 /// Drops the modulo table
 pub fn u4_drop_modulo_table() -> Script {
-    u4_drop(65)
+    u4_drop(64)
 }
 
 /// Pushes both modulo and quotient tables for sums
@@ -159,7 +158,7 @@ pub fn u4_add_no_table_internal(nibble_count: u32, number_count: u32) -> Script 
 /// Requires the addition table and tables_offset to locate the table which should be equal to number of elements on top of the table including operating values
 pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32) -> Script {
     assert!(number_count < 5);
-    let quotient_table_size = 65;
+    let quotient_table_size = 64;
     //extra size on the stack
     let mut offset_calc: i32 = 0;
     script! {
@@ -318,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_quotient() {
-        for i in 0..65 {
+        for i in 0..64 {
             let script = script! {
                 { u4_push_quotient_table() }
                 { i as u32 }
@@ -334,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_modulo() {
-        for i in 0..65 {
+        for i in 0..64 {
             let script = script! {
                 { u4_push_modulo_table() }
                 { i as u32 }

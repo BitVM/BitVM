@@ -20,17 +20,16 @@ pub(crate) fn chunk_msm(
     assert_eq!(input_ks.len(), NUM_PUBS);
     let num_pubs = input_ks.len();
 
-    let mut ks = (0..num_pubs)
-        .map(|_| ark_ff::BigInt::<4>::from(1u64))
-        .collect::<Vec<ark_ff::BigInt<4>>>();
-    let scalars_are_valid_elems = input_ks
+    let ks = input_ks
         .iter()
-        .filter(|f| **f < ark_bn254::Fr::MODULUS)
-        .count()
-        == num_pubs;
-    if scalars_are_valid_elems {
-        ks = input_ks.clone();
-    }
+        .map(|x| {
+            if *x < ark_bn254::Fr::MODULUS {
+                *x
+            } else {
+                ark_ff::BigInt::<4>::from(1u64)
+            }
+        })
+        .collect::<Vec<ark_ff::BigInt<4>>>();
 
     let chunks = msm::g1_multi_scalar_mul(qs.clone(), ks.into_iter().map(|f| f.into()).collect());
 
@@ -38,7 +37,7 @@ pub(crate) fn chunk_msm(
     // [hints, G1Acc]
 
     let mut chunk_scripts = vec![];
-    for (msm_tap_index, chunk) in chunks.iter().enumerate() {
+    for (msm_tap_index, (chunk, variable_index)) in chunks.iter().enumerate() {
         let ops_script = if msm_tap_index == 0 {
             script! {
                 { G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
@@ -91,9 +90,7 @@ pub(crate) fn chunk_msm(
                     // [G1Acc, G1AccDash, 1] [G1AccDashHash, G1AccHash]
                 OP_ELSE
                     // [G1Acc, k]
-                    for _ in 0..num_pubs {
-                        {Fr::drop()}
-                    }
+                    {Fr::drop()}
                     {Fq::push(ark_bn254::Fq::ONE)}
                     {Fq::push(ark_bn254::Fq::ZERO)}
                     // [G1Acc, Mock_G1AccDash] [G1AccDashHash, G1AccHash]
@@ -120,11 +117,10 @@ pub(crate) fn chunk_msm(
             {ops_script}
             // {hash_script}
         };
-
-        if scalars_are_valid_elems {
-            chunk_scripts.push((chunk.0, scalars_are_valid_elems, sc, chunk.2.clone()));
+        if input_ks[*variable_index] < ark_bn254::Fr::MODULUS {
+            chunk_scripts.push((chunk.0, true, sc, chunk.2.clone()));
         } else {
-            chunk_scripts.push((chunk.0, scalars_are_valid_elems, sc, vec![]));
+            chunk_scripts.push((chunk.0, false, sc, vec![]));
         }
     }
     chunk_scripts
@@ -143,7 +139,6 @@ pub(crate) fn chunk_hash_p(
     let q = ark_bn254::G1Affine::new_unchecked(qx, qy);
     let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
     let r = (t + q).into_affine();
-
     let ops_script = script! {
         // [t] [hash_r, hash_t]
 

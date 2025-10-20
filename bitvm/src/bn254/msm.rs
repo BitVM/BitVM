@@ -39,7 +39,7 @@ pub fn hinted_msm_with_constant_bases_affine(
     let num_scalars = scalars.len();
     let psm_len = all_rows.len() / num_scalars;
 
-    for (idx, (row_out, row_scr, row_hints)) in all_rows.into_iter().enumerate() {
+    for (idx, ((row_out, row_scr, row_hints), _)) in all_rows.into_iter().enumerate() {
         all_hints.extend_from_slice(&row_hints);
 
         let temp_scr = script! {
@@ -87,7 +87,7 @@ pub(crate) fn dfs_with_constant_mul(
                 { G1Affine::push(p_mul[(mask + (1 << index)) as usize]) }
             OP_ELSE
                 if mask == 0 {
-                    { G1Affine::push_zero() }
+                    { G1Affine::identity() }
                 } else {
                     { G1Affine::push(p_mul[mask as usize]) }
                 }
@@ -275,7 +275,7 @@ fn accumulate_addition_chain_for_a_scalar_mul(
 pub(crate) fn g1_multi_scalar_mul(
     bases: Vec<ark_bn254::G1Affine>,
     scalars: Vec<ark_bn254::Fr>,
-) -> Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
+) -> Vec<((ark_bn254::G1Affine, Script, Vec<Hint>), usize)> {
     assert_eq!(bases.len(), scalars.len());
     let mut prev = ark_bn254::G1Affine::identity();
     let window = WINDOW_G1_MSM as usize;
@@ -285,7 +285,9 @@ pub(crate) fn g1_multi_scalar_mul(
         let scalar_mul_res =
             accumulate_addition_chain_for_a_scalar_mul(prev, bases[i], scalars[i], window);
         prev = scalar_mul_res[scalar_mul_res.len() - 1].0;
-        aggregate_result_of_all_scalar_muls.extend_from_slice(&scalar_mul_res);
+        for x in scalar_mul_res {
+            aggregate_result_of_all_scalar_muls.push((x, i));
+        }
     }
     aggregate_result_of_all_scalar_muls
 }
@@ -486,11 +488,11 @@ mod test {
         let psm_len = all_rows.len() / num_scalars;
 
         let expected_msm = (q0 * fq0 + q1 * fq1).into_affine();
-        let calculated_msm = all_rows[all_rows.len() - 1].0;
+        let calculated_msm = all_rows[all_rows.len() - 1].0 .0;
         assert_eq!(expected_msm, calculated_msm);
 
         let mut prev = ark_bn254::G1Affine::identity();
-        for (idx, (row_out, row_scr, row_hints)) in all_rows.into_iter().enumerate() {
+        for (idx, ((row_out, row_scr, row_hints), _)) in all_rows.into_iter().enumerate() {
             let scr = script! {
                 // [hints, t, scalar]
                 for h in &row_hints {
