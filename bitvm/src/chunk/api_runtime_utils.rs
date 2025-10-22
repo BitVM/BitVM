@@ -413,6 +413,9 @@ fn utils_execute_chunked_g16(
                 println!("{i:} {:?}", exec_result.final_stack.get(i));
             }
         }
+        println!("exec result.success: {:?}", exec_result.success);
+        println!("exec result.error: {:?}", exec_result.error);
+        println!("exec result.stack_len: {:?}", exec_result.final_stack.len());
         if !exec_result.success {
             if exec_result.final_stack.len() != 1 {
                 println!("final {:?}", i);

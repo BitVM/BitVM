@@ -27,22 +27,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    pub fn equal_keep_elements(a: u32, b: u32) -> Script {
-        script! {
-            { Self::copy_zip(a, b) }
-            for _ in 0..Self::N_LIMBS {
-                OP_EQUAL
-                OP_TOALTSTACK
-            }
-            for _ in 0..Self::N_LIMBS {
-                OP_FROMALTSTACK
-            }
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_BOOLAND
-            }
-        }
-    }
-
     pub fn notequal(a: u32, b: u32) -> Script {
         script! {
             { Self::equal(a, b) }

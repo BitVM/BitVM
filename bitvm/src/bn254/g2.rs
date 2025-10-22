@@ -121,15 +121,8 @@ impl G2Affine {
         let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
-        let mut element = ark_bn254::G2Affine {
-            x,
-            y,
-            infinity: false,
-        };
-        if element.x.is_zero() && element.y.is_zero() {
-            element = ark_bn254::G2Affine::zero();
-        }
-        element
+        let infinity = x.is_zero() && y.is_zero();
+        ark_bn254::G2Affine { x, y, infinity }
     }
 }
 
@@ -918,7 +911,7 @@ mod test {
 
         // affine mode
         let coeffs = G2Prepared::from_affine(b);
-        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p.x, p.y);
+        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
         let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine_and_sparse_mul(
             f,
             -p.x / p.y,

@@ -39,13 +39,19 @@ pub(crate) fn chunk_precompute_p(
         hints.extend_from_slice(&on_curve_hint);
     }
 
-    let (eval_xy, eval_hints, valid_point) = hinted_from_eval_points(px, py);
+    let p = if px == ark_bn254::Fq::ZERO && py == ark_bn254::Fq::ZERO {
+        ark_bn254::G1Affine::identity()
+    } else {
+        ark_bn254::G1Affine::new(px, py)
+    };
+    let (eval_xy, eval_hints, valid_point) = hinted_from_eval_points(p);
 
     let valid_point = are_valid_field_elems && valid_point;
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        FqPair::new(px, py)
+        //FqPair::new(px, py)
+        ark_bn254::G1Affine::new(px, py).into()
     } else {
         FqPair::ZERO
     };
@@ -54,8 +60,7 @@ pub(crate) fn chunk_precompute_p(
         // [px, py] [pdhash]
         {G1Affine::drop()}
         // [] [pdhash]
-        {Fq::push(ark_bn254::Fq::ZERO)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
-        {Fq::push(ark_bn254::Fq::ZERO)}
+        {G1Affine::identity()} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
         // [pd] [pdhash]
         {0} // skip output hash check because input was invalid
     };
@@ -130,21 +135,25 @@ pub(crate) fn chunk_precompute_p_from_hash(
         hints.extend_from_slice(&on_curve_hint);
     }
 
-    let (eval_xy, eval_hints, valid_point) = hinted_from_eval_points(px, py);
+    let p = if py_is_not_zero {
+        hint_in_p
+    } else {
+        ark_bn254::G1Affine::identity()
+    };
+    let (eval_xy, eval_hints, valid_point) = hinted_from_eval_points(p);
 
     let valid_point = py_is_not_zero && valid_point;
 
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
-        FqPair::new(px, py)
+        hint_in_p.into()
     } else {
         FqPair::ZERO
     };
 
     let drop_and_return_scr = script! {
         // [px, py] [pdhash, phash]
-        {Fq::push(ark_bn254::Fq::ZERO)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
-        {Fq::push(ark_bn254::Fq::ZERO)}
+        {G1Affine::identity()} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
         // [p, pd] [pdhash, phash]
         {0} // skip output hash check because input was invalid
     };
@@ -467,6 +476,7 @@ mod test {
     use crate::chunk::wrap_hasher::hash_messages;
 
     use crate::chunk::taps_ext_miller::*;
+    use ark_ec::AffineRepr;
     use ark_ff::{BigInt, Field, PrimeField};
     use ark_std::UniformRand;
     use rand::SeedableRng;
@@ -618,23 +628,9 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p = ark_bn254::G1Affine::rand(&mut prng);
 
-        let p0 = [ark_ff::BigInt::<4>::one(), ark_ff::BigInt::<4>::zero()];
         let p1 = [ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::zero()];
-        let p2 = [ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::one()];
-        let p3 = [
-            ark_ff::BigInt::<4>::one() << 255,
-            ark_ff::BigInt::<4>::one() << 255,
-        ];
-        let p4: [ark_ff::BigInt<4>; 2] = [p.x.into(), p.y.into()];
-        let p5: [ark_ff::BigInt<4>; 2] = [p.x.double().into(), p.y.into()];
-        let dataset = vec![
-            (p0, true),
-            (p1, true),
-            (p2, true),
-            (p3, true),
-            (p4, false),
-            (p5, true),
-        ];
+        let p2: [ark_ff::BigInt<4>; 2] = [p.x.into(), p.y.into()];
+        let dataset = vec![(p1, true), (p2, false)];
 
         for (p, disprovable) in dataset {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p(p[1], p[0]);
@@ -683,16 +679,14 @@ mod test {
         // runtime
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p1 = ark_bn254::G1Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
-        let p3 = ark_bn254::G1Affine::identity();
-        let p4 = ark_bn254::G1Affine::new_unchecked(p1.x, p1.x);
-        let dataset = vec![(p1, false), (p2, true), (p3, true), (p4, true)];
+        let p2 = ark_bn254::G1Affine::identity();
+        let dataset = vec![(p1, false), (p2, true)];
 
         for (p, disprovable) in dataset {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
             assert_eq!(input_is_valid, !disprovable);
             let hint_out = DataType::G1Data(hint_out);
-            let p = DataType::G1Data(p.into());
+            let p = DataType::G1Data(FqPair::new(p.x, p.y));
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

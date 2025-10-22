@@ -36,7 +36,7 @@ pub enum DataType {
 }
 
 /// Represent evaluation form (-x/y, 1/y) for G1Affine points, see more: https://github.com/BitVM/BitVM/issues/213
-/// Specially, for `chunk_precompute_p` and `chunk_precompute_p_from_hash`, the G1Data stores the values' original form.
+/// Specially, for `wrap_hint_msm` and `wrap_hint_hash_p`, the G1Data stores the values' original form, never recover.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FqPair {
     x: ark_bn254::Fq,
@@ -65,7 +65,7 @@ impl FqPair {
         self.y
     }
 
-    /// Recover the evaluation form to original form.
+    /// Recover the evaluation form to its original form.
     pub fn recover(&self) -> ark_bn254::G1Affine {
         if self.y == ark_bn254::Fq::ZERO {
             return ark_bn254::G1Affine::zero();
@@ -74,9 +74,9 @@ impl FqPair {
         let y = ny
             .inverse()
             .expect("ny must be nonzero for evaluation form");
-        let x = -nx * y; // equivalent to -nx / ny⁻¹
-                         // Use new_unchecked to get compitiable with generate_segments_using_mock_vk_and_mock_proof.
-        ark_bn254::G1Affine::new_unchecked(x, y)
+        let x = -nx * y;
+        // Use new_unchecked to get compitiable with generate_segments_using_mock_vk_and_mock_proof.
+        ark_bn254::G1Affine::new(x, y)
     }
 
     pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
@@ -126,14 +126,12 @@ impl TwistPoint {
     }
 
     pub fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        // It's not possible to get a dead loop.
         loop {
             let x = ark_bn254::Fq2::rand(rng);
-            let rhs = x * x * x + G2Config::COEFF_B;
+            let rhs = x.square() * x + G2Config::COEFF_B;
             if let Some(y) = rhs.sqrt() {
-                // This (x, y) satisfies the twist curve equation but is *not* subgroup-checked.
-                let p = ark_bn254::G2Affine::new_unchecked(x, y);
-                assert!(p.is_on_curve(), "curve equation must hold");
-                return TwistPoint::new(x, y);
+                return Self::new(x, y);
             }
         }
     }
@@ -402,8 +400,7 @@ impl DataType {
             }
             DataType::U256Data(f) => CompressedStateObject::U256(f),
             DataType::G1Data(r) => {
-                let r = r.recover();
-                let hash = extern_hash_fps(vec![r.x, r.y]);
+                let hash = extern_hash_fps(vec![r.x(), r.y()]);
                 CompressedStateObject::Hash(hash)
             }
         }
@@ -424,7 +421,7 @@ impl DataType {
                 as_hints_g2evalmultype_g2evaldata(*g)
             }
             (ElementType::Fp6, DataType::Fp6Data(r)) => as_hints_fq6type_fq6data(*r),
-            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data(r),
+            (ElementType::G1, DataType::G1Data(r)) => as_hints_g1type_g1data(*r),
             (ElementType::FieldElem, DataType::U256Data(r)) => as_hints_fieldelemtype_u256data(*r),
             (ElementType::ScalarElem, DataType::U256Data(r)) => {
                 as_hints_scalarelemtype_u256data(*r)
@@ -484,9 +481,9 @@ fn as_hints_scalarelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
     hints
 }
 
-fn as_hints_g1type_g1data(r: &FqPair) -> Vec<Hint> {
-    let r = r.recover();
-    let hints = vec![Hint::Fq(r.x), Hint::Fq(r.y)];
+fn as_hints_g1type_g1data(r: FqPair) -> Vec<Hint> {
+    //let r = r.recover();
+    let hints = vec![Hint::Fq(r.x()), Hint::Fq(r.y())];
     hints
 }
 

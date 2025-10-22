@@ -225,10 +225,6 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     let p3: FqPair = in_p3.result.0.try_into().unwrap();
     let p2: FqPair = in_p2.result.0.try_into().unwrap();
 
-    let p4 = ark_bn254::G1Affine::new_unchecked(p4.x(), p4.y()).into();
-    let p3 = ark_bn254::G1Affine::new_unchecked(p3.x(), p3.y()).into();
-    let p2 = ark_bn254::G1Affine::new_unchecked(p2.x(), p2.y()).into();
-
     let mut q4: Option<TwistPoint> = None;
 
     if !is_dbl {
@@ -328,14 +324,17 @@ pub(crate) fn wrap_hint_msm(
                 id: (segment_id + msm_chunk_index) as u32,
                 is_valid_input,
                 parameter_ids: input_segment_info,
-                result: (DataType::G1Data(hout_msm.into()), ElementType::G1),
+                result: (
+                    DataType::G1Data(FqPair::new(hout_msm.x, hout_msm.y)),
+                    ElementType::G1,
+                ),
                 hints: op_hints,
                 scr_type: ScriptType::MSM(msm_chunk_index as u32),
                 scr: scr.compile(),
             });
         }
     } else {
-        let hout_msm: ark_bn254::G1Affine = ark_bn254::G1Affine::identity();
+        let hout_msm = FqPair::ZERO;
         for msm_chunk_index in 0..num_chunks_per_scalar * scalars.len() as u32 {
             let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
             if msm_chunk_index > 0 {
@@ -349,7 +348,7 @@ pub(crate) fn wrap_hint_msm(
                 id: (segment_id as u32 + msm_chunk_index),
                 is_valid_input: true,
                 parameter_ids: input_segment_info,
-                result: (DataType::G1Data(hout_msm.into()), ElementType::G1),
+                result: (DataType::G1Data(hout_msm), ElementType::G1),
                 hints: vec![],
                 scr_type: ScriptType::MSM(msm_chunk_index),
                 scr: ScriptBuf::new(),
@@ -376,7 +375,7 @@ pub(crate) fn wrap_hint_hash_p(
     );
     if !skip {
         // the value has been converted to FqPair in chunk_msm, we recover it to G1 coordinate.
-        let t = t.recover();
+        let t = ark_bn254::G1Affine::new(t.x(), t.y());
         (p3, is_valid_input, scr, op_hints) = chunk_hash_p(t, pub_vky0);
         // op_hints.extend_from_slice(&DataType::G1Data(t).get_hash_preimage_as_hints());
     }
@@ -384,7 +383,7 @@ pub(crate) fn wrap_hint_hash_p(
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3.into()), ElementType::G1),
+        result: (DataType::G1Data(FqPair::new(p3.x, p3.y)), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashP,
         scr: scr.compile(),
@@ -441,7 +440,8 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     );
     if !skip {
         let in_p: FqPair = in_p.result.0.try_into().unwrap();
-        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p.recover());
+        let p = ark_bn254::G1Affine::new(in_p.x(), in_p.y());
+        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(p);
     }
 
     Segment {

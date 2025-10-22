@@ -251,10 +251,10 @@ fn utils_point_add_eval(
     hints.extend(precomp_q_hint);
 
     // Point Add
-    let t_is_zero = t.is_zero(); // t is none or Some(0)
+    let t_is_zero = t.is_zero();
 
     let qq = TwistPoint::new(qqx, qqy);
-    let q_is_zero = qq.is_zero(); // q is none or Some(0)
+    let q_is_zero = qq.is_zero();
     let is_valid_input = !t_is_zero && !q_is_zero && t != qq.neg();
 
     // if it's valid input, you can compute line coefficients, else hardcode degenerate values
@@ -1744,15 +1744,12 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                //p4,
-                FqPair::new(p4.x, p4.y),
+                p4.into(),
                 Some(q4),
-                //p3,
-                FqPair::new(p3.x, p3.y),
+                p3.into(),
                 t3,
                 Some(q3),
-                //p2,
-                FqPair::new(p2.x, p2.y),
+                p2.into(),
                 t2,
                 Some(q2),
             );

@@ -387,8 +387,6 @@ pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bn254::fp254impl::Fp254Impl;
-    use crate::bn254::fq::Fq;
     use crate::{execute_script, execute_script_buf_without_stack_limit};
     use bitcoin::ScriptBuf;
     use bitcoin_script_stack::optimizer;

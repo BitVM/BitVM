@@ -108,11 +108,6 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn equal_keep_elements(a: u32, b: u32) -> Script {
-        U254::equal_keep_elements(a, b)
-    }
-
-    #[inline]
     fn equalverify(a: u32, b: u32) -> Script {
         U254::equalverify(a, b)
     }
