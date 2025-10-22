@@ -290,7 +290,6 @@ pub(crate) fn utils_fq12_dd_mul(
 // Assumes input a is valid i.e (1 + a^2 J ^2) != 0
 pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
-    let mock_value = ark_bn254::Fq6::ONE;
 
     // compute ab in Script
     let (asq_scr, ab_hints) = Fq6::hinted_square(a);
@@ -301,14 +300,11 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
     let denom = ark_bn254::Fq6::ONE + a * a * beta_sq;
 
     // is input valid ? output: mock_output
-    let (denom_mul_c_scr, c) = if denom != ark_bn254::Fq6::ZERO {
+    let (denom_mul_c_scr, c) = {
         let c = (a + a) / denom;
         let res = Fq6::hinted_mul(6, denom, 0, c);
         hints.extend_from_slice(&res.1);
         (res.0, c)
-    } else {
-        let scr = Fq6::hinted_mul(6, ark_bn254::Fq6::ONE, 0, ark_bn254::Fq6::ONE).0;
-        (scr, mock_value)
     };
 
     let mul_by_beta_sq_scr = script! {
@@ -329,31 +325,21 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
         {Fq6::push(ark_bn254::Fq6::ONE)}
         {Fq6::add(6, 0)}
         // [hints, a, denom] [c]
+        {Fq6::fromaltstack()}
+        // [hints, a, denom, c]
         {Fq6::copy(0)}
-        {Fq6::is_zero()}
-        OP_IF
-            // [a, denom] [c]
-            {Fq6::drop()}
-            {Fq6::push(mock_value)}
-            {0}
-            // [a, mock_c, 0]
-        OP_ELSE
-            {Fq6::fromaltstack()}
-            // [hints, a, denom, c]
-            {Fq6::copy(0)}
-            // [hints, a, denom, c, c]
-            {Fq6::roll(12)} {Fq6::roll(12)}
-            // [hints, a, c, denom, c]
-            {denom_mul_c_scr}
-            // [a, c, denom_c]
-            {Fq6::copy(12)}
-            // [a, c, denom_c, a]
-            {Fq6::double(0)}
-            // [a, c, denom_c, 2a]
-            {Fq6::equalverify()}
-            // [a,c] []
-            {1}
-        OP_ENDIF
+        // [hints, a, denom, c, c]
+        {Fq6::roll(12)} {Fq6::roll(12)}
+        // [hints, a, c, denom, c]
+        {denom_mul_c_scr}
+        // [a, c, denom_c]
+        {Fq6::copy(12)}
+        // [a, c, denom_c, a]
+        {Fq6::double(0)}
+        // [a, c, denom_c, 2a]
+        {Fq6::equalverify()}
+        // [a,c] []
+        {1}
         // [a, c, 0/1]
     };
 

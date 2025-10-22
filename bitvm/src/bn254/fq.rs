@@ -1,9 +1,12 @@
 #![allow(clippy::reversed_empty_ranges)]
+use std::str::FromStr;
+
 use num_bigint::{BigInt, BigUint};
-use num_traits::{FromPrimitive, Num, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
 
 use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
+use crate::bn254::utils::Hint;
 use crate::pseudo::NMUL;
 use crate::treepp::*;
 
@@ -31,10 +34,6 @@ impl Fp254Impl for Fq {
 }
 
 impl Fq {
-    pub fn modulus_as_bigint() -> BigInt {
-        BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
-    }
-
     pub fn tmul() -> Script {
         script! {
             { <Fq as Fp254Mul>::tmul() }
@@ -63,22 +62,32 @@ impl Fq {
         }
     }
 
-    pub const fn bigint_tmul_lc_1() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_1() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_2() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul2LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
-    pub const fn bigint_tmul_lc_4() -> (u32, u32) {
+    pub const fn bigint_tmul_lc_2_w4() -> (u32, u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LCW4>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LCW4>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul2LCW4>::T::N_LIMBS;
+        (X, Y, Z)
+    }
+
+    pub const fn bigint_tmul_lc_4() -> (u32, u32, u32) {
         const X: u32 = <Fq as Fp254Mul4LC>::T::N_BITS;
-        const Y: u32 = <Fq as Fp254Mul4LC>::LIMB_SIZE;
-        (X, Y)
+        const Y: u32 = <Fq as Fp254Mul4LC>::T::LIMB_SIZE;
+        const Z: u32 = <Fq as Fp254Mul4LC>::T::N_LIMBS;
+        (X, Y, Z)
     }
 
     #[inline]
@@ -86,6 +95,375 @@ impl Fq {
         script! {
             { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
         }
+    }
+
+    pub fn hinted_mul(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert_ne!(a_depth, b_depth);
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
+        }
+
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 1) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    // TODO: Optimize by using the constant feature
+    pub fn hinted_mul_by_constant(
+        a: ark_bn254::Fq,
+        constant: &ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&constant.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(1) }
+            { Fq::push(*constant) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    pub fn hinted_mul_keep_element(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert_ne!(a_depth, b_depth);
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
+        }
+
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    // Assumes tmul hint (1 BigInteger) at the top of stack
+    // and operands (a, b, c, d) at stack depths (a_depth, b_depth, c_depth, d_depth)
+    // Computes r = a * c + b * d (mod p)
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2_w4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::with_capacity(1);
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::tmul_lc2_w4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+
+        e_depth: u32,
+        e: ark_bn254::Fq,
+        f_depth: u32,
+        f: ark_bn254::Fq,
+        g_depth: u32,
+        g: ark_bn254::Fq,
+        h_depth: u32,
+        h: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(
+            a_depth > b_depth
+                && b_depth > c_depth
+                && c_depth > d_depth
+                && d_depth > e_depth
+                && e_depth > f_depth
+                && f_depth > g_depth
+                && g_depth > h_depth
+        );
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x1 = BigInt::from_str(&a.to_string()).unwrap();
+        let y1 = BigInt::from_str(&b.to_string()).unwrap();
+        let z1 = BigInt::from_str(&c.to_string()).unwrap();
+        let w1 = BigInt::from_str(&d.to_string()).unwrap();
+
+        let x2 = BigInt::from_str(&e.to_string()).unwrap();
+        let y2 = BigInt::from_str(&f.to_string()).unwrap();
+        let z2 = BigInt::from_str(&g.to_string()).unwrap();
+        let w2 = BigInt::from_str(&h.to_string()).unwrap();
+
+        let q = (x1 * x2 + y1 * y2 + z1 * z2 + w1 * w2) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::roll(e_depth + 5) }
+            { Fq::roll(f_depth + 6) }
+            { Fq::roll(g_depth + 7) }
+            { Fq::roll(h_depth + 8) }
+            { Fq::tmul_lc4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC4(q));
+
+        (script, hints)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2_keep_elements(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    // Same as hinted_mul_lc2_keep_elements(), except retains operands (a, b, c, d) on stack
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinted_mul_lc2_keep_elements_w4(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::with_capacity(1);
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+
+        let q = (x * z + y * w) / modulus;
+
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2_w4() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    // TODO: Optimize using the sqaure feature
+    pub fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = &BigInt::from_str(&a.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * x) / modulus;
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(1) }
+            { Fq::copy(0) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    pub fn hinted_inv(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = &BigInt::from_str(&a.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let y = &x.modinv(modulus).unwrap();
+        let q = (x * y) / modulus;
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            for _ in 0..Self::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { Fq::push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // x, y, q
+            { Fq::roll(2) }
+            { Fq::copy(2) }
+            // y, q, x, y
+            { Fq::tmul() }
+            // y, 1
+            { Fq::push_one() }
+            { Fq::equalverify(1, 0) }
+        };
+        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
     }
 }
 
@@ -112,7 +490,7 @@ macro_rules! fp_lc_mul {
             trait [<Fp254 $NAME>] {
                 const LIMB_SIZE: u32 = 29;
                 const LCS: [bool; $LCS.len()] = $LCS;
-                const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
+                const LC_BITS: u32 = usize::BITS - ($LCS.len() - 1).leading_zeros();
                 type U;
                 type T;
                 fn tmul() -> Script;
@@ -169,15 +547,15 @@ macro_rules! fp_lc_mul {
                     // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
-                            (1..=6).contains(&window),
-                            "expected 1<=window<=6; got window={}",
+                            (2..=6).contains(&window),
+                            "expected 2<=window<=6; got window={}",
                             window
                         );
                         script! {
                             for i in 2..=window {
                                 for j in 1 << (i - 1)..1 << i {
                                     if j % 2 == 0 {
-                                        { T::double_allow_overflow_keep_element( (j/2 - 1) * T::N_LIMBS ) }
+                                        { T::double_prevent_overflow_keep_element(j/2 - 1) }
                                     } else {
                                         { T::add_ref_with_top(j - 2) }
                                     }
@@ -323,9 +701,10 @@ macro_rules! fp_lc_mul {
                             { U::lessthan(1, 0) } OP_VERIFY                                // {q} {x0} {x1} {y0} {y1}
                             { U::toaltstack() }                                            // {q} {x0} {x1} {y0} -> {y1}
                         }                                                                  // {q} -> {x0} {x1} {y0} {y1}
-                        // Pre-compute lookup tables
-                        { T::push_zero() }                   // {q} {0} -> {x0} {x1} {y0} {y1}
-                        { T::sub(0, 1) }                     // {-q} -> {x0} {x1} {y0} {y1}
+                        // ensure q is a valid bigint
+                        { T::copy(0) } { T::check_validity() }
+                        // Pre-compute lookup tables (q can not be 2^T::N_BITS-1 when tmul is correctly used, so neg() gives correct result)
+                        { T::neg() }                         // {-q} -> {x0} {x1} {y0} {y1}
                         { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
                         for i in 0..N_LC {
                             { U::fromaltstack() }            // {-q_table} {x0} -> {x1} {y0} {y1}
@@ -358,12 +737,12 @@ macro_rules! fp_lc_mul {
                                         OP_SWAP
                                         OP_SUB
                                         if i + j == MAIN_LOOP_START && j == 0 {
-                                            for _ in 0..Self::N_LIMBS {
+                                            for _ in 0..T::N_LIMBS {
                                                 OP_NIP
                                             }
-                                            { NMUL(Self::N_LIMBS) }
+                                            { NMUL(T::N_LIMBS) }
                                             OP_DUP OP_PICK
-                                            for _ in 0..Self::N_LIMBS-1 {
+                                            for _ in 0..T::N_LIMBS-1 {
                                                 OP_SWAP
                                                 OP_DUP OP_PICK
                                             }
@@ -390,25 +769,22 @@ macro_rules! fp_lc_mul {
                             }
                         }
 
-                        { T::is_positive(size_table(MOD_WIDTH) +                 // q was negative
-                            N_LC * size_table(VAR_WIDTH) + N_LC) } OP_TOALTSTACK // {-q_table} {x0_table} {x1_table} {y0} {y1} {r} -> {0/1}
-                        { T::toaltstack() }                                      // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
+                        { T::toaltstack() }                                            // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r}
 
                         // Cleanup
-                        for _ in 0..N_LC { { T::drop() } }             // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
-                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r} {0/1}
-                        { drop_table(MOD_WIDTH) }                      // -> {r} {0/1}
+                        for _ in 0..N_LC { { T::drop() } }                             // {-q_table} {x0_table} {x1_table} -> {r}
+                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } }                 // {-q_table} -> {r}
+                        { drop_table(MOD_WIDTH) }                                      // -> {r}
 
                         // Correction/validation
                         // r = if q < 0 { r + p } else { r }; assert(r < p)
-                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r} {0/1}
-                        { T::fromaltstack() } OP_FROMALTSTACK // {MODULUS} {r} {0/1}
-                        OP_IF { T::add_ref(1) } OP_ENDIF      // {MODULUS} {-r/r}
-                        { T::copy(0) }                        // {MODULUS} {-r/r} {-r/r}
-                        { T::lessthan(0, 2) } OP_VERIFY       // {-r/r}
+                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r}
+                        { T::fromaltstack() }                                          // {MODULUS} {r}
+                        { T::copy(0) }                                                 // {MODULUS} {r} {r}
+                        { T::lessthan(0, 2) } OP_VERIFY                                // {r}
 
                         // Resize res back to N_BITS
-                        { T::resize::<N_BITS>() } // {r}
+                        { T::resize::<N_BITS>() }                                      // {r}
                     }
                 }
             }
@@ -424,6 +800,7 @@ fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::bigint::U254;
     use crate::bn254::fq::Fq;
     use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
     use ark_ff::AdditiveGroup;
@@ -660,40 +1037,6 @@ mod test {
             };
             run(script);
         }
-    }
-
-    #[test]
-    fn test_is_field() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        println!("Fq.is_field: {} bytes", Fq::is_field().len());
-
-        for _ in 0..10 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let a = a.rem(&m);
-
-            let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::is_field() }
-            };
-            run(script);
-        }
-
-        let script = script! {
-            { Fq::push_modulus() } OP_1 OP_ADD
-            { Fq::is_field() }
-            OP_NOT
-        };
-        run(script);
-
-        let script = script! {
-            { Fq::push_modulus() } OP_1 OP_SUB
-            OP_NEGATE
-            { Fq::is_field() }
-            OP_NOT
-        };
-        run(script);
     }
 
     #[test]
@@ -1037,5 +1380,94 @@ mod test {
             <Fq as Fp254Mul2LC>::tmul().len(),
             max_stack
         );
+    }
+
+    #[test]
+    fn test_check_validity() {
+        let mut prng = ChaCha20Rng::seed_from_u64(37);
+        let x = Fq::modulus_as_bigint().to_biguint().unwrap();
+        let verification_script = Fq::check_validity();
+        let clearing_script = script! {
+            for _ in 0..U254::N_LIMBS { OP_FROMALTSTACK }
+            { U254::equalverify(0, 1) }
+            OP_TRUE
+        };
+
+        // -1
+        {
+            run(script! {
+                { U254::push_biguint(x.clone() - 1u32) }
+                { verification_script.clone() }
+                { U254::push_biguint(x.clone() - 1u32) }  { clearing_script.clone() }
+            })
+        }
+
+        // equal
+        {
+            assert!(
+                execute_script(script! {
+                    { U254::push_biguint(x.clone()) }
+                    { verification_script.clone() }
+                    { U254::push_biguint(x.clone()) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            )
+        }
+
+        // +1
+        {
+            assert!(
+                execute_script(script! {
+                    { U254::push_biguint(x.clone() + 1u32) }
+                    { verification_script.clone() }
+                    { U254::push_biguint(x.clone() + 1u32) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            )
+        }
+
+        // random less than
+        for _ in 0..100 {
+            let n = prng.gen_biguint_range(&BigUint::from(0u32), &x);
+            run(script! {
+                { U254::push_biguint(n.clone()) }
+                { verification_script.clone() }
+                { U254::push_biguint(n) }  { clearing_script.clone() }
+            })
+        }
+
+        // random geq
+        for _ in 0..100 {
+            let n = prng.gen_biguint_range(&x, &BigUint::from(2u32).pow(254));
+            assert!(
+                execute_script(script! {
+                    { U254::push_biguint(n.clone()) }
+                    { verification_script.clone() }
+                    { U254::push_biguint(n) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            );
+        }
+
+        //corrupted data with negative
+        {
+            let limbs = U254::biguint_to_limbs(x.clone());
+            assert!(
+                execute_script(script! {
+                    for i in (1..U254::N_LIMBS as usize).rev() {
+                        { limbs[i] }
+                    }
+                    { -1 }
+
+                    { verification_script.clone() }
+                    { U254::push_biguint(x.clone()) }  { clearing_script.clone() }
+                })
+                .success
+                    == false
+            )
+        }
     }
 }

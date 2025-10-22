@@ -5,7 +5,7 @@ use crate::bn254::ell_coeffs::AffinePairing;
 use crate::bn254::ell_coeffs::BnAffinePairing;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::chunk::api::{NUM_PUBS, NUM_TAPS};
+use crate::chunk::api::{NUM_HASH, NUM_PUBS, NUM_TAPS, NUM_U256, VALIDATING_TAPS};
 use crate::chunk::elements::ElementType;
 use crate::chunk::elements::TwistPoint;
 use crate::treepp;
@@ -176,6 +176,10 @@ fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Se
         pubs,
         &mut None,
     );
+    assert_eq!(
+        segments.len(),
+        NUM_PUBS + NUM_U256 + NUM_HASH + VALIDATING_TAPS
+    );
     segments
 }
 
@@ -320,4 +324,18 @@ pub(crate) fn bitcom_scripts_from_segments(
         bitcom_scripts.push(locking_scr);
     }
     bitcom_scripts
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::chunk::api_compiletime_utils::generate_segments_using_mock_vk_and_mock_proof;
+
+    #[test]
+    fn test_generate_segments_using_mock_proof() {
+        let segments = generate_segments_using_mock_vk_and_mock_proof();
+        assert_eq!(
+            segments.len(),
+            super::NUM_PUBS + super::NUM_U256 + super::NUM_HASH + super::VALIDATING_TAPS
+        );
+    }
 }
