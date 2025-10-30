@@ -350,6 +350,10 @@ pub(crate) fn chunk_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
     let _hash_scr = hash_messages(vec![ElementType::Fp6, ElementType::Fp6]);
     let scr = script! {
         // [hints, a, c] [chash, ahash]
+        { Fq6::check_validity() }
+        { Fq6::check_validity() }
+        { Fq6::fromaltstack() }
+        { Fq6::fromaltstack() }
         {asq_scr}
         // [a, asq, 0/1] [chash, ahash]
     };
@@ -367,6 +371,12 @@ pub(crate) fn chunk_dense_dense_mul(
     };
     let scr = script! {
         // [hints, a, b, c] [chash, bhash, ahash]
+        { Fq6::check_validity() }
+        { Fq6::check_validity() }
+        { Fq6::check_validity() }
+        { Fq6::fromaltstack() }
+        { Fq6::fromaltstack() }
+        { Fq6::fromaltstack() }
         {amulb_scr}
         // [a, b, amulb, 0/1] [chash, bhash, ahash]
     };

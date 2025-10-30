@@ -139,6 +139,20 @@ impl G1Affine {
         }
     }
 
+    pub fn toaltstack() -> Script {
+        script! {
+            {Fq::toaltstack()}
+            {Fq::toaltstack()}
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            {Fq::fromaltstack()}
+            {Fq::fromaltstack()}
+        }
+    }
+
     pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
         let x: ark_bn254::Fq =

@@ -439,6 +439,56 @@ fn utils_execute_chunked_g16(
     None
 }
 
+/// This is a duplicate of [`utils_execute_chunked_g16`], just to analyze worst case scenarios
+fn utils_analyze_largest_segments(
+    aux_hints: Vec<Vec<Hint>>,
+    bc_hints: Vec<Script>,
+    segments: &[Segment],
+    disprove_scripts: &[ScriptBuf; NUM_TAPS],
+) {
+    let mut max_script_size = 0;
+    let mut max_script_size_index = 0;
+    let mut max_stack_depth = 0;
+    let mut max_stack_depth_index = 0;
+    let mut tap_script_index = 0;
+    for i in 0..aux_hints.len() {
+        if segments[i].scr_type == ScriptType::NonDeterministic {
+            continue;
+        }
+        let hint_script = script! {
+            for h in &aux_hints[i] {
+                {h.push()}
+            }
+            {bc_hints[i].clone()}
+        };
+        let total_script = hint_script
+            .clone()
+            .push_script(disprove_scripts[tap_script_index].clone());
+        let script_size = total_script.len();
+        if script_size > max_script_size {
+            max_script_size = script_size;
+            max_script_size_index = tap_script_index;
+        }
+
+        let exec_result = execute_script(total_script);
+        let stack_depth = exec_result.stats.max_nb_stack_items;
+        if stack_depth > max_stack_depth {
+            max_stack_depth = stack_depth;
+            max_stack_depth_index = tap_script_index;
+        }
+        tap_script_index += 1;
+    }
+
+    println!(
+        "Max script size with the current VK is {} at index {}",
+        max_script_size, max_script_size_index
+    );
+    println!(
+        "(This shouldn't change with the VK) Max stack depth used is {} at index {}",
+        max_stack_depth, max_stack_depth_index
+    );
+}
+
 pub(crate) fn execute_script_from_assertion(
     segments: &[Segment],
     assts: Assertions,
@@ -579,6 +629,84 @@ pub(crate) fn execute_script_from_signature(
 
     // execute_chunked_g16
     utils_execute_chunked_g16(mul_hints, bc_hints, segments, disprove_scripts)
+}
+
+/// This is a duplicate of [`execute_script_from_signature`], just to analyze worst case scenarios
+pub fn analyze_largest_segments_from_signatures(
+    segments: &[Segment],
+    signed_assts: Signatures,
+    disprove_scripts: &[ScriptBuf; NUM_TAPS],
+) {
+    // if there is a disprove script; with locking script; i can use bitcom witness
+    // segments and signatures
+    fn collect_wots_sig_as_witness_per_segment(
+        segments: &[Segment],
+        signed_asserts: Signatures,
+    ) -> Vec<Script> {
+        let scalar_sigs: Vec<SigData> = signed_asserts
+            .0
+            .iter()
+            .map(|f| SigData::Wots32(*f))
+            .collect();
+        let felts_sigs: Vec<SigData> = signed_asserts
+            .1
+            .iter()
+            .map(|f| SigData::Wots32(*f))
+            .collect();
+        let hash_sigs: Vec<SigData> = signed_asserts
+            .2
+            .iter()
+            .map(|f| SigData::Wots16(*f))
+            .collect();
+        let mut bitcom_sig_arr = vec![];
+        bitcom_sig_arr.extend_from_slice(&scalar_sigs);
+        bitcom_sig_arr.extend_from_slice(&felts_sigs);
+        bitcom_sig_arr.extend_from_slice(&hash_sigs);
+
+        let mut bitcom_sig_as_witness = vec![];
+
+        for i in 0..segments.len() {
+            let mut index_of_bitcommitted_msg: Vec<u32> = vec![];
+
+            let seg = &segments[i];
+            let sec_in: Vec<u32> = seg.parameter_ids.iter().rev().map(|(k, _)| *k).collect();
+            index_of_bitcommitted_msg.extend_from_slice(&sec_in);
+
+            if !seg.scr_type.is_final_script() {
+                // final script doesn't have output
+                let sec_out = (
+                    seg.id,
+                    segments[seg.id as usize].result.0.output_is_field_element(),
+                );
+                index_of_bitcommitted_msg.push(sec_out.0);
+            }
+
+            let mut sig_preimages = script! {};
+            for index in index_of_bitcommitted_msg {
+                let sig_data = &bitcom_sig_arr[index as usize];
+                let sig_preimage = match sig_data {
+                    SigData::Wots16(signature) => Wots16::compact_signature_to_raw_witness(
+                        &Wots16::signature_to_compact_signature(signature),
+                    ),
+                    SigData::Wots32(signature) => Wots32::compact_signature_to_raw_witness(
+                        &Wots32::signature_to_compact_signature(signature),
+                    ),
+                };
+                sig_preimages = script! {
+                    {sig_preimages}
+                    {sig_preimage}
+                };
+            }
+            bitcom_sig_as_witness.push(sig_preimages);
+        }
+        bitcom_sig_as_witness
+    }
+
+    // collect witness
+    let mul_hints = utils_collect_mul_hints_per_segment(segments);
+    let bc_hints = collect_wots_sig_as_witness_per_segment(segments, signed_assts);
+
+    utils_analyze_largest_segments(mul_hints, bc_hints, segments, disprove_scripts);
 }
 
 #[allow(clippy::needless_range_loop)]
