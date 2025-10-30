@@ -63,6 +63,9 @@ impl G1Affine {
         q: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
+        // TODO: uncommnent change the hinted_check_add to hinted_check_add_prevent_degenerate https://github.com/BitVM/BitVM/pull/379
+        // assert_ne!(t, ark_bn254::G1Affine::zero());
+        // assert_ne!(q, ark_bn254::G1Affine::zero());
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Self::hinted_check_line_through_point(q.x, c3);
@@ -103,6 +106,7 @@ impl G1Affine {
         t: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
+        assert_ne!(t, ark_bn254::G1Affine::zero());
         let mut hints = vec![];
 
         let (hinted_script1, hint1) = Fq::hinted_mul(1, t.y + t.y, 0, c3);
@@ -161,12 +165,8 @@ impl G1Affine {
             witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
         ))
         .into();
-        let is_inf = x.is_zero() && y.is_zero();
-        ark_bn254::G1Affine {
-            x,
-            y,
-            infinity: is_inf,
-        }
+        let infinity = x.is_zero() && y.is_zero();
+        ark_bn254::G1Affine { x, y, infinity }
     }
 
     pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
@@ -457,10 +457,15 @@ pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     (script, hints)
 }
 
-pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>, bool) {
     let mut hints = Vec::new();
 
-    let py_inv = p.y().unwrap().inverse().unwrap();
+    if p.is_zero() {
+        return (G1Affine::identity(), hints, true);
+    }
+    let valid_point = p.is_on_curve();
+
+    let py_inv = p.y.inverse().unwrap();
 
     let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
     let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
@@ -492,7 +497,7 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     hints.extend(hint1);
     hints.extend(hint2);
 
-    (script, hints)
+    (script, hints, valid_point)
 }
 
 #[cfg(test)]
@@ -522,27 +527,27 @@ mod test {
     #[test]
     fn test_read_from_stack() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let a = ark_bn254::G1Affine::rand(&mut prng);
-        let script = script! {
-            {G1Affine::push(a)}
-        };
+        [
+            ark_bn254::G1Affine::zero(),
+            ark_bn254::G1Affine::rand(&mut prng),
+        ]
+        .into_iter()
+        .for_each(|a| {
+            let script = script! {
+                {G1Affine::push(a)}
+            };
 
-        let res = execute_script(script);
-        let witness = extract_witness_from_stack(res);
-        let recovered_a = G1Affine::read_from_stack(witness);
+            let b = ark_bn254::G1Affine::identity();
+            let script = script! {
+                {G1Affine::push(b)}
+            };
 
-        assert_eq!(a, recovered_a);
+            let res = execute_script(script);
+            let witness = extract_witness_from_stack(res);
+            let recovered_b = G1Affine::read_from_stack(witness);
 
-        let b = ark_bn254::G1Affine::identity();
-        let script = script! {
-            {G1Affine::push(b)}
-        };
-
-        let res = execute_script(script);
-        let witness = extract_witness_from_stack(res);
-        let recovered_b = G1Affine::read_from_stack(witness);
-
-        assert_eq!(b, recovered_b);
+            assert_eq!(b, recovered_b);
+        });
     }
 
     #[test]

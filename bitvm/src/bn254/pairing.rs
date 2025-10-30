@@ -8,6 +8,7 @@ use crate::bn254::fq2::Fq2;
 use crate::bn254::g2::*;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
+use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
 use num_traits::One;
@@ -36,6 +37,7 @@ impl Pairing {
         q4: ark_bn254::G2Affine,
     ) -> (Script, Vec<Hint>) {
         assert_eq!(constants.len(), 4);
+        assert_ne!(q4, ark_bn254::G2Affine::zero());
         let num_line_groups = constants.len();
         let num_constant = 3;
 

@@ -6,6 +6,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::api_compiletime_utils::partial_scripts_from_segments;
 use crate::chunk::elements::HashBytes;
+use crate::chunk::elements::TwistPoint;
 use crate::chunk::g16_runner_core::groth16_generate_segments;
 use crate::chunk::g16_runner_core::InputProof;
 use crate::chunk::g16_runner_core::InputProofRaw;
@@ -210,8 +211,8 @@ pub(crate) fn get_segments_from_assertion(
         let fixed_acc = pairing.multi_miller_loop_affine([vk.alpha_g1], [q1]).0;
 
         let pubs: PublicParams = PublicParams {
-            q2,
-            q3,
+            q2: TwistPoint::from(q2),
+            q3: TwistPoint::from(q3),
             fixed_acc: fixed_acc.c1 / fixed_acc.c0,
             ks_vks: msm_gs.clone(),
             vky0,
@@ -279,8 +280,8 @@ pub(crate) fn get_segments_from_groth16_proof(
     };
 
     let pubs: PublicParams = PublicParams {
-        q2,
-        q3,
+        q2: TwistPoint::from(q2),
+        q3: TwistPoint::from(q3),
         fixed_acc: f_fixed.c1 / f_fixed.c0,
         ks_vks: msm_gs,
         vky0,
@@ -412,6 +413,9 @@ fn utils_execute_chunked_g16(
                 println!("{i:} {:?}", exec_result.final_stack.get(i));
             }
         }
+        println!("exec result.success: {:?}", exec_result.success);
+        println!("exec result.error: {:?}", exec_result.error);
+        println!("exec result.stack_len: {:?}", exec_result.final_stack.len());
         if !exec_result.success {
             if exec_result.final_stack.len() != 1 {
                 println!("final {:?}", i);

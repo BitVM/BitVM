@@ -7,6 +7,7 @@ use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{script, Script};
 use ark_ec::bn::BnConfig;
+use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
 use num_traits::Zero;
@@ -120,22 +121,17 @@ impl G2Affine {
         let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
-
-        let is_inf = x.is_zero() && y.is_zero();
-
-        ark_bn254::G2Affine {
-            x,
-            y,
-            infinity: is_inf,
-        }
+        let infinity = x.is_zero() && y.is_zero();
+        ark_bn254::G2Affine { x, y, infinity }
     }
 }
 
 // Stack: [q] q /in G2Affine
 // compute q' = (q.x*beta_22, q.y)
 pub fn hinted_mul_by_char_on_phi_q(
-    q: ark_bn254::G2Affine,
-) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+    qx: ark_bn254::Fq2,
+    qy: ark_bn254::Fq2,
+) -> ((ark_bn254::Fq2, ark_bn254::Fq2), Script, Vec<Hint>) {
     let beta_22x = BigUint::from_str(
         "21888242871839275220042445260109153167277707414472061641714758635765020556616",
     )
@@ -147,9 +143,10 @@ pub fn hinted_mul_by_char_on_phi_q(
     ])
     .unwrap();
 
-    let mut qq = q;
-    let (beta22_mul, hints) = Fq2::hinted_mul(2, q.x, 0, beta_22);
-    qq.x *= beta_22;
+    let mut qqx = qx;
+    let qqy = qy;
+    let (beta22_mul, hints) = Fq2::hinted_mul(2, qx, 0, beta_22);
+    qqx *= beta_22;
 
     let scr = script! {
         // [q.x, q.y]
@@ -158,12 +155,15 @@ pub fn hinted_mul_by_char_on_phi_q(
         {beta22_mul}
         {Fq2::fromaltstack()}
     };
-    (qq, scr, hints)
+    ((qqx, qqy), scr, hints)
 }
 
 // Stack: [q] q /in G2Affine
 // compute q' = (q.x.conjugate()*beta_12, q.y.conjugate() * beta_13)
-pub fn hinted_mul_by_char_on_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+pub fn hinted_mul_by_char_on_q(
+    qx: ark_bn254::Fq2,
+    qy: ark_bn254::Fq2,
+) -> ((ark_bn254::Fq2, ark_bn254::Fq2), Script, Vec<Hint>) {
     let beta_12x = BigUint::from_str(
         "21575463638280843010398324269430826099269044274347216827212613867836435027261",
     )
@@ -191,14 +191,15 @@ pub fn hinted_mul_by_char_on_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, 
     ])
     .unwrap();
 
-    let mut qq = q;
-    qq.x.conjugate_in_place();
-    let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_12);
-    qq.x *= beta_12;
+    let mut qqx = qx;
+    let mut qqy = qy;
+    qqx.conjugate_in_place();
+    let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qqx, 0, beta_12);
+    qqx *= beta_12;
 
-    qq.y.conjugate_in_place();
-    let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_13);
-    qq.y *= beta_13;
+    qqy.conjugate_in_place();
+    let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qqy, 0, beta_13);
+    qqy *= beta_13;
 
     let mut frob_hint: Vec<Hint> = vec![];
     for hint in hint_beta13_mul {
@@ -219,14 +220,15 @@ pub fn hinted_mul_by_char_on_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, 
         {beta12_mul_scr}
         {Fq2::fromaltstack()}
     };
-    (qq, scr, frob_hint)
+    ((qqx, qqy), scr, frob_hint)
 }
 
 // Stack: [q] q /in G2Affine
 // compute q' = (q.x.conjugate()*beta_12, q.y.conjugate() * beta_13)
 pub fn hinted_mul_by_char_on_phi_sq_q(
-    q: ark_bn254::G2Affine,
-) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+    qx: ark_bn254::Fq2,
+    qy: ark_bn254::Fq2,
+) -> ((ark_bn254::Fq2, ark_bn254::Fq2), Script, Vec<Hint>) {
     let beta_32x = BigUint::from_str(
         "3772000881919853776433695186713858239009073593817195771773381919316419345261",
     )
@@ -255,14 +257,16 @@ pub fn hinted_mul_by_char_on_phi_sq_q(
     ])
     .unwrap();
 
-    let mut qq = q;
-    qq.x.conjugate_in_place();
-    let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_32);
-    qq.x *= beta_32;
+    let mut qqx = qx;
+    let mut qqy = qy;
 
-    qq.y.conjugate_in_place();
-    let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_33);
-    qq.y *= beta_33;
+    qqx.conjugate_in_place();
+    let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qqx, 0, beta_32);
+    qqx *= beta_32;
+
+    qqy.conjugate_in_place();
+    let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qqy, 0, beta_33);
+    qqy *= beta_33;
 
     let mut frob_hint: Vec<Hint> = vec![];
     for hint in hint_beta13_mul {
@@ -283,7 +287,7 @@ pub fn hinted_mul_by_char_on_phi_sq_q(
         {beta12_mul_scr}
         {Fq2::fromaltstack()}
     };
-    (qq, scr, frob_hint)
+    ((qqx, qqy), scr, frob_hint)
 }
 
 pub fn hinted_ell_by_constant_affine_and_sparse_mul(
@@ -576,6 +580,7 @@ pub fn hinted_check_tangent_line(
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
 ) -> (Script, Vec<Hint>) {
+    assert_ne!(t, ark_bn254::G2Affine::zero());
     let mut hints = Vec::new();
 
     // let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(t.y.double(), &c3);
@@ -621,15 +626,16 @@ pub fn hinted_check_tangent_line(
 }
 
 pub fn hinted_check_tangent_line_keep_elements(
-    t: ark_bn254::G2Affine,
+    tx: ark_bn254::Fq2,
+    ty: ark_bn254::Fq2,
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
-    let (hinted_script1, hint1) = Fq2::hinted_mul(2, t.y.double(), 0, c3);
-    let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
+    let (hinted_script3, hint3) = hinted_check_line_through_point(tx, c3, c4);
+    let (hinted_script1, hint1) = Fq2::hinted_mul(2, ty.double(), 0, c3);
+    let (hinted_script2, hint2) = Fq2::hinted_square(tx);
 
     // [a, b, x, y]
     let scr = script!(
@@ -743,6 +749,8 @@ pub fn hinted_check_chord_line(
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
 ) -> (Script, Vec<Hint>) {
+    assert_ne!(t, ark_bn254::G2Affine::zero());
+    assert_ne!(q, ark_bn254::G2Affine::zero());
     let mut hints = Vec::new();
 
     let (script1, hint1) = hinted_check_line_through_point(q.x, c3, c4);
@@ -1137,7 +1145,7 @@ mod test {
         assert_eq!(alpha * t.x - t.y, bias_minus);
 
         let (hinted_check_line, hints) =
-            hinted_check_tangent_line_keep_elements(t, alpha, bias_minus);
+            hinted_check_tangent_line_keep_elements(t.x, t.y, alpha, bias_minus);
 
         let script = script! {
             for hint in hints {
@@ -1205,7 +1213,7 @@ mod test {
     fn test_hinted_mul_by_char_on_q() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let q = ark_bn254::G2Affine::rand(&mut prng);
-        let (qdash, scr_endo, hints) = hinted_mul_by_char_on_q(q);
+        let ((qdashx, qdashy), scr_endo, hints) = hinted_mul_by_char_on_q(q.x, q.y);
 
         let script_len = scr_endo.len();
         let script = script!(
@@ -1214,9 +1222,9 @@ mod test {
             }
             {G2Affine::push(q)}
             {scr_endo}
-            {Fq2::push(qdash.y)}
+            {Fq2::push(qdashy)}
             {Fq2::equalverify()}
-            {Fq2::push(qdash.x)}
+            {Fq2::push(qdashx)}
             {Fq2::equalverify()}
             OP_TRUE
         );
@@ -1233,7 +1241,7 @@ mod test {
     fn test_hinted_mul_by_char_on_phi_q() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let q = ark_bn254::G2Affine::rand(&mut prng);
-        let (qdash, scr_endo, hints) = hinted_mul_by_char_on_phi_q(q);
+        let ((qdashx, qdashy), scr_endo, hints) = hinted_mul_by_char_on_phi_q(q.x, q.y);
 
         let script_len = scr_endo.len();
         let script = script!(
@@ -1242,9 +1250,9 @@ mod test {
             }
             {G2Affine::push(q)}
             {scr_endo}
-            {Fq2::push(qdash.y)}
+            {Fq2::push(qdashy)}
             {Fq2::equalverify()}
-            {Fq2::push(qdash.x)}
+            {Fq2::push(qdashx)}
             {Fq2::equalverify()}
             OP_TRUE
         );

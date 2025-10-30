@@ -1,7 +1,8 @@
 use crate::chunk::{
-    elements::CompressedStateObject, g16_runner_utils::*, taps_point_ops::frob_q_power,
+    elements::{CompressedStateObject, TwistPoint},
+    g16_runner_utils::*,
+    taps_point_ops::frob_q_power,
 };
-use ark_ec::CurveGroup;
 use ark_ff::{Field, PrimeField};
 use bitcoin::ScriptBuf;
 
@@ -13,8 +14,8 @@ use super::{
 
 #[derive(Debug)]
 pub struct PublicParams {
-    pub q2: ark_bn254::G2Affine,
-    pub q3: ark_bn254::G2Affine,
+    pub q2: TwistPoint,
+    pub q3: TwistPoint,
     pub fixed_acc: ark_bn254::Fq6, // precomputable fp12 accumulator from fixed pairing arguments
     pub ks_vks: Vec<ark_bn254::G1Affine>,
     pub vky0: ark_bn254::G1Affine,
@@ -201,7 +202,7 @@ pub(crate) fn groth16_generate_segments(
             None,
         );
         push_compare_or_return!(t4);
-        (t2, t3) = ((t2 + t2).into_affine(), (t3 + t3).into_affine());
+        (t2, t3) = (t2.double(), t3.double());
 
         let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(
             skip_evaluation,
@@ -240,9 +241,9 @@ pub(crate) fn groth16_generate_segments(
         );
         push_compare_or_return!(t4);
         if ate == 1 {
-            (t2, t3) = ((t2 + pubs.q2).into_affine(), (t3 + pubs.q3).into_affine());
+            (t2, t3) = (t2.add(&pubs.q2), t3.add(&pubs.q3));
         } else {
-            (t2, t3) = ((t2 - pubs.q2).into_affine(), (t3 - pubs.q3).into_affine());
+            (t2, t3) = (t2.add(&pubs.q2.neg()), t3.add(&pubs.q3.neg()));
         }
 
         let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(
@@ -293,9 +294,9 @@ pub(crate) fn groth16_generate_segments(
     push_compare_or_return!(t4);
 
     let tmp_q2f = frob_q_power(pubs.q2, 1);
-    t2 = (t2 + tmp_q2f).into_affine();
+    t2 = t2.add(&tmp_q2f);
     let tmp_q3f = frob_q_power(pubs.q3, 1);
-    t3 = (t3 + tmp_q3f).into_affine();
+    t3 = t3.add(&tmp_q3f);
     let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(
         skip_evaluation,
         all_output_hints.len(),
@@ -444,7 +445,10 @@ fn raw_input_proof_to_segments(
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::AffinePairing;
+    use crate::{
+        bn254::ell_coeffs::AffinePairing,
+        chunk::elements::{FqPair, TwistPoint},
+    };
     use ark_bn254::Bn254;
     use ark_ec::{bn::BnConfig, AffineRepr, CurveGroup};
     use ark_ff::{AdditiveGroup, Field};
@@ -566,8 +570,8 @@ mod test {
         let eval_ins_raw = eval_ins.to_raw();
 
         let pubs: PublicParams = PublicParams {
-            q2,
-            q3,
+            q2: TwistPoint::from(q2),
+            q3: TwistPoint::from(q3),
             fixed_acc: f_fixed.c1 / f_fixed.c0,
             ks_vks: msm_gs,
             vky0,
@@ -581,7 +585,7 @@ mod test {
     // rust version of pairing verification check with normalized (1 + a. J) representation
     fn verify_pairing(
         ps: Vec<ark_bn254::G1Affine>,
-        qs: Vec<ark_bn254::G2Affine>,
+        qs: Vec<TwistPoint>,
         gc: ark_bn254::Fq12,
         _s: ark_bn254::Fq12,
         p1q1: ark_bn254::Fq6,
@@ -594,10 +598,7 @@ mod test {
         let mut f = cinv;
 
         let mut ts = qs.clone();
-        let ps: Vec<ark_bn254::G1Affine> = ps
-            .iter()
-            .map(|p1| ark_bn254::G1Affine::new_unchecked(-p1.x / p1.y, p1.y.inverse().unwrap()))
-            .collect();
+        let ps: Vec<FqPair> = ps.iter().map(|p1| FqPair::from(*p1)).collect();
         let num_pairings = ps.len();
         for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let ate_bit = ark_bn254::Config::ATE_LOOP_COUNT[itr - 1];
@@ -609,12 +610,12 @@ mod test {
             for i in 0..num_pairings {
                 let t = ts[i];
                 let p = ps[i];
-                let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
-                let neg_bias = alpha * t.x - t.y;
+                let alpha = (t.x().square() + t.x().square() + t.x().square()) / (t.y() + t.y());
+                let neg_bias = alpha * t.x() - t.y();
                 let mut le0 = alpha;
-                le0.mul_assign_by_fp(&p.x);
+                le0.mul_assign_by_fp(&p.x());
                 let mut le1 = neg_bias;
-                le1.mul_assign_by_fp(&p.y);
+                le1.mul_assign_by_fp(&p.y());
                 let mut le = ark_bn254::Fq12::ZERO;
                 le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                 le.c1.c0 = le0;
@@ -623,7 +624,7 @@ mod test {
                 f *= le;
                 f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-                ts[i] = (t + t).into_affine();
+                ts[i] = t.double();
             }
 
             if ate_bit == 1 || ate_bit == -1 {
@@ -639,13 +640,13 @@ mod test {
                     if ate_bit == -1 {
                         q = q.neg();
                     };
-                    let alpha = (t.y - q.y) / (t.x - q.x);
-                    let neg_bias = alpha * t.x - t.y;
+                    let alpha = (t.y() - q.y()) / (t.x() - q.x());
+                    let neg_bias = alpha * t.x() - t.y();
 
                     let mut le0 = alpha;
-                    le0.mul_assign_by_fp(&p.x);
+                    le0.mul_assign_by_fp(&p.x());
                     let mut le1 = neg_bias;
-                    le1.mul_assign_by_fp(&p.y);
+                    le1.mul_assign_by_fp(&p.y());
                     let mut le = ark_bn254::Fq12::ZERO;
                     le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                     le.c1.c0 = le0;
@@ -654,7 +655,7 @@ mod test {
                     f *= le;
                     f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-                    ts[i] = (t + q).into_affine();
+                    ts[i] = t.add(&q);
                 }
             }
         }
@@ -675,12 +676,12 @@ mod test {
 
             q = frob_q_power(q, 1);
 
-            let alpha = (t.y - q.y) / (t.x - q.x);
-            let neg_bias = alpha * t.x - t.y;
+            let alpha = (t.y() - q.y()) / (t.x() - q.x());
+            let neg_bias = alpha * t.x() - t.y();
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -689,7 +690,7 @@ mod test {
             f *= le;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-            ts[i] = (t + q).into_affine();
+            ts[i] = t.add(&q);
         }
 
         // t + q^3
@@ -700,12 +701,12 @@ mod test {
 
             q = frob_q_power(q, -1);
 
-            let alpha = (t.y - q.y) / (t.x - q.x);
-            let neg_bias = alpha * t.x - t.y;
+            let alpha = (t.y() - q.y()) / (t.x() - q.x());
+            let neg_bias = alpha * t.x() - t.y();
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -713,7 +714,7 @@ mod test {
 
             f *= le;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
-            ts[i] = (t + q).into_affine();
+            ts[i] = t.add(&q);
         }
 
         // t + q^3
@@ -722,7 +723,7 @@ mod test {
             let t = ts[i];
             q = frob_q_power(q, 3);
 
-            ts[i] = (t + q).into_affine();
+            ts[i] = t.add(&q).into();
         }
         assert_eq!(f.c1 + p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)
     }
@@ -731,7 +732,7 @@ mod test {
     // Includes equivalent bitcoin script in for each functions
     pub fn verify_pairing_scripted(
         ps: Vec<ark_bn254::G1Affine>,
-        qs: Vec<ark_bn254::G2Affine>,
+        qs: Vec<TwistPoint>,
         gc: ark_bn254::Fq12,
         _s: ark_bn254::Fq12,
         p1q1: ark_bn254::Fq6,
@@ -790,10 +791,7 @@ mod test {
         let mut g = cinv.c1;
 
         let mut ts = qs.clone();
-        let ps: Vec<ark_bn254::G1Affine> = ps
-            .iter()
-            .map(|p1| ark_bn254::G1Affine::new_unchecked(-p1.x / p1.y, p1.y.inverse().unwrap()))
-            .collect();
+        let ps: Vec<FqPair> = ps.iter().map(|p1| FqPair::from(*p1)).collect();
         let num_pairings = ps.len();
 
         let mut total_script_size = 0;
@@ -801,10 +799,10 @@ mod test {
         let mut temp_scr = script! {};
 
         let (mut t4, _, scr, _) = chunk_init_t4([
-            qs[2].x.c0.into(),
-            qs[2].x.c1.into(),
-            qs[2].y.c0.into(),
-            qs[2].y.c1.into(),
+            qs[2].x().c0.into(),
+            qs[2].x().c1.into(),
+            qs[2].y().c0.into(),
+            qs[2].y().c1.into(),
         ]);
         total_script_size += scr.len();
         let mut t3 = qs[1];
@@ -825,12 +823,12 @@ mod test {
             for i in 0..num_pairings {
                 let t = ts[i];
                 let p = ps[i];
-                let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
-                let neg_bias = alpha * t.x - t.y;
+                let alpha = (t.x().square() + t.x().square() + t.x().square()) / (t.y() + t.y());
+                let neg_bias = alpha * t.x() - t.y();
                 let mut le0 = alpha;
-                le0.mul_assign_by_fp(&p.x);
+                le0.mul_assign_by_fp(&p.x());
                 let mut le1 = neg_bias;
-                le1.mul_assign_by_fp(&p.y);
+                le1.mul_assign_by_fp(&p.y());
                 let mut le = ark_bn254::Fq12::ZERO;
                 le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                 le.c1.c0 = le0;
@@ -839,15 +837,15 @@ mod test {
                 f *= le;
                 f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-                ts[i] = (t + t).into_affine();
+                ts[i] = t.double();
             }
             (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
                 true, None, None, t4, ps[2], None, ps[1], t3, None, ps[0], t2, None,
             );
             total_script_size += temp_scr.len();
 
-            t3 = (t3 + t3).into_affine();
-            t2 = (t2 + t2).into_affine();
+            t3 = t3.double();
+            t2 = t2.double();
             let (lev, _, scr, _) = chunk_point_ops_and_multiply_line_evals_step_2(t4);
             total_script_size += scr.len();
             (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
@@ -872,13 +870,13 @@ mod test {
                     if ate_bit == -1 {
                         q = q.neg();
                     };
-                    let alpha = (t.y - q.y) / (t.x - q.x);
-                    let neg_bias = alpha * t.x - t.y;
+                    let alpha = (t.y() - q.y()) / (t.x() - q.x());
+                    let neg_bias = alpha * t.x() - t.y();
 
                     let mut le0 = alpha;
-                    le0.mul_assign_by_fp(&p.x);
+                    le0.mul_assign_by_fp(&p.x());
                     let mut le1 = neg_bias;
-                    le1.mul_assign_by_fp(&p.y);
+                    le1.mul_assign_by_fp(&p.y());
                     let mut le = ark_bn254::Fq12::ZERO;
                     le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
                     le.c1.c0 = le0;
@@ -887,7 +885,7 @@ mod test {
                     f *= le;
                     f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-                    ts[i] = (t + q).into_affine();
+                    ts[i] = t.add(&q);
                     // println!("pair {:?} ts {:?}", i, ts[i]);
                 }
 
@@ -908,11 +906,11 @@ mod test {
                 total_script_size += temp_scr.len();
 
                 if ate_bit == 1 {
-                    t3 = (t3 + qs[1]).into_affine();
-                    t2 = (t2 + qs[0]).into_affine();
+                    t3 = t3.add(&qs[1]);
+                    t2 = t2.add(&qs[0]);
                 } else {
-                    t3 = (t3 + qs[1].neg()).into_affine();
-                    t2 = (t2 + qs[0].neg()).into_affine();
+                    t3 = t3.add(&qs[1].neg());
+                    t2 = t2.add(&qs[0].neg());
                 }
 
                 let (lev, _, scr, _) = chunk_point_ops_and_multiply_line_evals_step_2(t4);
@@ -947,20 +945,20 @@ mod test {
         assert_eq!(g, f.c1);
 
         for i in 0..num_pairings {
-            let mut q = qs[i];
+            let (mut qx, mut qy) = (qs[i].x(), qs[i].y());
             let t = ts[i];
             let p = ps[i];
 
-            q.x.conjugate_in_place();
-            q.x *= beta_12;
-            q.y.conjugate_in_place();
-            q.y *= beta_13;
-            let alpha = (t.y - q.y) / (t.x - q.x);
-            let neg_bias = alpha * t.x - t.y;
+            qx.conjugate_in_place();
+            qx *= beta_12;
+            qy.conjugate_in_place();
+            qy *= beta_13;
+            let alpha = (t.y() - qy) / (t.x() - qx);
+            let neg_bias = alpha * t.x() - t.y();
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -969,7 +967,7 @@ mod test {
             f *= le;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-            ts[i] = (t + q).into_affine();
+            ts[i] = t.add(&TwistPoint::new(qx, qy));
         }
         (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
             false,
@@ -993,25 +991,25 @@ mod test {
         (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
         total_script_size += temp_scr.len();
         let tmp_q2f = frob_q_power(qs[0], 1);
-        t2 = (t2 + tmp_q2f).into_affine();
+        t2 = t2.add(&tmp_q2f);
         let tmp_q3f = frob_q_power(qs[1], 1);
-        t3 = (t3 + tmp_q3f).into_affine();
+        t3 = t3.add(&tmp_q3f);
         assert_eq!(g, f.c1);
 
         // t + q^3
         for i in 0..num_pairings {
-            let mut q = qs[i];
+            let (mut qx, qy) = (qs[i].x(), qs[i].y());
             let t = ts[i];
             let p = ps[i];
 
-            q.x *= beta_22;
+            qx *= beta_22;
 
-            let alpha = (t.y - q.y) / (t.x - q.x);
-            let neg_bias = alpha * t.x - t.y;
+            let alpha = (t.y() - qy) / (t.x() - qx);
+            let neg_bias = alpha * t.x() - t.y();
             let mut le0 = alpha;
-            le0.mul_assign_by_fp(&p.x);
+            le0.mul_assign_by_fp(&p.x());
             let mut le1 = neg_bias;
-            le1.mul_assign_by_fp(&p.y);
+            le1.mul_assign_by_fp(&p.y());
             let mut le = ark_bn254::Fq12::ZERO;
             le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
             le.c1.c0 = le0;
@@ -1020,7 +1018,7 @@ mod test {
             f *= le;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
 
-            ts[i] = (t + q).into_affine();
+            ts[i] = t.add(&TwistPoint::new(qx, qy));
         }
         (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
             false,
@@ -1150,7 +1148,11 @@ mod test {
         let (c, wi) = compute_c_wi(g);
 
         // actual scripted verification
-        verify_pairing(vec![p2, p3, p4], vec![q2, q3, q4], c, wi, fixed_p1q1);
-        verify_pairing_scripted(vec![p2, p3, p4], vec![q2, q3, q4], c, wi, fixed_p1q1);
+        let qs = vec![q2, q3, q4]
+            .iter()
+            .map(|q| TwistPoint::from(*q))
+            .collect::<Vec<_>>();
+        verify_pairing(vec![p2, p3, p4], qs.clone(), c, wi, fixed_p1q1);
+        verify_pairing_scripted(vec![p2, p3, p4], qs, c, wi, fixed_p1q1);
     }
 }

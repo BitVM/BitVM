@@ -18,7 +18,6 @@ pub(crate) fn chunk_msm(
 ) -> Vec<(ark_bn254::G1Affine, bool, Script, Vec<Hint>)> {
     assert_eq!(qs.len(), NUM_PUBS);
     assert_eq!(input_ks.len(), NUM_PUBS);
-    let num_pubs = input_ks.len();
 
     let ks = input_ks
         .iter()
@@ -40,7 +39,7 @@ pub(crate) fn chunk_msm(
     for (msm_tap_index, (chunk, variable_index)) in chunks.iter().enumerate() {
         let ops_script = if msm_tap_index == 0 {
             script! {
-                { G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
+                { G1Affine::identity() }
                 { Fr::fromaltstack()}
 
                 { Fr::copy(0)}
@@ -134,11 +133,9 @@ pub(crate) fn chunk_hash_p(
     hint_in_q: ark_bn254::G1Affine,
 ) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
     // r (gp3) = t(msm) + q(vk0)
-    let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
-    let t = ark_bn254::G1Affine::new_unchecked(tx, ty);
-    let q = ark_bn254::G1Affine::new_unchecked(qx, qy);
-    let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
-    let r = (t + q).into_affine();
+    // TODO: change the hinted_check_add to hinted_check_add_prevent_degenerate https://github.com/BitVM/BitVM/pull/379
+    let (add_scr, add_hints) = G1Affine::hinted_check_add(hint_in_t, hint_in_q);
+    let r = (hint_in_t + hint_in_q).into_affine();
     let ops_script = script! {
         // [t] [hash_r, hash_t]
 
@@ -147,7 +144,7 @@ pub(crate) fn chunk_hash_p(
 
         { Fq2::copy(0)}
         // [t, t]
-        {G1Affine::push(q)}
+        {G1Affine::push(hint_in_q)}
         // [t, t, q]
         {add_scr}
         // [t, r]
@@ -178,7 +175,7 @@ mod test {
     use crate::{
         bn254::{fq::Fq, fq2::Fq2, msm::dfs_with_constant_mul},
         chunk::{
-            elements::{CompressedStateObject, DataType},
+            elements::{CompressedStateObject, DataType, FqPair},
             helpers::extern_hash_nibbles,
         },
     };
@@ -339,6 +336,7 @@ mod test {
 
     #[test]
     fn test_tap_hash_var_p() {
+        use crate::chunk::elements::FqPair;
         let mut prng = ChaCha20Rng::seed_from_u64(1);
         let q = ark_bn254::G1Affine::rand(&mut prng);
         let t = ark_bn254::G1Affine::rand(&mut prng);
@@ -348,8 +346,8 @@ mod test {
             let (hint_out, input_is_valid, op_scr, mut hint_script) = chunk_hash_p(t, q);
             assert!(input_is_valid);
             assert_eq!(r, hint_out);
-            let t = DataType::G1Data(t);
-            let hint_out = DataType::G1Data(hint_out);
+            let t = DataType::G1Data(FqPair::new(t.x, t.y));
+            let hint_out = DataType::G1Data(FqPair::new(hint_out.x, hint_out.y));
             hint_script.extend_from_slice(&t.to_witness(ElementType::G1));
 
             let mut output_hash = hint_out.to_hash();
@@ -412,11 +410,13 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index - 1].0)
+                hints_msm[msm_chunk_index - 1].0
             } else {
-                DataType::G1Data(ark_bn254::G1Affine::identity())
+                ark_bn254::G1Affine::identity()
             };
-            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
+            let hint_in = DataType::G1Data(FqPair::new(hint_in.x, hint_in.y));
+            let hint_out = hints_msm[msm_chunk_index].0;
+            let hint_out = DataType::G1Data(FqPair::new(hint_out.x, hint_out.y));
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
@@ -487,11 +487,11 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(!input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index - 1].0)
+                DataType::G1Data(hints_msm[msm_chunk_index - 1].0.into())
             } else {
-                DataType::G1Data(ark_bn254::G1Affine::identity())
+                DataType::G1Data(ark_bn254::G1Affine::identity().into())
             };
-            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
+            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0.into());
 
             let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}

@@ -5,7 +5,10 @@ use crate::{
         msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM},
         utils::Hint,
     },
-    chunk::taps_msm::chunk_msm,
+    chunk::{
+        elements::{FqPair, TwistPoint},
+        taps_msm::chunk_msm,
+    },
 };
 
 use super::{
@@ -204,11 +207,11 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     in_p4: &Segment,
     in_q4: Option<Vec<Segment>>,
     in_p3: &Segment,
-    t3: ark_bn254::G2Affine,
-    q3: Option<ark_bn254::G2Affine>,
+    t3: TwistPoint,
+    q3: Option<TwistPoint>,
     in_p2: &Segment,
-    t2: ark_bn254::G2Affine,
-    q2: Option<ark_bn254::G2Affine>,
+    t2: TwistPoint,
+    q2: Option<TwistPoint>,
 ) -> Segment {
     let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![
         (in_p2.id, ElementType::G1),
@@ -218,10 +221,11 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     ];
 
     let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
-    let p4: ark_bn254::G1Affine = in_p4.result.0.try_into().unwrap();
-    let p3: ark_bn254::G1Affine = in_p3.result.0.try_into().unwrap();
-    let p2: ark_bn254::G1Affine = in_p2.result.0.try_into().unwrap();
-    let mut q4: Option<ark_bn254::G2Affine> = None;
+    let p4: FqPair = in_p4.result.0.try_into().unwrap();
+    let p3: FqPair = in_p3.result.0.try_into().unwrap();
+    let p2: FqPair = in_p2.result.0.try_into().unwrap();
+
+    let mut q4: Option<TwistPoint> = None;
 
     if !is_dbl {
         let in_q4 = in_q4.unwrap();
@@ -233,7 +237,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         let q4xc1: ark_ff::BigInt<4> = in_q4[1].result.0.try_into().unwrap();
         let q4yc0: ark_ff::BigInt<4> = in_q4[2].result.0.try_into().unwrap();
         let q4yc1: ark_ff::BigInt<4> = in_q4[3].result.0.try_into().unwrap();
-        q4 = Some(ark_bn254::G2Affine::new_unchecked(
+        q4 = Some(TwistPoint::new(
             ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
             ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
         ));
@@ -320,14 +324,17 @@ pub(crate) fn wrap_hint_msm(
                 id: (segment_id + msm_chunk_index) as u32,
                 is_valid_input,
                 parameter_ids: input_segment_info,
-                result: (DataType::G1Data(hout_msm), ElementType::G1),
+                result: (
+                    DataType::G1Data(FqPair::new(hout_msm.x, hout_msm.y)),
+                    ElementType::G1,
+                ),
                 hints: op_hints,
                 scr_type: ScriptType::MSM(msm_chunk_index as u32),
                 scr: scr.compile(),
             });
         }
     } else {
-        let hout_msm: ark_bn254::G1Affine = ark_bn254::G1Affine::identity();
+        let hout_msm = FqPair::ZERO;
         for msm_chunk_index in 0..num_chunks_per_scalar * scalars.len() as u32 {
             let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
             if msm_chunk_index > 0 {
@@ -359,10 +366,16 @@ pub(crate) fn wrap_hint_hash_p(
 ) -> Segment {
     let input_segment_info = vec![(in_t.id, ElementType::G1)];
 
-    let t = in_t.result.0.try_into().unwrap();
-    let (mut p3, mut is_valid_input, mut scr, mut op_hints) =
-        (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    let t: FqPair = in_t.result.0.try_into().unwrap();
+    let (mut p3, mut is_valid_input, mut scr, mut op_hints) = (
+        ark_bn254::G1Affine::identity().into(),
+        true,
+        script! {},
+        vec![],
+    );
     if !skip {
+        // the value has been converted to FqPair in chunk_msm, we recover it to G1 coordinate.
+        let t = ark_bn254::G1Affine::new(t.x(), t.y());
         (p3, is_valid_input, scr, op_hints) = chunk_hash_p(t, pub_vky0);
         // op_hints.extend_from_slice(&DataType::G1Data(t).get_hash_preimage_as_hints());
     }
@@ -370,7 +383,7 @@ pub(crate) fn wrap_hint_hash_p(
         id: segment_id as u32,
         is_valid_input,
         parameter_ids: input_segment_info,
-        result: (DataType::G1Data(p3), ElementType::G1),
+        result: (DataType::G1Data(FqPair::new(p3.x, p3.y)), ElementType::G1),
         hints: op_hints,
         scr_type: ScriptType::PreMillerHashP,
         scr: scr.compile(),
@@ -388,8 +401,12 @@ pub(crate) fn wrap_hints_precompute_p(
         (in_px.id, ElementType::FieldElem),
     ];
 
-    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
-        (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (
+        ark_bn254::G1Affine::identity().into(),
+        true,
+        script! {},
+        vec![],
+    );
     // let mut tap_prex = script! {};
     if !skip {
         let in_py = in_py.result.0.try_into().unwrap();
@@ -415,11 +432,16 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
 ) -> Segment {
     let input_segment_info = vec![(in_p.id, ElementType::G1)];
 
-    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
-        (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (
+        ark_bn254::G1Affine::identity().into(),
+        true,
+        script! {},
+        vec![],
+    );
     if !skip {
-        let in_p = in_p.result.0.try_into().unwrap();
-        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p);
+        let in_p: FqPair = in_p.result.0.try_into().unwrap();
+        let p = ark_bn254::G1Affine::new(in_p.x(), in_p.y());
+        (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(p);
     }
 
     Segment {
@@ -510,7 +532,8 @@ pub(crate) fn wrap_chunk_final_verify(
     let q4xc1: ark_ff::BigInt<4> = in_q4[1].result.0.try_into().unwrap();
     let q4yc0: ark_ff::BigInt<4> = in_q4[2].result.0.try_into().unwrap();
     let q4yc1: ark_ff::BigInt<4> = in_q4[3].result.0.try_into().unwrap();
-    let q4 = ark_bn254::G2Affine::new_unchecked(
+    // We will do on_curve and in_subgroup check before point operation
+    let q4 = TwistPoint::new(
         ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()),
         ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()),
     );

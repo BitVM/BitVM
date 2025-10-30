@@ -8,15 +8,15 @@ use crate::bn254::g2::{
     hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine,
 };
 use crate::bn254::utils::*;
+use crate::chunk::elements::{FqPair, TwistPoint};
 use crate::chunk::taps_mul::{utils_fq6_sd_mul, utils_fq6_ss_mul};
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field, Fp12Config, PrimeField};
 use num_bigint::BigUint;
-use std::ops::Neg;
 use std::str::FromStr;
 
 use super::elements::{ElemG2Eval, ElementType};
@@ -25,7 +25,7 @@ use super::taps_mul::utils_multiply_by_line_eval;
 use super::wrap_hasher::hash_messages;
 
 // [q1, -q2, q3]
-pub(crate) fn frob_q_power(q: ark_bn254::G2Affine, ate: i8) -> ark_bn254::G2Affine {
+pub(crate) fn frob_q_power(q: TwistPoint, ate: i8) -> TwistPoint {
     let beta_12x = BigUint::from_str(
         "21575463638280843010398324269430826099269044274347216827212613867836435027261",
     )
@@ -92,59 +92,61 @@ pub(crate) fn frob_q_power(q: ark_bn254::G2Affine, ate: i8) -> ark_bn254::G2Affi
     ])
     .unwrap();
 
-    let mut qq = q;
+    let mut qqx = q.x();
+    let mut qqy = q.y();
     if ate == 1 {
-        qq.x.conjugate_in_place();
-        qq.x *= beta_12;
-        qq.y.conjugate_in_place();
-        qq.y *= beta_13; // = phi(q)
+        qqx.conjugate_in_place();
+        qqx *= beta_12;
+        qqy.conjugate_in_place();
+        qqy *= beta_13; // = phi(q)
     } else if ate == -1 {
-        qq.x *= beta_22; // = - phi(phi(q))
+        qqx *= beta_22; // = - phi(phi(q))
     } else if ate == 3 {
-        qq.x.conjugate_in_place();
-        qq.x *= beta_32;
-        qq.y.conjugate_in_place();
-        qq.y *= beta_33; // = phi(phi(phi(q)))
+        qqx.conjugate_in_place();
+        qqx *= beta_32;
+        qqy.conjugate_in_place();
+        qqy *= beta_33; // = phi(phi(phi(q)))
     }
 
-    qq
+    TwistPoint::new(qqx, qqy)
 }
 
 fn utils_point_double_eval(
-    t: ark_bn254::G2Affine,
-    p: ark_bn254::G1Affine,
+    t: TwistPoint,
+    p: FqPair,
 ) -> (
-    (ark_bn254::G2Affine, (ark_bn254::Fq2, ark_bn254::Fq2)),
+    (TwistPoint, (ark_bn254::Fq2, ark_bn254::Fq2)),
     Script,
     Vec<Hint>,
 ) {
     let mut hints = vec![];
 
-    let t_is_zero = t.is_zero()
-        || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
+    let t_is_zero = t.is_zero();
     let is_valid_input = !t_is_zero;
     let (alpha, bias) = if is_valid_input {
-        let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
-        let bias = t.y - alpha * t.x;
+        let alpha = (t.x().square() + t.x().square() + t.x().square()) / (t.y() + t.y());
+        let bias = t.y() - alpha * t.x();
         (alpha, bias)
     } else {
         (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
     };
 
-    let (hinted_script1, hint1) = hinted_check_tangent_line_keep_elements(t, alpha, -bias);
-    let (hinted_script2, hint2) = hinted_affine_double_line(t.x, alpha, -bias);
-    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y, alpha, -bias);
+    let (hinted_script1, hint1) =
+        hinted_check_tangent_line_keep_elements(t.x(), t.y(), alpha, -bias);
+    let (hinted_script2, hint2) = hinted_affine_double_line(t.x(), alpha, -bias);
+    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x(), p.y(), alpha, -bias);
 
     let result = if is_valid_input {
         let mut dbl_le0 = alpha;
-        dbl_le0.mul_assign_by_fp(&p.x);
+        dbl_le0.mul_assign_by_fp(&p.x());
         let mut dbl_le1 = -bias;
-        dbl_le1.mul_assign_by_fp(&p.y);
-        ((t + t).into_affine(), (dbl_le0, dbl_le1))
+        dbl_le1.mul_assign_by_fp(&p.y());
+        (t.double(), (dbl_le0, dbl_le1))
     } else {
-        let zero_pt =
-            ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO);
-        (zero_pt, (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO))
+        (
+            ark_bn254::G2Affine::zero().into(),
+            (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO),
+        )
     };
 
     if is_valid_input {
@@ -206,33 +208,33 @@ fn utils_point_double_eval(
         OP_ENDIF
         // [tx, ty, x', y', le0, le1]
     };
-    (result, script, hints)
+    (result.into(), script, hints)
 }
 
 fn utils_point_add_eval(
-    t: ark_bn254::G2Affine,
-    q4: ark_bn254::G2Affine,
-    p: ark_bn254::G1Affine,
+    t: TwistPoint,
+    q4: TwistPoint,
+    p: FqPair,
     is_frob: bool,
     ate_bit: i8,
 ) -> (
-    (ark_bn254::G2Affine, (ark_bn254::Fq2, ark_bn254::Fq2)),
+    (TwistPoint, (ark_bn254::Fq2, ark_bn254::Fq2)),
     Script,
     Vec<Hint>,
 ) {
     let mut hints = vec![];
 
     // Precompute Q
-    let temp_q = q4;
-    let (qq, precomp_q_scr, precomp_q_hint) = if is_frob {
+    let ((qqx, qqy), precomp_q_scr, precomp_q_hint) = if is_frob {
         if ate_bit == 1 {
-            hinted_mul_by_char_on_q(temp_q)
+            hinted_mul_by_char_on_q(q4.x(), q4.y())
         } else {
-            hinted_mul_by_char_on_phi_q(temp_q)
+            hinted_mul_by_char_on_phi_q(q4.x(), q4.y())
         }
     } else if ate_bit == -1 {
+        let neg_q4 = q4.neg();
         (
-            temp_q.neg(),
+            (neg_q4.x(), neg_q4.y()),
             script! {
                 // [q4]
                 {Fq::toaltstack()}
@@ -244,48 +246,49 @@ fn utils_point_add_eval(
             vec![],
         )
     } else {
-        (temp_q, script! {}, vec![])
+        ((q4.x(), q4.y()), script! {}, vec![])
     };
     hints.extend(precomp_q_hint);
 
     // Point Add
-    let t_is_zero = t.is_zero()
-        || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
-    let q_is_zero = qq.is_zero()
-        || (qq == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // q is none or Some(0)
-    let is_valid_input = !t_is_zero && !q_is_zero && t != -qq;
+    let t_is_zero = t.is_zero();
+
+    let qq = TwistPoint::new(qqx, qqy);
+    let q_is_zero = qq.is_zero();
+    let is_valid_input = !t_is_zero && !q_is_zero && t != qq.neg();
 
     // if it's valid input, you can compute line coefficients, else hardcode degenerate values
     let (alpha, bias) = if is_valid_input {
         if t == qq {
-            let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
-            let bias = t.y - alpha * t.x;
+            let alpha = (t.x().square() + t.x().square() + t.x().square()) / (t.y() + t.y());
+            let bias = t.y() - alpha * t.x();
             (alpha, bias)
         } else {
-            let alpha = (t.y - qq.y) / (t.x - qq.x);
-            let bias = t.y - alpha * t.x;
+            let alpha = (t.y() - qq.y()) / (t.x() - qq.x());
+            let bias = t.y() - alpha * t.x();
             (alpha, bias)
         }
     } else {
         (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
     };
 
-    let (hinted_script11, hint11) = hinted_check_line_through_point(t.x, alpha, -bias); // todo: remove unused arg: bias
-    let (hinted_script12, hint12) = hinted_check_line_through_point(qq.x, alpha, -bias); // todo: remove unused arg: bias
-    let (hinted_script2, hint2) = hinted_affine_add_line(t.x, qq.x, alpha, -bias);
-    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y, alpha, -bias);
+    let (hinted_script11, hint11) = hinted_check_line_through_point(t.x(), alpha, -bias); // todo: remove unused arg: bias
+    let (hinted_script12, hint12) = hinted_check_line_through_point(qq.x(), alpha, -bias); // todo: remove unused arg: bias
+    let (hinted_script2, hint2) = hinted_affine_add_line(t.x(), qq.x(), alpha, -bias);
+    let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x(), p.y(), alpha, -bias);
 
     // if it's valid input, you can compute result, else degenerate values
     let result = if is_valid_input {
         let mut add_le0 = alpha;
-        add_le0.mul_assign_by_fp(&p.x);
+        add_le0.mul_assign_by_fp(&p.x());
         let mut add_le1 = -bias;
-        add_le1.mul_assign_by_fp(&p.y);
-        ((t + qq).into_affine(), (add_le0, add_le1))
+        add_le1.mul_assign_by_fp(&p.y());
+        (t.add(&qq), (add_le0, add_le1))
     } else {
-        let zero_pt =
-            ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO);
-        (zero_pt, (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO))
+        (
+            ark_bn254::G2Affine::zero().into(),
+            (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO),
+        )
     };
 
     // if it's valid input, you need hints to run computation
@@ -411,16 +414,16 @@ fn point_ops_and_multiply_line_evals_step_1(
     is_dbl: bool,
     is_frob: Option<bool>,
     ate_bit: Option<i8>,
-    t4: ark_bn254::G2Affine,
-    p4: ark_bn254::G1Affine,
-    q4: Option<ark_bn254::G2Affine>,
+    t4: TwistPoint,
+    p4: FqPair,
+    q4: Option<TwistPoint>,
 
-    p3: ark_bn254::G1Affine,
-    t3: ark_bn254::G2Affine,
-    q3: Option<ark_bn254::G2Affine>,
-    p2: ark_bn254::G1Affine,
-    t2: ark_bn254::G2Affine,
-    q2: Option<ark_bn254::G2Affine>,
+    p3: FqPair,
+    t3: TwistPoint,
+    q3: Option<TwistPoint>,
+    p2: FqPair,
+    t2: TwistPoint,
+    q2: Option<TwistPoint>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     // a, b, tx, ty, px, py
     let ((nt, (le4_0, le4_1)), nt_scr, nt_hints) = if is_dbl {
@@ -434,52 +437,54 @@ fn point_ops_and_multiply_line_evals_step_1(
     let le4 = ark_bn254::Fq6::new(le4_0, le4_1, ark_bn254::Fq2::ZERO);
 
     let (alpha_t3, neg_bias_t3) = if is_dbl {
-        let alpha_t3 = (t3.x.square() + t3.x.square() + t3.x.square()) / (t3.y + t3.y);
-        let neg_bias_t3 = alpha_t3 * t3.x - t3.y;
+        let alpha_t3 = (t3.x().square() + t3.x().square() + t3.x().square()) / (t3.y() + t3.y());
+        let neg_bias_t3 = alpha_t3 * t3.x() - t3.y();
         (alpha_t3, neg_bias_t3)
     } else {
         let ate_bit = ate_bit.unwrap();
         let is_frob = is_frob.unwrap();
         let temp_q = q3.unwrap();
-        let q3 = if is_frob {
+        let (q3x, q3y) = if is_frob {
             if ate_bit == 1 {
-                hinted_mul_by_char_on_q(temp_q).0
+                hinted_mul_by_char_on_q(temp_q.x(), temp_q.y()).0
             } else {
-                hinted_mul_by_char_on_phi_q(temp_q).0
+                hinted_mul_by_char_on_phi_q(temp_q.x(), temp_q.y()).0
             }
         } else if ate_bit == -1 {
-            temp_q.neg()
+            let neg = temp_q.neg();
+            (neg.x(), neg.y())
         } else {
-            temp_q
+            (temp_q.x(), temp_q.y())
         };
 
-        let alpha_t3 = (t3.y - q3.y) / (t3.x - q3.x);
-        let neg_bias_t3 = alpha_t3 * t3.x - t3.y;
+        let alpha_t3 = (t3.y() - q3y) / (t3.x() - q3x);
+        let neg_bias_t3 = alpha_t3 * t3.x() - t3.y();
         (alpha_t3, neg_bias_t3)
     };
 
     let (alpha_t2, neg_bias_t2) = if is_dbl {
-        let alpha_t2 = (t2.x.square() + t2.x.square() + t2.x.square()) / (t2.y + t2.y);
-        let neg_bias_t2 = alpha_t2 * t2.x - t2.y;
+        let alpha_t2 = (t2.x().square() + t2.x().square() + t2.x().square()) / (t2.y() + t2.y());
+        let neg_bias_t2 = alpha_t2 * t2.x() - t2.y();
         (alpha_t2, neg_bias_t2)
     } else {
         let ate_bit = ate_bit.unwrap();
         let is_frob = is_frob.unwrap();
         let temp_q = q2.unwrap();
-        let q2 = if is_frob {
+        let (q2x, q2y) = if is_frob {
             if ate_bit == 1 {
-                hinted_mul_by_char_on_q(temp_q).0
+                hinted_mul_by_char_on_q(temp_q.x(), temp_q.y()).0
             } else {
-                hinted_mul_by_char_on_phi_q(temp_q).0
+                hinted_mul_by_char_on_phi_q(temp_q.x(), temp_q.y()).0
             }
         } else if ate_bit == -1 {
-            temp_q.neg()
+            let neg = temp_q.neg();
+            (neg.x(), neg.y())
         } else {
-            temp_q
+            (temp_q.x(), temp_q.y())
         };
 
-        let alpha_t2 = (t2.y - q2.y) / (t2.x - q2.x);
-        let neg_bias_t2 = alpha_t2 * t2.x - t2.y;
+        let alpha_t2 = (t2.y() - q2y) / (t2.x() - q2x);
+        let neg_bias_t2 = alpha_t2 * t2.x() - t2.y();
         (alpha_t2, neg_bias_t2)
     };
 
@@ -488,16 +493,16 @@ fn point_ops_and_multiply_line_evals_step_1(
     let fpg = le4 + g;
 
     let (hinted_ell_t2, hints_ell_t2) =
-        hinted_ell_by_constant_affine(p2.x, p2.y, alpha_t2, neg_bias_t2);
+        hinted_ell_by_constant_affine(p2.x(), p2.y(), alpha_t2, neg_bias_t2);
     let mut t2le_a = alpha_t2;
-    t2le_a.mul_assign_by_fp(&p2.x);
+    t2le_a.mul_assign_by_fp(&p2.x());
     let mut t2le_b = neg_bias_t2;
-    t2le_b.mul_assign_by_fp(&p2.y);
+    t2le_b.mul_assign_by_fp(&p2.y());
 
     let mut t3le_a = alpha_t3;
-    t3le_a.mul_assign_by_fp(&p3.x);
+    t3le_a.mul_assign_by_fp(&p3.x());
     let mut t3le_b = neg_bias_t3;
-    t3le_b.mul_assign_by_fp(&p3.y);
+    t3le_b.mul_assign_by_fp(&p3.y());
 
     let mut hints = vec![];
     hints.extend_from_slice(&nt_hints);
@@ -605,10 +610,7 @@ fn point_ops_and_multiply_line_evals_step_1(
         a_plus_b: [fpg.c0, fpg.c1],
     };
 
-    let input_is_valid = one_plus_fg_j_sq != ark_bn254::Fq6::ZERO
-        && (nt != ark_bn254::G2Affine::zero()
-            && nt
-                != ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO));
+    let input_is_valid = one_plus_fg_j_sq != ark_bn254::Fq6::ZERO && (!nt.is_zero());
 
     (hout, input_is_valid, scr, hints)
 }
@@ -619,14 +621,14 @@ pub(crate) fn chunk_point_ops_and_multiply_line_evals_step_1(
     is_frob: Option<bool>,
     ate_bit: Option<i8>,
     t4: ElemG2Eval,
-    p4: ark_bn254::G1Affine,
-    q4: Option<ark_bn254::G2Affine>,
-    p3: ark_bn254::G1Affine,
-    t3: ark_bn254::G2Affine,
-    q3: Option<ark_bn254::G2Affine>,
-    p2: ark_bn254::G1Affine,
-    t2: ark_bn254::G2Affine,
-    q2: Option<ark_bn254::G2Affine>,
+    p4: FqPair,
+    q4: Option<TwistPoint>,
+    p3: FqPair,
+    t3: TwistPoint,
+    q3: Option<TwistPoint>,
+    p2: FqPair,
+    t2: TwistPoint,
+    q2: Option<TwistPoint>,
 ) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     let (hint_out, is_valid, ops_scr, hints) = point_ops_and_multiply_line_evals_step_1(
         is_dbl, is_frob, ate_bit, t4.t, p4, q4, p3, t3, q3, p2, t2, q2,
@@ -848,8 +850,7 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
 pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
-    let mock_t = ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE);
-
+    let mock_t = TwistPoint::ZERO;
     let are_valid_fps = ts.iter().filter(|f| **f < ark_bn254::Fq::MODULUS).count() == ts.len();
 
     let mut t4: ElemG2Eval = ElemG2Eval {
@@ -859,13 +860,13 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
         a_plus_b: [ark_bn254::Fq2::ZERO; 2],
     };
     if are_valid_fps {
-        t4.t = ark_bn254::G2Affine::new_unchecked(
+        t4.t = TwistPoint::new(
             ark_bn254::Fq2::new(ts[0].into(), ts[1].into()),
             ark_bn254::Fq2::new(ts[2].into(), ts[3].into()),
         );
     }
 
-    let (on_curve_scr, on_curve_hints) = G2Affine::hinted_is_on_curve(t4.t.x, t4.t.y);
+    let (on_curve_scr, on_curve_hints) = G2Affine::hinted_is_on_curve(t4.t.x(), t4.t.y());
     if are_valid_fps {
         hints.extend_from_slice(&on_curve_hints);
     }
@@ -906,7 +907,8 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
                 for _ in 0..4 {
                     {Fq::drop()}
                 }
-                {G2Affine::push(mock_t)}
+                {Fq2::push(mock_t.x())}
+                {Fq2::push(mock_t.y())}
                 // [mock_t] [f_hash_claim]
                 for le in extern_nibbles_to_limbs(aux_hash_le) {
                     {le}
@@ -920,7 +922,8 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
             for _ in 0..4 {
                 {Fq::drop()}
             }
-            {G2Affine::push(mock_t)}
+            {Fq2::push(mock_t.x())}
+            {Fq2::push(mock_t.y())}
             for le in extern_nibbles_to_limbs(aux_hash_le) {
                 {le}
             }
@@ -946,7 +949,7 @@ mod test {
             utils::Hint,
         },
         chunk::{
-            elements::{DataType, ElemG2Eval, ElementType},
+            elements::{DataType, ElemG2Eval, ElementType, FqPair, TwistPoint},
             taps_point_ops::{
                 chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1,
                 chunk_point_ops_and_multiply_line_evals_step_2,
@@ -957,7 +960,6 @@ mod test {
         },
         execute_script,
     };
-    use ark_ec::AffineRepr;
     use ark_ff::{AdditiveGroup, BigInt, Field, UniformRand};
     use bitcoin_script::script;
     use num_bigint::BigUint;
@@ -972,7 +974,7 @@ mod test {
         let t = ark_bn254::G2Affine::rand(&mut prng);
         let p = ark_bn254::G1Affine::rand(&mut prng);
 
-        let ((r, le), scr, hints) = utils_point_double_eval(t, p);
+        let ((r, le), scr, hints) = utils_point_double_eval(t.into(), FqPair::new(p.x, p.y));
         // a, b, tx, ty, px, py
 
         let script = script! {
@@ -989,9 +991,9 @@ mod test {
             {Fq2::push(le.0)}
             {Fq2::equalverify()}
 
-            {Fq2::push(r.y)}
+            {Fq2::push(r.y())}
             {Fq2::equalverify()}
-            {Fq2::push(r.x)}
+            {Fq2::push(r.x())}
             {Fq2::equalverify()}
 
 
@@ -1061,7 +1063,9 @@ mod test {
             (qb, q, p, true, -1),    // frob pow 2
             (qb, -q, p, true, -1),   // frob pow 2
         ] {
-            let ((r, le), hinted_check_add, hints) = utils_point_add_eval(t, q, p, frob, ate);
+            println!("t = {:?}, q = {:?}, frob = {}, ate = {}", t, q, frob, ate);
+            let ((r, le), hinted_check_add, hints) =
+                utils_point_add_eval(t.into(), q.into(), FqPair::new(p.x, p.y), frob, ate);
 
             let script = script! {
                 for hint in hints {
@@ -1082,9 +1086,9 @@ mod test {
                 {Fq2::push(le.0)}
                 {Fq2::equalverify()}
 
-                {Fq2::push(r.y)}
+                {Fq2::push(r.y())}
                 {Fq2::equalverify()}
-                {Fq2::push(r.x)}
+                {Fq2::push(r.x())}
                 {Fq2::equalverify()}
 
 
@@ -1109,7 +1113,7 @@ mod test {
                 "utils_point_add_eval disprovable(false) {} @ {} stack; r.is_inf({})",
                 hinted_check_add.len(),
                 exec_result.stats.max_nb_stack_items,
-                r.is_zero() || (r.x == ark_bn254::Fq2::ZERO && r.y == ark_bn254::Fq2::ZERO)
+                r.is_zero()
             );
         }
     }
@@ -1138,8 +1142,8 @@ mod test {
         ];
         let q4 = [
             ark_ff::BigInt::<4>::one(),
-            ark_ff::BigInt::<4>::one(),
             ark_ff::BigInt::<4>::zero(),
+            ark_ff::BigInt::<4>::one(),
             ark_ff::BigInt::<4>::zero(),
         ];
 
@@ -1193,16 +1197,16 @@ mod test {
     fn test_point_ops_and_multiply_line_evals_step_1_valid_data() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let t4 = ark_bn254::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
+        let t4 = TwistPoint::rand(&mut prng);
+        let q4 = TwistPoint::rand(&mut prng);
         let p4 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t3 = ark_bn254::G2Affine::rand(&mut prng);
-        let q3 = ark_bn254::G2Affine::rand(&mut prng);
+        let t3 = TwistPoint::rand(&mut prng);
+        let q3 = TwistPoint::rand(&mut prng);
         let p3 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t2 = ark_bn254::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::G2Affine::rand(&mut prng);
+        let t2 = TwistPoint::rand(&mut prng);
+        let q2 = TwistPoint::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
         let is_dbl = false;
@@ -1218,12 +1222,15 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                p4,
+                //p4,
+                FqPair::new(p4.x, p4.y),
                 Some(q4),
-                p3,
+                //p3,
+                FqPair::new(p3.x, p3.y),
                 t3,
                 Some(q3),
-                p2,
+                //p2,
+                FqPair::new(p2.x, p2.y),
                 t2,
                 Some(q2),
             );
@@ -1231,18 +1238,18 @@ mod test {
 
         let mut preimage_hints = vec![];
         preimage_hints.extend_from_slice(&[
-            Hint::Fq(t4.x.c0),
-            Hint::Fq(t4.x.c1),
-            Hint::Fq(t4.y.c0),
-            Hint::Fq(t4.y.c1),
+            Hint::Fq(t4.x().c0),
+            Hint::Fq(t4.x().c1),
+            Hint::Fq(t4.y().c0),
+            Hint::Fq(t4.y().c1),
         ]);
 
         if !is_dbl {
             preimage_hints.extend_from_slice(&[
-                Hint::Fq(q4.x.c0),
-                Hint::Fq(q4.x.c1),
-                Hint::Fq(q4.y.c0),
-                Hint::Fq(q4.y.c1),
+                Hint::Fq(q4.x().c0),
+                Hint::Fq(q4.x().c1),
+                Hint::Fq(q4.y().c0),
+                Hint::Fq(q4.y().c1),
             ]);
         }
 
@@ -1273,9 +1280,9 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(hint_out.a_plus_b[0])}
             {Fq2::equalverify()}
-            {Fq2::push(hint_out.t.y)}
+            {Fq2::push(hint_out.t.y())}
             {Fq2::equalverify()}
-            {Fq2::push(hint_out.t.x)}
+            {Fq2::push(hint_out.t.x())}
             {Fq2::equalverify()}
             {G1Affine::push(p2)}
             {Fq2::equalverify()}
@@ -1283,9 +1290,9 @@ mod test {
             {Fq2::equalverify()}
             {G1Affine::push(p4)}
             {Fq2::equalverify()}
-            {Fq2::push(t4.y)}
+            {Fq2::push(t4.y())}
             {Fq2::equalverify()}
-            {Fq2::push(t4.x)}
+            {Fq2::push(t4.x())}
             {Fq2::equalverify()}
             OP_TRUE
         };
@@ -1308,17 +1315,17 @@ mod test {
     fn test_point_ops_and_multiply_line_evals_step_1_numerator_zero() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let t4 = ark_bn254::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+        let t4 = TwistPoint::rand(&mut prng);
+        let q4 = TwistPoint::rand(&mut prng);
+        let p4 = FqPair::rand(&mut prng);
 
         let t3 = t4; // ark_bn254::G2Affine::rand(&mut prng);
         let q3 = q4; //ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::new_unchecked(-p4.x, -p4.y); //ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = FqPair::new(p4.x(), -p4.y()); //ark_bn254::G1Affine::rand(&mut prng);
 
-        let t2 = ark_bn254::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::G2Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let t2 = TwistPoint::rand(&mut prng);
+        let q2 = TwistPoint::rand(&mut prng);
+        let p2 = FqPair::rand(&mut prng);
 
         let is_dbl = false;
         let is_frob: Option<bool> = Some(false);
@@ -1346,24 +1353,24 @@ mod test {
 
         let mut preimage_hints = vec![];
         preimage_hints.extend_from_slice(&[
-            Hint::Fq(t4.x.c0),
-            Hint::Fq(t4.x.c1),
-            Hint::Fq(t4.y.c0),
-            Hint::Fq(t4.y.c1),
+            Hint::Fq(t4.x().c0),
+            Hint::Fq(t4.x().c1),
+            Hint::Fq(t4.y().c0),
+            Hint::Fq(t4.y().c1),
         ]);
 
         if !is_dbl {
             preimage_hints.extend_from_slice(&[
-                Hint::Fq(q4.x.c0),
-                Hint::Fq(q4.x.c1),
-                Hint::Fq(q4.y.c0),
-                Hint::Fq(q4.y.c1),
+                Hint::Fq(q4.x().c0),
+                Hint::Fq(q4.x().c1),
+                Hint::Fq(q4.y().c0),
+                Hint::Fq(q4.y().c1),
             ]);
         }
 
-        preimage_hints.extend_from_slice(&[Hint::Fq(p4.x), Hint::Fq(p4.y)]);
-        preimage_hints.extend_from_slice(&[Hint::Fq(p3.x), Hint::Fq(p3.y)]);
-        preimage_hints.extend_from_slice(&[Hint::Fq(p2.x), Hint::Fq(p2.y)]);
+        preimage_hints.extend_from_slice(&[Hint::Fq(p4.x()), Hint::Fq(p4.y())]);
+        preimage_hints.extend_from_slice(&[Hint::Fq(p3.x()), Hint::Fq(p3.y())]);
+        preimage_hints.extend_from_slice(&[Hint::Fq(p2.x()), Hint::Fq(p2.y())]);
 
         let tap_len = ops_scr.len();
         // [hints, t4, (q2), p4, p3, p2]
@@ -1388,19 +1395,22 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(hint_out.a_plus_b[0])}
             {Fq2::equalverify()}
-            {Fq2::push(hint_out.t.y)}
+            {Fq2::push(hint_out.t.y())}
             {Fq2::equalverify()}
-            {Fq2::push(hint_out.t.x)}
+            {Fq2::push(hint_out.t.x())}
             {Fq2::equalverify()}
-            {G1Affine::push(p2)}
+            {Fq::push(p2.x())}
+            {Fq::push(p2.y())}
             {Fq2::equalverify()}
-            {G1Affine::push(p3)}
+            {Fq::push(p3.x())}
+            {Fq::push(p3.y())}
             {Fq2::equalverify()}
-            {G1Affine::push(p4)}
+            {Fq::push(p4.x())}
+            {Fq::push(p4.y())}
             {Fq2::equalverify()}
-            {Fq2::push(t4.y)}
+            {Fq2::push(t4.y())}
             {Fq2::equalverify()}
-            {Fq2::push(t4.x)}
+            {Fq2::push(t4.x())}
             {Fq2::equalverify()}
             OP_TRUE
         };
@@ -1425,16 +1435,16 @@ mod test {
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let t4 = ark_bn254::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
-        let t3 = ark_bn254::G2Affine::rand(&mut prng);
-        let q3 = ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+        let t4 = TwistPoint::rand(&mut prng);
+        let q4 = TwistPoint::rand(&mut prng);
+        let p4 = FqPair::rand(&mut prng);
+        let t3 = TwistPoint::rand(&mut prng);
+        let q3 = TwistPoint::rand(&mut prng);
+        let p3 = FqPair::rand(&mut prng);
 
-        let t2 = ark_bn254::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::G2Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let t2 = TwistPoint::rand(&mut prng);
+        let q2 = TwistPoint::rand(&mut prng);
+        let p2 = FqPair::rand(&mut prng);
 
         let t4 = ElemG2Eval {
             t: t4,
@@ -1537,16 +1547,17 @@ mod test {
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let t4 = ark_bn254::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
-        let t3 = ark_bn254::G2Affine::rand(&mut prng);
-        let q3 = ark_bn254::G2Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+        let t4 = TwistPoint::rand(&mut prng);
+        let q4 = TwistPoint::rand(&mut prng);
+        let p4 = FqPair::rand(&mut prng);
+        let t3 = TwistPoint::rand(&mut prng);
+        let q3 = TwistPoint::rand(&mut prng);
+        let p3 = FqPair::rand(&mut prng);
 
-        let t2 = ark_bn254::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::G2Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let t2 = TwistPoint::rand(&mut prng);
+        let q2 = TwistPoint::rand(&mut prng);
+
+        let p2 = FqPair::rand(&mut prng);
 
         let t4 = ElemG2Eval {
             t: t4,
@@ -1559,12 +1570,15 @@ mod test {
             None,
             None,
             t4,
-            p4,
+            //p4,
+            FqPair::new(p4.x(), p4.y()),
             Some(q4),
-            p3,
+            //p3,
+            FqPair::new(p3.x(), p3.y()),
             t3,
             Some(q3),
-            p2,
+            //p2,
+            FqPair::new(p2.x(), p2.y()),
             t2,
             Some(q2),
         );
@@ -1643,15 +1657,15 @@ mod test {
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let t4 = ark_bn254::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
+        let t4 = TwistPoint::rand(&mut prng);
+        let q4 = TwistPoint::rand(&mut prng);
         let p4 = ark_bn254::G1Affine::rand(&mut prng);
-        let t3 = ark_bn254::G2Affine::rand(&mut prng);
-        let q3 = ark_bn254::G2Affine::rand(&mut prng);
+        let t3 = TwistPoint::rand(&mut prng);
+        let q3 = TwistPoint::rand(&mut prng);
         let p3 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t2 = ark_bn254::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::G2Affine::rand(&mut prng);
+        let t2 = TwistPoint::rand(&mut prng);
+        let q2 = TwistPoint::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
         let t4 = ElemG2Eval {
@@ -1665,12 +1679,15 @@ mod test {
             None,
             None,
             t4,
-            p4,
+            //p4,
+            FqPair::new(p4.x, p4.y),
             Some(q4),
-            p3,
+            //p3,
+            FqPair::new(p3.x, p3.y),
             t3,
             Some(q3),
-            p2,
+            //p2,
+            FqPair::new(p2.x, p2.y),
             t2,
             Some(q2),
         );
@@ -1735,15 +1752,15 @@ mod test {
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let t4 = ark_bn254::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::G2Affine::rand(&mut prng);
+        let t4 = TwistPoint::rand(&mut prng);
+        let q4 = TwistPoint::rand(&mut prng);
         let p4 = ark_bn254::G1Affine::rand(&mut prng);
-        let t3 = ark_bn254::G2Affine::rand(&mut prng);
-        let q3 = ark_bn254::G2Affine::rand(&mut prng);
+        let t3 = TwistPoint::rand(&mut prng);
+        let q3 = TwistPoint::rand(&mut prng);
         let p3 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t2 = ark_bn254::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::G2Affine::rand(&mut prng);
+        let t2 = TwistPoint::rand(&mut prng);
+        let q2 = TwistPoint::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
         let t4 = ElemG2Eval {
@@ -1758,12 +1775,12 @@ mod test {
                 is_frob,
                 ate_bit,
                 t4,
-                p4,
+                p4.into(),
                 Some(q4),
-                p3,
+                p3.into(),
                 t3,
                 Some(q3),
-                p2,
+                p2.into(),
                 t2,
                 Some(q2),
             );
@@ -1771,9 +1788,9 @@ mod test {
 
         let t4 = DataType::G2EvalData(t4);
         let hint_out = DataType::G2EvalData(hint_out);
-        let p4 = DataType::G1Data(p4);
-        let p3 = DataType::G1Data(p3);
-        let p2 = DataType::G1Data(p2);
+        let p4 = DataType::G1Data(p4.into());
+        let p3 = DataType::G1Data(p3.into());
+        let p2 = DataType::G1Data(p2.into());
 
         let mut preimage_hints = vec![];
         preimage_hints.extend_from_slice(&t4.to_witness(ElementType::G2EvalPoint));
@@ -1796,13 +1813,13 @@ mod test {
             {Fq::toaltstack()}
 
             if !is_dbl {
-                {Fq::push(q4.y.c1)}
+                {Fq::push(q4.y().c1)}
                 {Fq::toaltstack()}
-                {Fq::push(q4.y.c0)}
+                {Fq::push(q4.y().c0)}
                 {Fq::toaltstack()}
-                {Fq::push(q4.x.c1)}
+                {Fq::push(q4.x().c1)}
                 {Fq::toaltstack()}
-                {Fq::push(q4.x.c0)}
+                {Fq::push(q4.x().c0)}
                 {Fq::toaltstack()}
             }
         };
@@ -1843,7 +1860,7 @@ mod test {
     #[test]
     fn test_frob() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let p = ark_bn254::G2Affine::rand(&mut prng);
+        let p = TwistPoint::rand(&mut prng);
 
         // compute frob_q_power iteratively
         let q1 = frob_q_power(p, 1);
@@ -1854,7 +1871,7 @@ mod test {
         let q2d = frob_q_power(p, -1);
         let q3d = frob_q_power(p, 3);
 
-        assert_eq!(-q2d, q2);
+        assert_eq!(q2d.neg(), q2);
         assert_eq!(q3d, q3);
     }
 }

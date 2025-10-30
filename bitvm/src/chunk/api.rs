@@ -1021,7 +1021,6 @@ mod test {
     // Step 3: Operator Generates Assertions, Signs it and submit on chain
 
     #[test]
-    #[ignore]
     fn test_fn_generate_assertions() {
         let vk_bytes = [
             115, 158, 251, 51, 106, 255, 102, 248, 22, 171, 229, 158, 80, 192, 240, 217, 99, 162,
