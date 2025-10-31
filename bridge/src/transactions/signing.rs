@@ -49,7 +49,7 @@ pub fn push_p2wsh_signature_to_witness(
 }
 
 pub fn push_p2wsh_script_to_witness(tx: &mut Transaction, input_index: usize, script: &Script) {
-    tx.input[input_index].witness.push(script); // TODO to_bytes() may be needed
+    tx.input[input_index].witness.push(script.to_bytes());
 }
 
 pub fn populate_p2wsh_witness(
