@@ -56,7 +56,7 @@ pub type GraphId = String;
 
 pub trait BaseGraph {
     fn network(&self) -> Network;
-    fn id(&self) -> &String;
+    fn id(&self) -> &str;
     fn push_verifier_nonces(
         &mut self,
         verifier_context: &VerifierContext,
