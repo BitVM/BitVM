@@ -137,7 +137,7 @@ pub(crate) fn chunk_hash_p(
     let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
     let t = ark_bn254::G1Affine::new_unchecked(tx, ty);
     let q = ark_bn254::G1Affine::new_unchecked(qx, qy);
-    let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
+    let (add_scr, add_hints) = G1Affine::hinted_check_add_prevent_degenerate(t, q);
     let r = (t + q).into_affine();
     let ops_script = script! {
         // [t] [hash_r, hash_t]
