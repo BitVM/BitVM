@@ -198,6 +198,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// This function prevents overflow of the underlying integer types during
     /// left shift operation.
     pub fn lshift_prevent_overflow(bits: u32) -> Script {
+        if bits == 0 {
+            // No-op: return the input unchanged and avoid any altstack usage
+            return script! {};
+        }
+        assert!(bits <= LIMB_SIZE);
         script! {
             // stack: {limb}
             { 1 << LIMB_SIZE } // {limb} {base}
