@@ -38,6 +38,6 @@ async fn test_e2e_disprove_success() {
 
     println!(
         "{}",
-        "Succesfully disproved incorrect ZK proof".bold().green()
+        "Successfully disproved incorrect ZK proof".bold().green()
     );
 }
