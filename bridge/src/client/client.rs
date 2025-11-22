@@ -787,17 +787,31 @@ impl BitVMClient {
                             context.network,
                             &context.operator_public_key,
                         );
-                        let utxos = self
+                        let utxos = match self
                             .esplora
                             .get_address_utxo(address.clone())
                             .await
-                            .unwrap();
-                        let utxo = utxos
+                            {
+                            Ok(utxos) => utxos,
+                            Err(e) => {
+                                eprintln!("Failed to fetch UTXOs for {}: {}", address, e);
+                                return;
+                            }
+                        };
+                        let utxo = match utxos
                             .into_iter()
                             .find(|x| x.value.to_sat() >= expected_peg_out_confirm_amount)
-                            .unwrap_or_else(|| {
-                                panic!("No utxo found with at least {expected_peg_out_confirm_amount} sats for address {address}")
-                            });
+                            {
+                            Some(utxo) => utxo,
+                            None => {
+                                eprintln!(
+                                    "No UTXO >= {} sats for address {}",
+                                    expected_peg_out_confirm_amount,
+                                    address
+                                );
+                                return;
+                            }
+                        };
                         Input {
                             amount: utxo.value,
                             outpoint: OutPoint {
