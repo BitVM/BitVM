@@ -860,7 +860,6 @@ mod tests {
         assert!(execute_script(compact_script).success);
     }
 
-    /*
     #[test]
     fn verify_test_vectors() -> io::Result<()> {
         let test_vectors = load_test_vectors()?;
@@ -876,5 +875,4 @@ mod tests {
 
         Ok(())
     }
-    */
 }
