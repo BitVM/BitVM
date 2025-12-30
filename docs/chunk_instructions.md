@@ -69,13 +69,13 @@ $h = f \times g  = 1 + e.J $
 Instead of computing, you now verify whether $h == f \times g$ by verifying the following equation:
 
 
-$e == [(c+d)/ (1+c \cdot d \cdot V) \cdot J]$
+$e = (c+d) / (1+c \cdot d \cdot V)$
 
 
-$e. (1+c \cdot d \cdot V) == (c+d).J$
+$e \cdot (1+c \cdot d \cdot V) == (c+d)$
 
 
-In the last equation, $c \cdot d$ requires 1 Fq6 mul, cost of $\cdot V$ is negligible, and $e. (1+c \cdot d \cdot V)$ requires 1 more Fq6 multiplication by c. Therefore 2 Fq6 muls, 1 negligible mul by Fp12Config::NON_RESIDUE (V), but you need to pass c as hint to the tapscript.
+In the last equation, $c \cdot d$ requires 1 Fq6 mul, cost of $\cdot V$ is negligible, and $e \cdot (1+c \cdot d \cdot V)$ requires 1 more Fq6 multiplication (of the denominator by the result e). Therefore 2 Fq6 muls, 1 negligible mul by Fp12Config::NON_RESIDUE (V), but you need to pass c as hint to the tapscript.
 
 ------
 Multiplying three Fq12 elements in the form: $(1 + a J), (1 + b J), (1 + d J)$
