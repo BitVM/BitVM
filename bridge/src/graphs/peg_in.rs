@@ -56,7 +56,7 @@ pub enum PegInVerifierStatus {
     #[display("Peg-in deposit transaction not confirmed yet. Wait...")]
     AwaitingDeposit, // no action required, wait
     #[display("No peg-out graph available yet. Wait...")]
-    AwaitingPegOutCreation, // need operator(s) to come online to create peg-out grah
+    AwaitingPegOutCreation, // need operator(s) to come online to create peg-out graph
     #[display("Nonce required. Share nonce?")]
     PendingOurNonces(Vec<GraphId>), // the given verifier needs to submit nonces
     #[display("Awaiting nonces. Wait...")]

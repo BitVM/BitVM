@@ -107,7 +107,7 @@ pub enum PegOutVerifierStatus {
     PegOutPendingSignatures, // should push signatures
     #[display("Awaiting signatures for peg-out transactions. Wait...")]
     PegOutAwaitingSignatures, // should wait for signatures from other verifiers
-    #[display("Peg-out complete, reimbursement succeded. Done.")]
+    #[display("Peg-out complete, reimbursement succeeded. Done.")]
     PegOutComplete, // peg-out complete
     #[display("No action available. Wait...")]
     PegOutWait, // no action required, wait
@@ -132,7 +132,7 @@ pub enum PegOutOperatorStatus {
     // TODO: add assert initial and assert final
     #[display("No action available. Wait...")]
     PegOutWait,
-    #[display("Peg-out complete, reimbursement succeded. Done.")]
+    #[display("Peg-out complete, reimbursement succeeded. Done.")]
     PegOutComplete, // peg-out complete
     #[display("Peg-out complete, reimbursement failed. Done.")]
     PegOutFailed, // timeouts or disproves executed
@@ -1516,7 +1516,7 @@ impl PegOutGraph {
     pub async fn challenge(
         &mut self,
         client: &AsyncClient,
-        crowdfundng_inputs: &Vec<InputWithScript<'_>>,
+        crowdfunding_inputs: &Vec<InputWithScript<'_>>,
         keypair: &Keypair,
         output_script_pubkey: ScriptBuf,
     ) -> Result<Transaction, Error> {
@@ -1529,7 +1529,7 @@ impl PegOutGraph {
             Ok(status) => match status.confirmed {
                 true => {
                     self.challenge_transaction.add_inputs_and_output(
-                        crowdfundng_inputs,
+                        crowdfunding_inputs,
                         keypair,
                         output_script_pubkey,
                     );
