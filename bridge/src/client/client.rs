@@ -629,7 +629,7 @@ impl BitVMClient {
     //         //             match self.esplora.broadcast(&tx).await {
     //         //                 Ok(_) => {
     //         //                     println!(
-    //         //                         "Succesfully broadcast next transaction with id: {}",
+    //         //                         "Successfully broadcast next transaction with id: {}",
     //         //                         tx.compute_txid()
     //         //                     );
     //         //                     remove_utxo = Some(*outpoint);
@@ -1126,7 +1126,7 @@ impl BitVMClient {
     pub async fn broadcast_challenge(
         &mut self,
         peg_out_graph_id: &String,
-        crowdfundng_inputs: &Vec<InputWithScript<'_>>,
+        crowdfunding_inputs: &Vec<InputWithScript<'_>>,
         output_script_pubkey: ScriptBuf,
     ) -> Result<Txid, Error> {
         let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id)?;
@@ -1147,7 +1147,7 @@ impl BitVMClient {
         let tx = graph
             .challenge(
                 &self.esplora,
-                crowdfundng_inputs,
+                crowdfunding_inputs,
                 keypair,
                 output_script_pubkey,
             )
@@ -1580,7 +1580,7 @@ impl BitVMClient {
     //                     match self.esplora.broadcast(&tx).await {
     //                         Ok(_) => {
     //                             println!(
-    //                                 "Succesfully broadcast next transaction with id: {}",
+    //                                 "Successfully broadcast next transaction with id: {}",
     //                                 tx.compute_txid()
     //                             );
     //                             remove_utxo = Some(*outpoint);
