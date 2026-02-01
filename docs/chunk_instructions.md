@@ -181,7 +181,7 @@ fn disprove_core(input, Option<output>, operator_claimed_input_hash, operator_cl
         if output.is_none() {  // tapscripts output is not passed as hint
             output = fn(input) // output is deterministically computed from input
         } else {
-            fn_valid(input, output) // output is determinstically validated from input
+            fn_valid(input, output) // output is deterministically validated from input
         }
         Add_To_Stack(output, input_is_valid)
     } else {

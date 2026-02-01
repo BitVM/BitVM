@@ -416,7 +416,7 @@ impl Fq {
         (script, hints)
     }
 
-    // TODO: Optimize using the sqaure feature
+    // TODO: Optimize using the square feature
     pub fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let x = &BigInt::from_str(&a.to_string()).unwrap();
