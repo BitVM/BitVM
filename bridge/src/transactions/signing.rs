@@ -10,7 +10,7 @@ use secp256k1::SECP256K1;
 
 use super::super::{contexts::base::BaseContext, scripts::generate_p2wpkh_address};
 
-pub fn generate_p2wsh_schnorr_signature(
+pub fn generate_p2wsh_ecdsa_signature(
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -41,7 +41,7 @@ pub fn push_p2wsh_signature_to_witness(
     keypair: &Keypair,
 ) {
     let signature =
-        generate_p2wsh_schnorr_signature(tx, input_index, sighash_type, script, value, keypair);
+        generate_p2wsh_ecdsa_signature(tx, input_index, sighash_type, script, value, keypair);
 
     tx.input[input_index]
         .witness
@@ -80,7 +80,7 @@ pub fn populate_p2wsh_witness_with_signatures(
     push_p2wsh_script_to_witness(tx, input_index, script);
 }
 
-pub fn generate_p2wpkh_schnorr_signature(
+pub fn generate_p2wpkh_ecdsa_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
@@ -117,7 +117,7 @@ pub fn push_p2wpkh_signature_to_witness(
     public_key: &PublicKey,
     keypair: &Keypair,
 ) {
-    let signature = generate_p2wpkh_schnorr_signature(
+    let signature = generate_p2wpkh_ecdsa_signature(
         context,
         tx,
         input_index,
