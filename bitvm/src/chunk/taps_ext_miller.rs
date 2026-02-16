@@ -11,6 +11,7 @@ use crate::{
     treepp::*,
 };
 use ark_ff::{AdditiveGroup, Field, PrimeField};
+use bitcoin::opcodes::all::OP_ENDIF;
 use core::ops::Neg;
 
 use super::wrap_hasher::hash_utils::{hash_fp6, hash_g2acc_with_hashed_le};
@@ -122,30 +123,36 @@ pub(crate) fn chunk_precompute_p_from_hash(
     let mut px: ark_bn254::Fq = ark_bn254::Fq::ONE;
     let mut py: ark_bn254::Fq = ark_bn254::Fq::ONE;
 
-    let py_is_not_zero = hint_in_p.y != ark_bn254::Fq::ZERO;
-    if py_is_not_zero {
+    let is_inf = (hint_in_p.y == ark_bn254::Fq::ZERO) && (hint_in_p.x == ark_bn254::Fq::ZERO);
+
+    // avoid panic in hinted_is_on_curve
+    if hint_in_p.y != ark_bn254::Fq::ZERO {
         px = hint_in_p.x;
         py = hint_in_p.y;
     }
 
     let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(px, py);
-    if py_is_not_zero {
+    if hint_in_p.y != ark_bn254::Fq::ZERO {
         hints.extend_from_slice(&on_curve_hint);
     }
 
     let p = ark_bn254::G1Affine::new_unchecked(px, py);
     let (eval_xy, eval_hints) = hinted_from_eval_points(p);
 
-    let valid_point = py_is_not_zero && p.is_on_curve();
+    let valid_point = is_inf || p.is_on_curve();
     let mock_pd = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
 
-    let pd = if valid_point {
+    if hint_in_p.y != ark_bn254::Fq::ZERO && p.is_on_curve() {
         hints.extend_from_slice(&eval_hints);
+    }
 
+    let pd = if p.is_on_curve() {
         let pdy = p.y.inverse().unwrap();
         let pdx = -p.x * pdy;
 
         ark_bn254::G1Affine::new_unchecked(pdx, pdy)
+    } else if is_inf {
+        ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
     } else {
         mock_pd
     };
@@ -168,7 +175,19 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
         {Fq::is_zero_keep_element(0)}
         OP_IF // PY = 0
-            {drop_and_return_scr.clone()}
+            {Fq::toaltstack()}
+            {Fq::is_zero_keep_element(0)}
+            OP_IF // PX = 0
+                {Fq::fromaltstack()}
+                // The current implementation of MillerPointOpsStep1 would calculate the correct value if the result
+                // of PreMillerPrecomputePFromHash for point at infinity was the pair (0,0)
+                {G1Affine::push(pd)}
+                {1}
+            OP_ELSE // PX != 0
+                {Fq::fromaltstack()}
+                {drop_and_return_scr.clone()}
+            OP_ENDIF
+
         OP_ELSE // PY != 0
             // [hints, px, py]
             {Fq2::copy(0)}
@@ -709,11 +728,16 @@ mod test {
         let p2 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ZERO);
         let p3 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
         let p4 = ark_bn254::G1Affine::new_unchecked(p1.x, p1.x);
-        let dataset = vec![(p1, false), (p2, true), (p3, true), (p4, true)];
+        let dataset = vec![(p1, false), (p2, true), (p3, false), (p4, true)];
 
-        for (p, disprovable) in dataset {
+        for (idx, (p, disprovable)) in dataset.into_iter().enumerate() {
             let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
-            assert_eq!(input_is_valid, !disprovable);
+            assert_eq!(
+                input_is_valid,
+                !disprovable,
+                "failed for point p{:?}",
+                idx + 1
+            );
             let hint_out = DataType::G1Data(hint_out);
             let p = DataType::G1Data(p);
 
@@ -747,7 +771,7 @@ mod test {
                     println!("{i:} {:?}", res.final_stack.get(i));
                 }
             }
-            assert_eq!(res.success, disprovable);
+            assert_eq!(res.success, disprovable, "failed for point p{:?}", idx + 1);
             assert!(res.final_stack.len() == 1);
             println!(
                 "chunk_precompute_p_from_hash disprovable({}) script {} stack {}",
