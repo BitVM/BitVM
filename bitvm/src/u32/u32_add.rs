@@ -27,7 +27,6 @@ pub fn u8_add() -> Script {
         OP_GREATERTHANOREQUAL
         OP_IF
             OP_SUB
-            OP_0
         OP_ENDIF
         OP_DROP
     }
