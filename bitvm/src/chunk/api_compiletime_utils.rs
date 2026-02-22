@@ -213,17 +213,26 @@ pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<ScriptB
         format!("{}|{}", joined, unique_hash)
     }
 
+    fn get_elem_types_to_hash(seg: &Segment) -> Vec<ElementType> {
+        let mut elem_types: Vec<ElementType> = seg
+            .parameter_ids
+            .iter()
+            .rev()
+            .map(|(_, elem_type)| *elem_type)
+            .collect();
+        elem_types.push(seg.result.1);
+        elem_types
+    }
+
     let mut op_scripts: Vec<ScriptBuf> = vec![];
 
-    // cache hashing script as it is repititive
+    // cache hashing script as it is repetitive
     let mut hashing_script_cache: HashMap<String, Script> = HashMap::new();
     for s in segments {
         if s.scr_type.is_final_script() || s.scr_type == ScriptType::NonDeterministic {
             continue;
         }
-        let mut elem_types_to_hash: Vec<ElementType> =
-            s.parameter_ids.iter().rev().map(|f| f.1).collect();
-        elem_types_to_hash.push(s.result.1);
+        let elem_types_to_hash = get_elem_types_to_hash(s);
         let elem_types_str_as_key = serialize_element_types(&elem_types_to_hash);
         hashing_script_cache
             .entry(elem_types_str_as_key)
@@ -249,13 +258,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &[Segment]) -> Vec<ScriptB
             op_scripts.push(op_scr);
         } else {
             // fetch hashing script from cache for these element types
-            let mut elem_types_to_hash: Vec<ElementType> = seg
-                .parameter_ids
-                .iter()
-                .rev()
-                .map(|(_, param_seg_type)| *param_seg_type)
-                .collect();
-            elem_types_to_hash.push(seg.result.1);
+            let elem_types_to_hash = get_elem_types_to_hash(seg);
             let elem_types_str = serialize_element_types(&elem_types_to_hash);
             let hash_scr = hashing_script_cache.get(&elem_types_str).unwrap();
 
