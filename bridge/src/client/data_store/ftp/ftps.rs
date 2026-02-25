@@ -37,7 +37,7 @@ impl Ftps {
         }
 
         let credentials = FtpCredentials {
-            is_secure: false,
+            is_secure: true, // ensure FTPS uses secure connection
             host: host.unwrap(),
             port: port.unwrap(),
             username: username.unwrap(),
