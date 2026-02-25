@@ -635,4 +635,109 @@ mod test {
             run(script);
         }
     }
+
+    #[test]
+    fn test_add_ref_u64_and_u254() {
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+
+        // Randomized cases U254
+        for _ in 0..50 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(254));
+
+            // Stack: [B, A] -> add_ref(1) should produce C on top, consume A, keep B
+            let script = script! {
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::add_ref(1) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                // After equality check, only original B should remain
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::equal(1, 0) }
+            };
+            run(script);
+        }
+
+        // Carry-propagation edge for U64 (LIMB_SIZE=16, N_LIMBS=4)
+        let a: u64 = u64::MAX; // 0xFFFF_FFFF_FFFF_FFFF
+        let b: u64 = 1;
+        let c = a.wrapping_add(b);
+        let script = script! {
+            { U64::push_u64_le(&[b]) }
+            { U64::push_u64_le(&[a]) }
+            { U64::add_ref(1) }
+            { U64::push_u64_le(&[c]) }
+            { U64::equalverify(1, 0) }
+            { U64::push_u64_le(&[b]) }
+            { U64::equal(1, 0) }
+        };
+        run(script);
+
+        // Depth>1 reference for U64: Stack [C, B, A], add_ref(2) -> A+C
+        let a: u64 = prng.gen();
+        let b_mid: u64 = prng.gen();
+        let c_ref: u64 = prng.gen();
+        let sum = a.wrapping_add(c_ref);
+        let script = script! {
+            { U64::push_u64_le(&[c_ref]) }
+            { U64::push_u64_le(&[b_mid]) }
+            { U64::push_u64_le(&[a]) }
+            { U64::add_ref(2) }
+            { U64::push_u64_le(&[sum]) }
+            { U64::equalverify(1, 0) }
+            // After compare, stack should contain original C then B (A consumed)
+            { U64::push_u64_le(&[b_mid]) }
+            { U64::equalverify(1, 0) }
+            { U64::push_u64_le(&[c_ref]) }
+            { U64::equal(1, 0) }
+        };
+        run(script);
+    }
+
+    #[test]
+    fn test_add_ref_with_top_u64_and_u254() {
+        let mut prng = ChaCha20Rng::seed_from_u64(2);
+
+        // Randomized cases U254
+        for _ in 0..30 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(254));
+
+            // Stack: [B, A] -> add_ref_with_top(1) should push C on top, keep A and B intact
+            let script = script! {
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::add_ref_with_top(1) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                // Verify A remains
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                // Verify B remains
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::equal(1, 0) }
+            };
+            run(script);
+        }
+
+        // U64 deterministic carry case
+        let a: u64 = 0xFFFF_FFFF_FFFF_0000;
+        let b: u64 = 0x0000_0000_0000_FFFF;
+        let c = a.wrapping_add(b);
+        let script = script! {
+            { U64::push_u64_le(&[b]) }
+            { U64::push_u64_le(&[a]) }
+            { U64::add_ref_with_top(1) }
+            { U64::push_u64_le(&[c]) }
+            { U64::equalverify(1, 0) }
+            { U64::push_u64_le(&[a]) }
+            { U64::equalverify(1, 0) }
+            { U64::push_u64_le(&[b]) }
+            { U64::equal(1, 0) }
+        };
+        run(script);
+    }
 }
