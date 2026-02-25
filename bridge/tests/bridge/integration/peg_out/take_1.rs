@@ -181,7 +181,7 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
-    // addtional dust is from kick off 1 connector a, plus txns had not been broadcasted in this test
+    // additional dust is from kick off 1 connector a, plus txns had not been broadcasted in this test
     check_tx_output_sum(
         ONE_HUNDRED
             + reward_amount
