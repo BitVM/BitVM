@@ -28,7 +28,7 @@ pub const WINTERNITZ_MESSAGE_VERIFIER: Winternitz<ListpickVerifier, VoidConverte
 pub const WINTERNITZ_VARIABLE_VERIFIER: Winternitz<ListpickVerifier, ToBytesConverter> =
     Winternitz::new();
 
-/// Winternitz verifier for compact signature representation, returns the message in bytes.
+/// Winternitz verifier for compact signature representation, returns the message in digits.
 pub const WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz<BruteforceVerifier, VoidConverter> =
     Winternitz::new();
 
@@ -88,7 +88,7 @@ pub struct WinternitzSigningInputs<'a, 'b> {
     pub signing_key: &'b WinternitzSecret,
 }
 
-pub fn generate_winternitz_checksig_leave_hash(
+pub fn generate_winternitz_checksig_leave_bytes(
     public_key: &WinternitzPublicKey,
     message_size: usize,
 ) -> Script {
