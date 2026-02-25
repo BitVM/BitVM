@@ -115,7 +115,7 @@ impl BaseGraph for PegInGraph {
         self.network
     }
 
-    fn id(&self) -> &String {
+    fn id(&self) -> &str {
         &self.id
     }
 

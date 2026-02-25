@@ -240,7 +240,7 @@ impl BaseGraph for PegOutGraph {
         self.network
     }
 
-    fn id(&self) -> &String {
+    fn id(&self) -> &str {
         &self.id
     }
 
