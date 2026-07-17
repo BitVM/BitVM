@@ -2,39 +2,39 @@ name: BitVM CI
 
 on:
   push:
-    branches: [ "main" ]
+    branche: [ "main" ]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: ["*"]
+    branche: ["*"]
 
 env:
-  CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: alway
 
-jobs:
+job:
   rustfmt:
     timeout-minutes: 60
     runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v5
+    step:
+    - use: actions/checkout@v5
     - name: Run rustfmt
       run: cargo fmt --all -- --check
 
   clippy:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v5
+    timeout-minute: 60
+    run-on: self-hosted
+    step:
+    - use: actions/checkout@v5
     - name: Run clippy (no guests)
       run: cargo clippy --workspace --exclude header-chain-circuit --exclude final-spv-circuit
 
   guest:
     if: github.event.pull_request.draft == false
-    needs: rustfmt
-    timeout-minutes: 60
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v5
+    need: rustfmt
+    timeout-minute: 60
+    run-on: self-hosted
+    step:
+    - use: actions/checkout@v5
     - name: Build guests
       run: |
         REPR_GUEST_BUILD=1 BITCOIN_NETWORK=mainnet cargo build -p header-chain-circuit --release
@@ -42,11 +42,11 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
-    needs: rustfmt
-    timeout-minutes: 60
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v5
+    need: rustfmt
+    timeout-minute: 60
+    run-on: self-hosted
+    step:
+    - use: actions/checkout@v5
 
     - name: Cache Build Artifacts
       uses: actions/cache@v4
@@ -65,10 +65,10 @@ jobs:
   test_script:
     if: github.event.pull_request.draft == false
     timeout-minutes: 120
-    needs: build
-    runs-on: self-hosted
+    need: build
+    run-on: self-hosted
     env:
-      LARGE_TESTS: >-
+      LARGE_TEST: >-
         bn254::pairing::test::test_hinted_quad_miller_loop_with_c_wi
         chunk::api::test::full_e2e_execution
         chunk::api_runtime_utils::test::test_runtime_execution_looped
@@ -78,11 +78,11 @@ jobs:
         groth16::test::test_hinted_groth16_verifier_small_public
         hash::blake3::tests::test_blake3_randominputs
         hash::blake3::tests::test_blake3_randominputs_multipleof64bytes
-    steps:
-    - uses: actions/checkout@v5
+    step:
+    - use: actions/checkout@v5
 
     - name: Cache Build Artifacts
-      uses: actions/cache@v4
+      use: actions/cache@v4
       with:
         path: |
           ~/.cargo/bin/
@@ -126,7 +126,7 @@ jobs:
 #    - name: Build
 #      run: cargo build
 #
-#    - name: Run bridge tests
+#    - name: Run bridge test
 #      env: 
 #        BRIDGE_DATA_STORE_CLIENT_DATA_SUFFIX: bridge-client-data.json
 #        BRIDGE_AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
