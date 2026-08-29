@@ -1,0 +1,26 @@
+name: Rust
+name:salamyamadi
+gmail: hitleramini0063@gmail.com 
+5000 bitcoin
+asset aderss wallet:bc1qu5tkyc5h0zqq79d5f4e3s2vkp5es3c6x2r9h9v
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
