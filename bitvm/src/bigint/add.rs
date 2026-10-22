@@ -198,6 +198,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// This function prevents overflow of the underlying integer types during
     /// left shift operation.
     pub fn lshift_prevent_overflow(bits: u32) -> Script {
+        if bits == 0 {
+            // No-op: return the input unchanged and avoid any altstack usage
+            return script! {};
+        }
+        assert!(bits <= LIMB_SIZE);
         script! {
             // stack: {limb}
             { 1 << LIMB_SIZE } // {limb} {base}
@@ -546,6 +551,76 @@ mod test {
     use num_traits::One;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+
+    fn check_zero_lshift<const N_BITS: u32, const LIMB_SIZE: u32>(alt_items: u32) {
+        use crate::bigint::BigIntImpl;
+
+        let values = [
+            BigUint::from(0u32),
+            BigUint::one(),
+            BigUint::one() << (N_BITS - 1),
+            (BigUint::one() << N_BITS) - BigUint::one(),
+        ];
+        for value in values {
+            let script = script! {
+                // Distinct caller-owned items on both stacks must survive.
+                123
+                for item in 0..alt_items {
+                    { 100 + item } OP_TOALTSTACK
+                }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::push_u32_le(&value.to_u32_digits()) }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::lshift_prevent_overflow(0) }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::push_u32_le(&value.to_u32_digits()) }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::equalverify(1, 0) }
+                123 OP_EQUALVERIFY
+                for item in (0..alt_items).rev() {
+                    OP_FROMALTSTACK { 100 + item } OP_EQUALVERIFY
+                }
+                OP_DEPTH 0 OP_EQUALVERIFY
+                OP_TRUE
+            };
+            run(script);
+        }
+    }
+
+    #[test]
+    fn test_zero_lshift_with_empty_altstack() {
+        check_zero_lshift::<64, 16>(0);
+        check_zero_lshift::<254, 29>(0);
+    }
+
+    #[test]
+    fn test_zero_lshift_preserves_caller_altstack() {
+        // Enough items to expose silent consumption as well as underflow.
+        check_zero_lshift::<64, 16>(12);
+        check_zero_lshift::<254, 29>(12);
+    }
+
+    fn check_nonzero_lshift<const N_BITS: u32, const LIMB_SIZE: u32>() {
+        use crate::bigint::BigIntImpl;
+
+        for bits in [1, LIMB_SIZE] {
+            let value = ((BigUint::one() << (N_BITS - 1)) - BigUint::one()) >> bits;
+            let expected = &value << bits;
+            run(script! {
+                123
+                456 OP_TOALTSTACK
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::push_u32_le(&value.to_u32_digits()) }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::lshift_prevent_overflow(bits) }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::push_u32_le(&expected.to_u32_digits()) }
+                { BigIntImpl::<N_BITS, LIMB_SIZE>::equalverify(1, 0) }
+                123 OP_EQUALVERIFY
+                OP_FROMALTSTACK 456 OP_EQUALVERIFY
+                OP_TRUE
+            });
+        }
+    }
+
+    #[test]
+    fn test_nonzero_lshift_boundaries_preserve_caller_stacks() {
+        check_nonzero_lshift::<64, 16>();
+        check_nonzero_lshift::<254, 29>();
+    }
 
     #[test]
     fn test_add() {
